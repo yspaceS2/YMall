@@ -68,3 +68,6 @@ frontend/.vscode/*
 *.njsproj
 *.sln
 *.sw?
+
+# Local agent instructions
+AGENTS.md
