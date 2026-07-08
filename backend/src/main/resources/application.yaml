@@ -12,3 +12,10 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+ymall:
+  file:
+    upload-dir: ./uploads
+    image-url-prefix: /images
+    thumbnail-width: 300
+    thumbnail-height: 300
