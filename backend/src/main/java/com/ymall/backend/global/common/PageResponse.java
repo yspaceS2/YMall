@@ -3,7 +3,9 @@ package com.ymall.backend.global.common;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
-
+/*
+* 페이지네이션
+* */
 public record PageResponse<T>(
     List<T> content,
     int page,

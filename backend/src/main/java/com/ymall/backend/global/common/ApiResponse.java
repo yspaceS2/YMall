@@ -1,7 +1,9 @@
 package com.ymall.backend.global.common;
 
 import lombok.Getter;
-
+/*
+* API Response값 통일
+* */
 @Getter
 public class ApiResponse<T> {
 
