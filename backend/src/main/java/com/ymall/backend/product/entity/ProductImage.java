@@ -48,6 +48,7 @@ public class ProductImage {
         this.sortOrder = sortOrder;
     }
 
+    // 상품 연관관계를 위한 메서드
     void assignProduct(Product product) {
         this.product = product;
     }

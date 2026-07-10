@@ -27,6 +27,7 @@ public class Category {
     @Column(nullable = false, length = 100)
     private String name;
 
+    // URL용 name
     @Column(nullable = false, unique = true, length = 100)
     private String slug;
 
