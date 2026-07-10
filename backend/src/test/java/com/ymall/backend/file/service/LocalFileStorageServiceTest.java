@@ -2,10 +2,13 @@ package com.ymall.backend.file.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.ymall.backend.file.dto.FileUploadResponse;
 import com.ymall.backend.global.config.FileStorageProperties;
@@ -63,6 +67,24 @@ class LocalFileStorageServiceTest {
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode")
             .isEqualTo(ErrorCode.INVALID_IMAGE_TYPE);
+    }
+
+    @Test
+    @DisplayName("파일 저장 중 I/O 오류를 공통 비즈니스 예외로 변환한다")
+    void wrapIOException() throws Exception {
+        LocalFileStorageService service = createService();
+        MultipartFile file = mock(MultipartFile.class);
+
+        given(file.isEmpty()).willReturn(false);
+        given(file.getContentType()).willReturn("image/jpeg");
+        given(file.getOriginalFilename()).willReturn("product.jpg");
+        given(file.getInputStream()).willThrow(new IOException("disk error"));
+
+        assertThatThrownBy(() -> service.storeImage(file))
+            .isInstanceOf(BusinessException.class)
+            .hasCauseInstanceOf(IOException.class)
+            .extracting("errorCode")
+            .isEqualTo(ErrorCode.FILE_UPLOAD_FAILED);
     }
 
     private LocalFileStorageService createService() {

@@ -42,35 +42,39 @@ public class LocalFileStorageService implements FileStorageService {
      * WebP 출력은 Java 기본 ImageIO 환경에서 제약이 있어 썸네일은 JPG로 통일한다.
      */
     @Override
-    public FileUploadResponse storeImage(MultipartFile file) throws IOException {
+    public FileUploadResponse storeImage(MultipartFile file) {
         validateImage(file);
 
-        String originalFileName = cleanFileName(file.getOriginalFilename());
-        String extension = extractExtension(originalFileName);
-        String storedFileName = UUID.randomUUID() + "." + extension;
-        String thumbnailFileName = THUMBNAIL_PREFIX + storedFileName.replace("." + extension, "." + THUMBNAIL_EXTENSION);
-        Path imageDirectory = createImageDirectory();
-        Path imagePath = imageDirectory.resolve(storedFileName);
-        Path thumbnailPath = imageDirectory.resolve(thumbnailFileName);
+        try {
+            String originalFileName = cleanFileName(file.getOriginalFilename());
+            String extension = extractExtension(originalFileName);
+            String storedFileName = UUID.randomUUID() + "." + extension;
+            String thumbnailFileName = THUMBNAIL_PREFIX + storedFileName.replace("." + extension, "." + THUMBNAIL_EXTENSION);
+            Path imageDirectory = createImageDirectory();
+            Path imagePath = imageDirectory.resolve(storedFileName);
+            Path thumbnailPath = imageDirectory.resolve(thumbnailFileName);
 
-        try (InputStream inputStream = file.getInputStream()) {
-            Files.copy(inputStream, imagePath, StandardCopyOption.REPLACE_EXISTING);
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, imagePath, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            Thumbnails.of(imagePath.toFile())
+                .size(fileStorageProperties.thumbnailWidth(), fileStorageProperties.thumbnailHeight())
+                .outputFormat(THUMBNAIL_EXTENSION)
+                .toFile(thumbnailPath.toFile());
+
+            return new FileUploadResponse(
+                originalFileName,
+                storedFileName,
+                buildFileUrl(storedFileName),
+                thumbnailFileName,
+                buildFileUrl(thumbnailFileName),
+                file.getSize(),
+                file.getContentType()
+            );
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, exception);
         }
-
-        Thumbnails.of(imagePath.toFile())
-            .size(fileStorageProperties.thumbnailWidth(), fileStorageProperties.thumbnailHeight())
-            .outputFormat(THUMBNAIL_EXTENSION)
-            .toFile(thumbnailPath.toFile());
-
-        return new FileUploadResponse(
-            originalFileName,
-            storedFileName,
-            buildFileUrl(storedFileName),
-            thumbnailFileName,
-            buildFileUrl(thumbnailFileName),
-            file.getSize(),
-            file.getContentType()
-        );
     }
 
     private void validateImage(MultipartFile file) {

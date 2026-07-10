@@ -13,10 +13,13 @@ import com.ymall.backend.product.entity.ProductStatus;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    @EntityGraph(attributePaths = "category")
     Page<Product> findByStatus(ProductStatus status, Pageable pageable);
 
+    @EntityGraph(attributePaths = "category")
     Page<Product> findByCategoryAndStatus(Category category, ProductStatus status, Pageable pageable);
 
+    @EntityGraph(attributePaths = "category")
     Page<Product> findByNameContainingIgnoreCaseAndStatus(
         String keyword,
         ProductStatus status,

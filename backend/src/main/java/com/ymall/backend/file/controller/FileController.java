@@ -1,7 +1,5 @@
 package com.ymall.backend.file.controller;
 
-import java.io.IOException;
-
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,7 +20,7 @@ public class FileController {
     private final FileStorageService fileStorageService;
 
     @PostMapping("/images")
-    public ApiResponse<FileUploadResponse> uploadImage(@RequestParam MultipartFile file) throws IOException {
+    public ApiResponse<FileUploadResponse> uploadImage(@RequestParam MultipartFile file) {
         return ApiResponse.success(fileStorageService.storeImage(file), "이미지가 업로드되었습니다.");
     }
 }
