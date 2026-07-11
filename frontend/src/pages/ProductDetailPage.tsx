@@ -19,7 +19,11 @@ export function ProductDetailPage() {
         if (invalidProductId) return () => controller.abort()
 
         getProduct(id, controller.signal)
-            .then((data) => { setProduct(data); setSelectedImage(data.images[0]?.imageUrl ?? data.thumbnailUrl ?? '') })
+            .then((data) => {
+                setError('')
+                setProduct(data)
+                setSelectedImage(data.images[0]?.imageUrl ?? data.thumbnailUrl ?? '')
+            })
             .catch((requestError: unknown) => {
                 if (requestError instanceof Error && requestError.name !== 'AbortError') setError(requestError.message)
             })
