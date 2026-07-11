@@ -43,7 +43,7 @@ export function ProductDetailPage() {
                     <div className="detail-category">{product.category.name}</div>
                     <p className="product-brand">{product.brand}</p>
                     <h1>{product.name}</h1>
-                    <div className="rating"><Star fill="currentColor" /> {product.rating.toFixed(1)} <span>상품 평점</span></div>
+                    <div className="rating"><Star fill="currentColor" /> {product.rating?.toFixed(1) ?? '0.0'} <span>상품 평점</span></div>
                     <div className="detail-price">{product.discountPercentage > 0 && <><del>{formatPrice(product.price)}</del><strong>{product.discountPercentage}%</strong></>}<b>{formatPrice(discountedPrice)}</b></div>
                     <p className="detail-description">{product.description}</p>
                     <dl className="product-meta"><div><dt>배송</dt><dd>무료배송 · 평균 2–3일 소요</dd></div><div><dt>재고</dt><dd>{product.stock > 0 ? `${product.stock}개 남음` : '품절'}</dd></div></dl>

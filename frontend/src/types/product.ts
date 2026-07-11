@@ -14,7 +14,7 @@ export interface ProductSummary {
   brand: string
   price: number
   discountPercentage: number
-  rating: number
+  rating: number | null
   stock: number
   thumbnailUrl: string | null
   status: ProductStatus
