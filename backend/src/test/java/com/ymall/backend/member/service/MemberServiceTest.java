@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ymall.backend.global.exception.BusinessException;
@@ -47,12 +48,12 @@ class MemberServiceTest {
         );
         given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(false);
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");
-        given(memberRepository.save(any(Member.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(memberRepository.saveAndFlush(any(Member.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         MemberResponse response = memberService.signup(request);
 
         ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
-        verify(memberRepository).save(memberCaptor.capture());
+        verify(memberRepository).saveAndFlush(memberCaptor.capture());
         Member savedMember = memberCaptor.getValue();
         assertThat(savedMember.getEmail()).isEqualTo("user@example.com");
         assertThat(savedMember.getPassword()).isEqualTo("encoded-password");
@@ -68,6 +69,24 @@ class MemberServiceTest {
             "홍길동"
         );
         given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(true);
+
+        assertThatThrownBy(() -> memberService.signup(request))
+            .isInstanceOf(BusinessException.class)
+            .extracting(exception -> ((BusinessException) exception).getErrorCode())
+            .isEqualTo(ErrorCode.MEMBER_EMAIL_DUPLICATED);
+    }
+
+    @Test
+    void signupMapsConcurrentDuplicateToBusinessException() {
+        MemberSignupRequest request = new MemberSignupRequest(
+            "user@example.com",
+            "password123",
+            "홍길동"
+        );
+        given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(false);
+        given(passwordEncoder.encode("password123")).willReturn("encoded-password");
+        given(memberRepository.saveAndFlush(any(Member.class)))
+            .willThrow(new DataIntegrityViolationException("duplicate email"));
 
         assertThatThrownBy(() -> memberService.signup(request))
             .isInstanceOf(BusinessException.class)
