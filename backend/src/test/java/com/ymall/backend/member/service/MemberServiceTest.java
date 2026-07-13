@@ -17,8 +17,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.member.dto.MemberResponse;
+import com.ymall.backend.member.dto.MemberLoginRequest;
 import com.ymall.backend.member.dto.MemberSignupRequest;
+import com.ymall.backend.member.dto.TokenResponse;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
@@ -32,11 +35,14 @@ class MemberServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private JwtTokenProvider jwtTokenProvider;
+
     private MemberService memberService;
 
     @BeforeEach
     void setUp() {
-        memberService = new MemberService(memberRepository, passwordEncoder);
+        memberService = new MemberService(memberRepository, passwordEncoder, jwtTokenProvider);
     }
 
     @Test
@@ -92,5 +98,40 @@ class MemberServiceTest {
             .isInstanceOf(BusinessException.class)
             .extracting(exception -> ((BusinessException) exception).getErrorCode())
             .isEqualTo(ErrorCode.MEMBER_EMAIL_DUPLICATED);
+    }
+
+    @Test
+    void loginReturnsAccessTokenForValidCredentials() {
+        Member member = new Member(
+            "user@example.com",
+            "encoded-password",
+            "홍길동",
+            MemberRole.ROLE_USER
+        );
+        MemberLoginRequest request = new MemberLoginRequest("user@example.com", "password123");
+        TokenResponse tokenResponse = new TokenResponse("token", "Bearer", 1800);
+        given(memberRepository.findByEmailIgnoreCase("user@example.com")).willReturn(java.util.Optional.of(member));
+        given(passwordEncoder.matches("password123", "encoded-password")).willReturn(true);
+        given(jwtTokenProvider.createAccessToken(member)).willReturn(tokenResponse);
+
+        assertThat(memberService.login(request)).isEqualTo(tokenResponse);
+    }
+
+    @Test
+    void loginRejectsInvalidPassword() {
+        Member member = new Member(
+            "user@example.com",
+            "encoded-password",
+            "홍길동",
+            MemberRole.ROLE_USER
+        );
+        MemberLoginRequest request = new MemberLoginRequest("user@example.com", "wrong-password");
+        given(memberRepository.findByEmailIgnoreCase("user@example.com")).willReturn(java.util.Optional.of(member));
+        given(passwordEncoder.matches("wrong-password", "encoded-password")).willReturn(false);
+
+        assertThatThrownBy(() -> memberService.login(request))
+            .isInstanceOf(BusinessException.class)
+            .extracting(exception -> ((BusinessException) exception).getErrorCode())
+            .isEqualTo(ErrorCode.LOGIN_FAILED);
     }
 }

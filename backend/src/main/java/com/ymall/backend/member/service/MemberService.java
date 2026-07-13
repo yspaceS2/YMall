@@ -11,8 +11,11 @@ import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.member.dto.MemberLoginRequest;
 import com.ymall.backend.member.dto.MemberResponse;
 import com.ymall.backend.member.dto.MemberSignupRequest;
+import com.ymall.backend.member.dto.TokenResponse;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
@@ -24,6 +27,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional
     public MemberResponse signup(MemberSignupRequest request) {
@@ -52,5 +56,15 @@ public class MemberService {
             savedMember.getRole(),
             savedMember.getCreatedAt()
         );
+    }
+
+    public TokenResponse login(MemberLoginRequest request) {
+        Member member = memberRepository.findByEmailIgnoreCase(request.email())
+            .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
+        if (!passwordEncoder.matches(request.password(), member.getPassword())) {
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
+        }
+
+        return jwtTokenProvider.createAccessToken(member);
     }
 }
