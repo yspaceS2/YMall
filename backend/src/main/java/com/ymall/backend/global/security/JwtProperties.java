@@ -2,6 +2,7 @@ package com.ymall.backend.global.security;
 
 import java.time.Duration;
 
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
@@ -18,6 +19,7 @@ public class JwtProperties {
     private String secret;
 
     @NotNull
+    @DurationMin(seconds = 1)
     private Duration accessTokenExpiration;
 
     public String getSecret() {
