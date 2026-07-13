@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.dto.MemberResponse;
+import com.ymall.backend.member.dto.TokenResponse;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.service.MemberService;
 
@@ -92,5 +93,25 @@ class MemberControllerTest {
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.code").value("MEMBER_EMAIL_DUPLICATED"));
+    }
+
+    @Test
+    void loginReturnsAccessToken() throws Exception {
+        given(memberService.login(any()))
+            .willReturn(new TokenResponse("access-token", "Bearer", 1800));
+
+        mockMvc.perform(post("/api/members/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "email": "user@example.com",
+                        "password": "password123"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.accessToken").value("access-token"))
+            .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+            .andExpect(jsonPath("$.data.expiresIn").value(1800));
     }
 }

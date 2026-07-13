@@ -1,15 +1,32 @@
 package com.ymall.backend.global.config;
 
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.POST;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import lombok.RequiredArgsConstructor;
+
+import com.ymall.backend.global.security.JwtAccessDeniedHandler;
+import com.ymall.backend.global.security.JwtAuthenticationEntryPoint;
+import com.ymall.backend.global.security.JwtAuthenticationFilter;
+import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.global.security.SecurityErrorResponseWriter;
+
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+    private final JwtAccessDeniedHandler accessDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -17,16 +34,38 @@ public class SecurityConfig {
     }
 
     /**
-     * 개발 초기에는 프론트 연동과 상품 API 검증을 우선하기 위해 /api/** 접근을 허용한다.
-     * 회원/권한 도메인이 추가되면 공개 API와 인증 API를 분리해 제한해야 한다.
+     * JWT 기반 무상태 인증을 적용하고 공개 조회, 판매자 운영, 관리자 API의 권한을 분리한다.
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+        HttpSecurity http,
+        JwtTokenProvider jwtTokenProvider,
+        SecurityErrorResponseWriter responseWriter
+    ) throws Exception {
         return http
             .csrf(AbstractHttpConfigurer::disable)
+            .formLogin(AbstractHttpConfigurer::disable)
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/api/**").permitAll()
-                .anyRequest().permitAll()
+                .requestMatchers(POST, "/api/members/signup", "/api/members/login").permitAll()
+                .requestMatchers(GET, "/api/products/**", "/api/categories/**", "/images/**").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/seller/**").hasAnyRole("SELLER", "ADMIN")
+                .requestMatchers(POST, "/api/products/**", "/api/files/images")
+                    .hasAnyRole("SELLER", "ADMIN")
+                .requestMatchers("/api/products/**").hasAnyRole("SELLER", "ADMIN")
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(
+                new JwtAuthenticationFilter(jwtTokenProvider, responseWriter),
+                UsernamePasswordAuthenticationFilter.class
             )
             .build();
     }
