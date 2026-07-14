@@ -8,6 +8,7 @@ import {
     AUTH_UNAUTHORIZED_EVENT,
     clearAccessToken,
     getAccessToken,
+    getTokenExpiration,
     setAccessToken,
 } from './tokenStorage'
 
@@ -17,7 +18,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const navigate = useNavigate()
 
     useEffect(() => {
-        const syncAuthentication = () => setIsAuthenticated(getAccessToken() !== null)
+        let expirationTimer: number | undefined
+
+        const scheduleExpiration = (token: string | null) => {
+            if (expirationTimer !== undefined) {
+                window.clearTimeout(expirationTimer)
+                expirationTimer = undefined
+            }
+            if (!token) {
+                return
+            }
+
+            const expiration = getTokenExpiration(token)
+            if (expiration === null) {
+                clearAccessToken()
+                return
+            }
+
+            expirationTimer = window.setTimeout(
+                clearAccessToken,
+                Math.max(expiration - Date.now(), 0),
+            )
+        }
+        const syncAuthentication = () => {
+            const token = getAccessToken()
+            setIsAuthenticated(token !== null)
+            scheduleExpiration(token)
+        }
         const handleUnauthorized = () => {
             setIsAuthenticated(false)
             if (location.pathname !== '/login') {
@@ -31,7 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.addEventListener(AUTH_CHANGED_EVENT, syncAuthentication)
         window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized)
         window.addEventListener('storage', syncAuthentication)
+        scheduleExpiration(getAccessToken())
         return () => {
+            if (expirationTimer !== undefined) {
+                window.clearTimeout(expirationTimer)
+            }
             window.removeEventListener(AUTH_CHANGED_EVENT, syncAuthentication)
             window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized)
             window.removeEventListener('storage', syncAuthentication)

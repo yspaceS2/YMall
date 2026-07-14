@@ -26,18 +26,23 @@ export function notifyUnauthorized() {
     window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT))
 }
 
-function isExpired(token: string) {
+export function getTokenExpiration(token: string) {
     try {
         const payloadPart = token.split('.')[1]
         if (!payloadPart) {
-            return true
+            return null
         }
 
         const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
         const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
         const payload = JSON.parse(atob(padded)) as { exp?: number }
-        return typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now()
+        return typeof payload.exp === 'number' ? payload.exp * 1000 : null
     } catch {
-        return true
+        return null
     }
+}
+
+function isExpired(token: string) {
+    const expiration = getTokenExpiration(token)
+    return expiration === null || expiration <= Date.now()
 }
