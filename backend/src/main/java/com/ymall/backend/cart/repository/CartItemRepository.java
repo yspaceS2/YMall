@@ -17,10 +17,8 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     List<CartItem> findByMemberIdOrderByCreatedAtDesc(Long memberId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = "product")
     Optional<CartItem> findByMemberIdAndProductId(Long memberId, Long productId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = "product")
     Optional<CartItem> findByIdAndMemberId(Long cartItemId, Long memberId);
 }
