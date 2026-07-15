@@ -125,6 +125,29 @@ class OrderApiIntegrationTest {
     }
 
     @Test
+    void storesOrderAmountForMaximumProductPriceAndQuantity() throws Exception {
+        BigDecimal maximumPrice = new BigDecimal("9999999999.99");
+        product.update(
+            product.getCategory(),
+            product.getName(),
+            product.getDescription(),
+            product.getBrand(),
+            maximumPrice,
+            BigDecimal.ZERO,
+            Integer.MAX_VALUE,
+            product.getThumbnailUrl()
+        );
+        cartItemRepository.save(new CartItem(member, product, Integer.MAX_VALUE));
+
+        createOrder("large-amount-request").andExpect(status().isCreated());
+
+        Order order = orderRepository.findAll().get(0);
+        BigDecimal expectedAmount = maximumPrice.multiply(BigDecimal.valueOf(Integer.MAX_VALUE));
+        assertThat(order.getTotalAmount()).isEqualByComparingTo(expectedAmount);
+        assertThat(order.getItems().get(0).getLineTotal()).isEqualByComparingTo(expectedAmount);
+    }
+
+    @Test
     void rejectsInsufficientStockWithoutCreatingOrder() throws Exception {
         product.update(
             product.getCategory(),

@@ -54,7 +54,7 @@ public class Order {
     @Column(nullable = false, length = 30)
     private OrderStatus status;
 
-    @Column(nullable = false, precision = 14, scale = 2)
+    @Column(nullable = false, precision = 38, scale = 2)
     private BigDecimal totalAmount;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
