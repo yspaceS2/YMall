@@ -145,6 +145,17 @@ public class Product {
         this.status = ProductStatus.DELETED;
     }
 
+    public void decreaseStock(int quantity) {
+        if (quantity < 1) {
+            throw new IllegalArgumentException("차감 수량은 1개 이상이어야 합니다.");
+        }
+        if (stock < quantity) {
+            throw new IllegalArgumentException("상품 재고보다 많은 수량을 차감할 수 없습니다.");
+        }
+
+        this.stock -= quantity;
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();

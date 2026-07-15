@@ -6,6 +6,8 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
@@ -21,4 +23,9 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CartItem> findByIdAndMemberId(Long cartItemId, Long memberId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = "product")
+    @Query("select item from CartItem item where item.member.id = :memberId order by item.id")
+    List<CartItem> findAllByMemberIdForUpdate(@Param("memberId") Long memberId);
 }
