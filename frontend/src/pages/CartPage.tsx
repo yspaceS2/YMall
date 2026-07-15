@@ -130,8 +130,8 @@ export function CartPage() {
     }
 
     return (
-        <section className="mx-auto max-w-360 px-4 pt-12 pb-20 sm:px-[clamp(20px,5vw,72px)] sm:pt-18 sm:pb-27.5">
-            <div className="mb-10.5 flex flex-col items-start gap-3.5 border-b border-ink pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <section className="mx-auto max-w-360 px-4 pt-12 pb-20 min-[601px]:px-[clamp(20px,5vw,72px)] min-[601px]:pt-18 min-[601px]:pb-27.5">
+            <div className="mb-10.5 flex flex-col items-start gap-3.5 border-b border-ink pb-6 min-[601px]:flex-row min-[601px]:items-end min-[601px]:justify-between">
                 <div>
                     <p className="mb-2.5 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">YOUR SHOPPING BAG</p>
                     <h1 className="m-0 font-serif text-[clamp(42px,5vw,66px)] leading-none font-medium tracking-[-.05em]">장바구니</h1>
@@ -160,7 +160,7 @@ export function CartPage() {
                             const isPending = pendingItemId === item.cartItemId
 
                             return (
-                                <article className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-b border-line py-6 sm:grid-cols-[130px_minmax(0,1fr)_auto] sm:gap-6" key={item.cartItemId}>
+                                <article className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-b border-line py-6 min-[601px]:grid-cols-[130px_minmax(0,1fr)_auto] min-[601px]:gap-6" key={item.cartItemId}>
                                     <Link className="aspect-[.82] overflow-hidden bg-[#e9e9e3]" to={`/products/${item.productId}`}>
                                         {item.thumbnailUrl ? (
                                             <img
@@ -181,7 +181,7 @@ export function CartPage() {
                                             )}
                                             <strong className="text-[13px]">{formatPrice(discountedPrice)}</strong>
                                         </div>
-                                        <div className="flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:gap-4.5">
+                                        <div className="flex flex-col items-start gap-2.5 min-[601px]:flex-row min-[601px]:items-center min-[601px]:gap-4.5">
                                             <div className="flex items-center border border-line" aria-label={`${item.productName} 수량`}>
                                                 <button
                                                     className="grid size-8 place-items-center border-0 bg-transparent disabled:opacity-35"
@@ -214,7 +214,7 @@ export function CartPage() {
                                             </button>
                                         </div>
                                     </div>
-                                    <strong className="col-start-2 justify-self-end self-center whitespace-nowrap sm:col-start-auto sm:text-base">
+                                    <strong className="col-start-2 justify-self-end self-center whitespace-nowrap min-[601px]:col-start-auto min-[601px]:text-base">
                                         {formatPrice(discountedPrice * item.quantity)}
                                     </strong>
                                 </article>
