@@ -21,7 +21,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
             </button>
             <Link className="block pt-4" to={`/products/${product.productId}`}>
                 <span className="mb-1.5 block text-[11px] font-extrabold tracking-[.08em] text-muted uppercase">{product.brand}</span>
-                <h2 className="mb-2.5 truncate text-[13px] font-medium sm:text-sm">{product.name}</h2>
+                <h2 className="mb-2.5 truncate text-[13px] font-medium min-[601px]:text-sm">{product.name}</h2>
                 <div className="flex items-baseline gap-2">
                     {product.discountPercentage > 0 && <strong className="text-[#849b21]">{product.discountPercentage}%</strong>}
                     <b className="text-sm">{formatPrice(discountedPrice)}</b>
