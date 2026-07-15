@@ -1,11 +1,17 @@
 package com.ymall.backend.product.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
@@ -28,4 +34,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @EntityGraph(attributePaths = {"category", "images"})
     Optional<Product> findWithCategoryAndImagesById(Long productId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select product from Product product where product.id in :productIds order by product.id")
+    List<Product> findAllByIdForUpdate(@Param("productIds") List<Long> productIds);
 }
