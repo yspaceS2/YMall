@@ -36,6 +36,7 @@ export function OrderResultPage() {
 
     const isSuccess = order.status === 'PAID'
     const isFailed = order.status === 'PAYMENT_FAILED'
+    const canPay = order.status === 'PENDING_PAYMENT' || isFailed
     const Icon = isSuccess ? CircleCheck : isFailed || order.status === 'CANCELED' ? CircleX : Clock3
 
     return (
@@ -46,7 +47,11 @@ export function OrderResultPage() {
             <p className="mt-6 text-sm text-muted">주문 #{order.orderId} · {formatPrice(order.totalAmount)}</p>
             {isFailed && <p className="mt-3 text-sm text-[#b23b2f]">결제에 실패했습니다. 주문을 유지한 채 다시 시도할 수 있습니다.</p>}
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-                {isFailed && <Link className="bg-ink px-6 py-3 text-xs font-bold text-white" to={`/orders/${order.orderId}/payment`}>결제 다시 시도</Link>}
+                {canPay && (
+                    <Link className="bg-ink px-6 py-3 text-xs font-bold text-white" to={`/orders/${order.orderId}/payment`}>
+                        {isFailed ? '결제 다시 시도' : '결제 계속하기'}
+                    </Link>
+                )}
                 <Link className="border border-ink px-6 py-3 text-xs font-bold" to="/orders">주문 내역 보기</Link>
                 <Link className="px-6 py-3 text-xs underline" to="/">쇼핑 계속하기</Link>
             </div>
