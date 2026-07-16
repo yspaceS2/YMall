@@ -79,6 +79,18 @@ public class Order {
         totalAmount = totalAmount.add(item.getLineTotal());
     }
 
+    public void completePayment() {
+        this.status = OrderStatus.PAID;
+    }
+
+    public void failPayment() {
+        this.status = OrderStatus.PAYMENT_FAILED;
+    }
+
+    public void cancel() {
+        this.status = OrderStatus.CANCELED;
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
