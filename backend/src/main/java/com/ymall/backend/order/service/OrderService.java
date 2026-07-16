@@ -9,6 +9,9 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import lombok.RequiredArgsConstructor;
 
@@ -16,12 +19,14 @@ import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.order.dto.OrderCreateRequest;
 import com.ymall.backend.order.dto.OrderResponse;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
+import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.mapper.OrderMapper;
 import com.ymall.backend.order.repository.OrderRepository;
 import com.ymall.backend.product.entity.Product;
@@ -34,6 +39,7 @@ import com.ymall.backend.product.repository.ProductRepository;
 public class OrderService {
 
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final OrderRepository orderRepository;
     private final CartItemRepository cartItemRepository;
@@ -49,6 +55,51 @@ public class OrderService {
         return orderRepository.findByMemberIdAndIdempotencyKey(memberId, request.idempotencyKey())
             .map(orderMapper::toOrderResponse)
             .orElseGet(() -> createNewOrder(member, request.idempotencyKey()));
+    }
+
+    public OrderResponse getOrder(Long memberId, Long orderId) {
+        return orderRepository.findByIdAndMemberId(orderId, memberId)
+            .map(orderMapper::toOrderResponse)
+            .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+    }
+
+    public PageResponse<OrderResponse> getOrders(Long memberId, int page, int size) {
+        Pageable pageable = PageRequest.of(
+            Math.max(page - 1, 0),
+            Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
+            Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+        return PageResponse.from(
+            orderRepository.findByMemberIdOrderByCreatedAtDesc(memberId, pageable)
+                .map(orderMapper::toOrderResponse)
+        );
+    }
+
+    @Transactional
+    public OrderResponse cancelOrder(Long memberId, Long orderId) {
+        Order order = orderRepository.findByIdAndMemberIdForUpdate(orderId, memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT
+            && order.getStatus() != OrderStatus.PAYMENT_FAILED) {
+            throw new BusinessException(ErrorCode.ORDER_CANCELLATION_NOT_ALLOWED);
+        }
+
+        List<Long> productIds = order.getItems().stream()
+            .map(item -> item.getProduct().getId())
+            .sorted()
+            .toList();
+        Map<Long, Product> products = productRepository.findAllByIdForUpdate(productIds)
+            .stream()
+            .collect(Collectors.toMap(Product::getId, Function.identity()));
+        for (OrderItem item : order.getItems()) {
+            Product product = products.get(item.getProduct().getId());
+            if (product == null) {
+                throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
+            }
+            product.increaseStock(item.getQuantity());
+        }
+        order.cancel();
+        return orderMapper.toOrderResponse(order);
     }
 
     private OrderResponse createNewOrder(Member member, String idempotencyKey) {

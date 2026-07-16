@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Heart, LogOut, Search, ShoppingBag, UserRound } from 'lucide-react'
+import { Heart, LogOut, ReceiptText, Search, ShoppingBag, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 
@@ -25,9 +25,14 @@ export function Layout({ children }: { children: ReactNode }) {
                         <ShoppingBag className="size-5" aria-hidden="true" />
                     </Link>
                     {isAuthenticated ? (
-                        <button className="inline-grid size-5 place-items-center border-0 bg-transparent p-0" type="button" onClick={logout} aria-label="로그아웃">
-                            <LogOut className="size-5" aria-hidden="true" />
-                        </button>
+                        <>
+                            <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/orders" aria-label="주문 내역">
+                                <ReceiptText className="size-5" aria-hidden="true" />
+                            </Link>
+                            <button className="inline-grid size-5 place-items-center border-0 bg-transparent p-0" type="button" onClick={logout} aria-label="로그아웃">
+                                <LogOut className="size-5" aria-hidden="true" />
+                            </button>
+                        </>
                     ) : (
                         <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/login" aria-label="로그인">
                             <UserRound className="size-5" aria-hidden="true" />

@@ -156,6 +156,19 @@ public class Product {
         this.stock -= quantity;
     }
 
+    public void increaseStock(int quantity) {
+        if (quantity < 1) {
+            throw new IllegalArgumentException("복구 수량은 1개 이상이어야 합니다.");
+        }
+
+        long restoredStock = (long) stock + quantity;
+        if (restoredStock > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("상품 재고가 허용 범위를 초과합니다.");
+        }
+
+        this.stock = (int) restoredStock;
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();

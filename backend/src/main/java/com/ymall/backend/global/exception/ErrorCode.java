@@ -19,6 +19,8 @@ public enum ErrorCode {
     CART_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "장바구니 상품을 찾을 수 없습니다."),
     CART_EMPTY(HttpStatus.CONFLICT, "장바구니가 비어 있습니다."),
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다."),
+    PAYMENT_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 결제를 처리할 수 없습니다."),
+    ORDER_CANCELLATION_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 주문을 취소할 수 없습니다."),
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청 값이 올바르지 않습니다."),
     FILE_EMPTY(HttpStatus.BAD_REQUEST, "업로드할 파일이 없습니다."),
