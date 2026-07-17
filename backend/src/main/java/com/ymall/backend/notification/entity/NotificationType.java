@@ -1,0 +1,11 @@
+package com.ymall.backend.notification.entity;
+
+public enum NotificationType {
+    ORDER_CREATED,
+    PAYMENT_COMPLETED,
+    PAYMENT_FAILED,
+    ORDER_CANCELED,
+    ORDER_PREPARING,
+    ORDER_SHIPPED,
+    ORDER_DELIVERED
+}

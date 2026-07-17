@@ -19,6 +19,7 @@ frontend/.env.*.local
 backend/HELP.md
 backend/.gradle/
 backend/build/
+backend/uploads/
 !backend/gradle/wrapper/gradle-wrapper.jar
 !backend/**/src/main/**/build/
 !backend/**/src/test/**/build/
@@ -68,3 +69,6 @@ frontend/.vscode/*
 *.njsproj
 *.sln
 *.sw?
+
+# Local agent instructions
+AGENTS.md

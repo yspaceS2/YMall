@@ -1,0 +1,200 @@
+import { ChevronLeft, Heart, Minus, Plus, ShieldCheck, Star, Truck } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { addCartItem } from '../api/cart'
+import { ApiError } from '../api/client'
+import { getProduct } from '../api/products'
+import { getProductReviews } from '../api/reviews'
+import { useAuth } from '../auth/useAuth'
+import type { ProductDetail } from '../types/product'
+import type { Review } from '../types/review'
+import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
+
+export function ProductDetailPage() {
+    const { productId } = useParams()
+    const { isAuthenticated } = useAuth()
+    const location = useLocation()
+    const navigate = useNavigate()
+    const id = Number(productId)
+    const invalidProductId = !Number.isInteger(id)
+    const [product, setProduct] = useState<ProductDetail | null>(null)
+    const [error, setError] = useState('')
+    const [quantity, setQuantity] = useState(1)
+    const [selectedImage, setSelectedImage] = useState('')
+    const [cartError, setCartError] = useState('')
+    const [isAddingToCart, setIsAddingToCart] = useState(false)
+    const [reviews, setReviews] = useState<Review[]>([])
+    const [reviewCount, setReviewCount] = useState(0)
+    const [reviewNextPage, setReviewNextPage] = useState(2)
+    const [hasMoreReviews, setHasMoreReviews] = useState(false)
+    const [isLoadingReviews, setIsLoadingReviews] = useState(false)
+    const [reviewError, setReviewError] = useState('')
+    const reviewLoadMoreControllerRef = useRef<AbortController | null>(null)
+
+    useEffect(() => {
+        const controller = new AbortController()
+        if (invalidProductId) return () => controller.abort()
+        reviewLoadMoreControllerRef.current?.abort()
+        reviewLoadMoreControllerRef.current = null
+
+        getProduct(id, controller.signal)
+            .then((data) => {
+                setError('')
+                setProduct(data)
+                setSelectedImage(data.images[0]?.imageUrl ?? data.thumbnailUrl ?? '')
+            })
+            .catch((requestError: unknown) => {
+                if (requestError instanceof Error && requestError.name !== 'AbortError') setError(requestError.message)
+            })
+        getProductReviews(id, 1, 10, controller.signal)
+            .then((reviewPage) => {
+                setReviews(reviewPage.content)
+                setReviewCount(reviewPage.totalElements)
+                setHasMoreReviews(reviewPage.hasNext)
+                setReviewNextPage(2)
+                setReviewError('')
+                setIsLoadingReviews(false)
+            })
+            .catch((requestError: unknown) => {
+                if (requestError instanceof Error && requestError.name !== 'AbortError') {
+                    setReviews([])
+                    setReviewCount(0)
+                    setHasMoreReviews(false)
+                    setReviewNextPage(2)
+                    setIsLoadingReviews(false)
+                    setReviewError(requestError instanceof ApiError ? requestError.message : '리뷰를 불러오지 못했습니다.')
+                }
+            })
+        return () => {
+            controller.abort()
+            reviewLoadMoreControllerRef.current?.abort()
+            reviewLoadMoreControllerRef.current = null
+        }
+    }, [id, invalidProductId])
+
+    const discountedPrice = useMemo(() => product ? getDiscountedPrice(product.price, product.discountPercentage) : 0, [product])
+
+    async function handleAddToCart() {
+        if (!product) return
+        if (!isAuthenticated) {
+            navigate('/login', {
+                state: { from: `${location.pathname}${location.search}` },
+            })
+            return
+        }
+
+        setCartError('')
+        setIsAddingToCart(true)
+        try {
+            await addCartItem({ productId: product.productId, quantity })
+            navigate('/cart')
+        } catch (requestError) {
+            setCartError(
+                requestError instanceof ApiError
+                    ? requestError.message
+                    : '장바구니에 상품을 담지 못했습니다.',
+            )
+        } finally {
+            setIsAddingToCart(false)
+        }
+    }
+
+    async function loadMoreReviews() {
+        if (!product || !hasMoreReviews || isLoadingReviews) return
+        const controller = new AbortController()
+        reviewLoadMoreControllerRef.current?.abort()
+        reviewLoadMoreControllerRef.current = controller
+        setReviewError('')
+        setIsLoadingReviews(true)
+        try {
+            const response = await getProductReviews(product.productId, reviewNextPage, 10, controller.signal)
+            setReviews((current) => [...current, ...response.content])
+            setHasMoreReviews(response.hasNext)
+            setReviewNextPage((current) => current + 1)
+        } catch (requestError) {
+            if (requestError instanceof Error && requestError.name === 'AbortError') return
+            setReviewError(
+                requestError instanceof ApiError
+                    ? requestError.message
+                    : '리뷰를 더 불러오지 못했습니다.',
+            )
+        } finally {
+            if (reviewLoadMoreControllerRef.current === controller) {
+                reviewLoadMoreControllerRef.current = null
+                setIsLoadingReviews(false)
+            }
+        }
+    }
+
+    if (invalidProductId || error) return <div className="grid min-h-80 place-content-center gap-2 text-center text-muted"><strong className="text-ink">상품을 찾을 수 없습니다.</strong><p className="m-0">{invalidProductId ? '잘못된 상품 주소입니다.' : error}</p><Link className="mt-3 underline" to="/">상품 목록으로 돌아가기</Link></div>
+    if (!product) return <div className="grid min-h-80 place-content-center gap-2 text-center text-muted"><strong className="text-ink">상품 정보를 불러오는 중입니다.</strong></div>
+
+    return (
+        <section className="mx-auto max-w-360 px-4 pt-12 pb-20 min-[601px]:px-[clamp(20px,5vw,72px)] min-[601px]:pt-18 min-[601px]:pb-27.5">
+            <Link className="mb-7 inline-flex items-center gap-1 text-xs" to="/"><ChevronLeft className="size-4" /> 상품 목록</Link>
+            <div className="grid grid-cols-1 gap-10 min-[901px]:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)] min-[901px]:gap-[clamp(40px,7vw,110px)]">
+                <div className="min-w-0">
+                    <div className="aspect-square overflow-hidden bg-[#e9e9e3]">{selectedImage ? <img className="size-full object-cover" src={resolveImageUrl(selectedImage)} alt={product.name} /> : <div className="grid size-full place-items-center bg-linear-to-br from-[#ebeae4] to-[#d8d9cf] font-serif text-lg font-bold tracking-[.2em] text-[#a2a298]">YMALL</div>}</div>
+                    {product.images.length > 0 && <div className="mt-3 flex gap-2.5 overflow-x-auto">{product.images.map((image) => <button className={`size-18.5 shrink-0 border p-0 ${selectedImage === image.imageUrl ? 'border-ink' : 'border-transparent'}`} onClick={() => setSelectedImage(image.imageUrl)} key={image.imageId} type="button"><img className="size-full object-cover" src={resolveImageUrl(image.imageUrl)} alt="" /></button>)}</div>}
+                </div>
+                <div className="pt-3">
+                    <div className="inline-block bg-lime px-2.5 py-1 text-[10px] font-extrabold tracking-[.08em]">{product.category.name}</div>
+                    <p className="mt-7 mb-1.5 text-[11px] font-extrabold tracking-[.08em] text-muted uppercase">{product.brand}</p>
+                    <h1 className="my-2 font-serif text-[clamp(34px,4vw,52px)] leading-[1.05] font-medium tracking-[-.04em]">{product.name}</h1>
+                    <div className="flex items-center gap-1 text-[13px]"><Star className="size-4 text-[#8ca324]" fill="currentColor" /> {product.rating?.toFixed(1) ?? '0.0'} <span className="ml-1 text-muted">상품 평점</span></div>
+                    <div className="my-8 flex items-baseline gap-2.5">{product.discountPercentage > 0 && <><del className="text-[#aaa]">{formatPrice(product.price)}</del><strong className="text-[#849b21]">{product.discountPercentage}%</strong></>}<b className="ml-auto text-2xl">{formatPrice(discountedPrice)}</b></div>
+                    <p className="border-b border-line pb-7 text-sm leading-7 text-[#676761]">{product.description}</p>
+                    <dl className="m-0 border-b border-line py-4.5 text-[13px]"><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">배송</dt><dd className="m-0">무료배송 · 평균 2–3일 소요</dd></div><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">재고</dt><dd className="m-0">{product.stock > 0 ? `${product.stock}개 남음` : '품절'}</dd></div></dl>
+                    <div className="flex items-center justify-between py-6 text-[13px]"><span>수량</span><div className="flex items-center border border-line"><button className="grid h-9 w-9.5 place-items-center border-0 bg-transparent" onClick={() => setQuantity((value) => Math.max(1, value - 1))} type="button"><Minus className="size-3.5" /></button><b className="min-w-8.5 text-center">{quantity}</b><button className="grid h-9 w-9.5 place-items-center border-0 bg-transparent disabled:opacity-35" onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))} disabled={product.stock === 0} type="button"><Plus className="size-3.5" /></button></div></div>
+                    {cartError && <p className="mb-4.5 text-xs text-[#b23b2f]" role="alert">{cartError}</p>}
+                    <div className="grid grid-cols-1 gap-2 min-[601px]:grid-cols-[120px_1fr]"><button className="h-13.5 border border-ink bg-transparent font-extrabold" type="button"><Heart className="inline size-4" /> 찜하기</button><button className="h-13.5 border border-ink bg-ink font-extrabold text-white disabled:border-[#ddd] disabled:bg-[#ddd] disabled:text-[#888]" disabled={isAddingToCart || product.stock === 0 || product.status !== 'APPROVED'} onClick={handleAddToCart} type="button">{product.stock === 0 || product.status === 'SOLD_OUT' ? '품절된 상품입니다' : product.status !== 'APPROVED' ? '구매할 수 없는 상품입니다' : isAddingToCart ? '장바구니에 담는 중...' : `${formatPrice(discountedPrice * quantity)} · 장바구니 담기`}</button></div>
+                    <div className="mt-5.5 flex gap-6.5 text-[11px] text-muted"><span className="flex items-center gap-1.5"><Truck className="size-4" /> 무료 배송</span><span className="flex items-center gap-1.5"><ShieldCheck className="size-4" /> 안전 결제</span></div>
+                </div>
+            </div>
+            <div className="mt-20 border-t border-ink pt-9">
+                <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                        <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">REVIEWS</p>
+                        <h2 className="font-serif text-4xl tracking-tight">상품 리뷰</h2>
+                    </div>
+                    <p className="text-sm text-muted">총 {reviewCount}개의 리뷰</p>
+                </div>
+                {reviewError && <p className="mb-5 text-sm text-[#b23b2f]" role="alert">{reviewError}</p>}
+                {reviews.length === 0 ? (
+                    <div className="grid min-h-40 place-content-center border-y border-line text-sm text-muted">
+                        아직 작성된 리뷰가 없습니다.
+                    </div>
+                ) : (
+                    <div className="border-t border-line">
+                        {reviews.map((review) => (
+                            <article className="grid gap-3 border-b border-line py-6 min-[701px]:grid-cols-[180px_1fr]" key={review.reviewId}>
+                                <div>
+                                    <strong className="block text-sm">{review.authorName}</strong>
+                                    <span className="mt-1 block text-xs text-muted">
+                                        {new Date(review.createdAt).toLocaleDateString('ko-KR')}
+                                    </span>
+                                </div>
+                                <div>
+                                    <div className="mb-3 text-sm tracking-wider text-[#849b21]" aria-label={`평점 ${review.rating}점`}>
+                                        {'★'.repeat(review.rating)}<span className="text-[#d8d8d0]">{'★'.repeat(5 - review.rating)}</span>
+                                    </div>
+                                    <p className="whitespace-pre-wrap text-sm leading-7 text-[#55554f]">{review.content}</p>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                )}
+                {hasMoreReviews && (
+                    <button
+                        className="mx-auto mt-8 block h-11 border border-ink bg-white px-7 text-xs font-bold disabled:opacity-50"
+                        type="button"
+                        disabled={isLoadingReviews}
+                        onClick={loadMoreReviews}
+                    >
+                        {isLoadingReviews ? '불러오는 중...' : '리뷰 더 보기'}
+                    </button>
+                )}
+            </div>
+        </section>
+    )
+}
