@@ -25,6 +25,7 @@ import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.order.dto.OrderCreateRequest;
 import com.ymall.backend.order.dto.OrderResponse;
 import com.ymall.backend.order.entity.Order;
@@ -53,6 +54,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderMapper orderMapper;
+
+    @Mock
+    private NotificationEventPublisher notificationEventPublisher;
 
     @InjectMocks
     private OrderService orderService;

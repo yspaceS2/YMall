@@ -18,6 +18,8 @@ import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.notification.event.NotificationEvent;
+import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.seller.dto.SellerOrderItemResponse;
 import com.ymall.backend.seller.dto.SellerOrderResponse;
 import com.ymall.backend.seller.dto.SellerOrderStatusUpdateRequest;
@@ -39,6 +41,7 @@ public class SellerOrderService {
 
     private final OrderRepository orderRepository;
     private final SellerProfileService sellerProfileService;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     public PageResponse<SellerOrderResponse> getOrders(Long memberId, int page, int size) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
@@ -68,14 +71,25 @@ public class SellerOrderService {
             throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
         }
 
+        List<OrderItem> sellerItems = ownedItems(order, profile.getId());
+        boolean statusChanged = sellerItems.stream().anyMatch(item ->
+            item.getEffectiveFulfillmentStatus() != request.fulfillmentStatus()
+        );
         try {
-            ownedItems(order, profile.getId()).forEach(item ->
+            sellerItems.forEach(item ->
                 item.updateFulfillmentStatus(request.fulfillmentStatus())
             );
         } catch (IllegalStateException exception) {
             throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
         }
         order.refreshFulfillmentStatus();
+        if (statusChanged) {
+            notificationEventPublisher.publish(NotificationEvent.fulfillmentChanged(
+                order.getMember().getId(),
+                order.getId(),
+                request.fulfillmentStatus()
+            ));
+        }
         return toResponse(order, profile.getId());
     }
 

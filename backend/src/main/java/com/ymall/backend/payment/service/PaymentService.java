@@ -10,6 +10,8 @@ import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.notification.event.NotificationEvent;
+import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.payment.dto.MockPaymentRequest;
 import com.ymall.backend.payment.dto.PaymentResponse;
 import com.ymall.backend.payment.entity.Payment;
@@ -27,6 +29,7 @@ public class PaymentService {
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Transactional
     public PaymentResponse processPayment(
@@ -61,6 +64,11 @@ public class PaymentService {
             request.idempotencyKey(),
             request.result(),
             failureMessage
+        ));
+        notificationEventPublisher.publish(NotificationEvent.paymentProcessed(
+            order.getMember().getId(),
+            order.getId(),
+            request.result()
         ));
         return paymentMapper.toPaymentResponse(payment);
     }

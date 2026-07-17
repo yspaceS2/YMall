@@ -1,10 +1,38 @@
 import type { ReactNode } from 'react'
-import { Heart, LogOut, ReceiptText, Search, ShieldCheck, ShoppingBag, Store, UserRound } from 'lucide-react'
+import { Bell, Heart, LogOut, ReceiptText, Search, ShieldCheck, ShoppingBag, Store, UserRound } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getUnreadNotificationCount, NOTIFICATIONS_CHANGED_EVENT } from '../api/notifications'
 import { useAuth } from '../auth/useAuth'
 
 export function Layout({ children }: { children: ReactNode }) {
     const { isAuthenticated, role, logout } = useAuth()
+    const [unreadCount, setUnreadCount] = useState(0)
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            return
+        }
+        let controller: AbortController | null = null
+        const loadUnreadCount = () => {
+            controller?.abort()
+            controller = new AbortController()
+            getUnreadNotificationCount(controller.signal)
+                .then((response) => setUnreadCount(response.unreadCount))
+                .catch((error: unknown) => {
+                    if (error instanceof Error && error.name === 'AbortError') return
+                    setUnreadCount(0)
+                })
+        }
+        loadUnreadCount()
+        const intervalId = window.setInterval(loadUnreadCount, 30_000)
+        window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount)
+        return () => {
+            controller?.abort()
+            window.clearInterval(intervalId)
+            window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount)
+        }
+    }, [isAuthenticated])
 
     return (
         <div className="flex min-h-screen flex-col bg-paper text-ink">
@@ -38,6 +66,14 @@ export function Layout({ children }: { children: ReactNode }) {
                             )}
                             <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/orders" aria-label="주문 내역">
                                 <ReceiptText className="size-5" aria-hidden="true" />
+                            </Link>
+                            <Link className="relative inline-grid size-5 place-items-center bg-transparent p-0" to="/notifications" aria-label={`알림 ${unreadCount}개`}>
+                                <Bell className="size-5" aria-hidden="true" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -right-2.5 -top-2.5 grid min-w-4.5 place-items-center rounded-full bg-[#849b21] px-1 text-[9px] font-bold leading-4.5 text-white">
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </span>
+                                )}
                             </Link>
                             <button className="inline-grid size-5 place-items-center border-0 bg-transparent p-0" type="button" onClick={logout} aria-label="로그아웃">
                                 <LogOut className="size-5" aria-hidden="true" />
