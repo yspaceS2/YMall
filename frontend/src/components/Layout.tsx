@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import { Heart, LogOut, ReceiptText, Search, ShoppingBag, UserRound } from 'lucide-react'
+import { Heart, LogOut, ReceiptText, Search, ShoppingBag, Store, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 
 export function Layout({ children }: { children: ReactNode }) {
-    const { isAuthenticated, logout } = useAuth()
+    const { isAuthenticated, role, logout } = useAuth()
 
     return (
         <div className="flex min-h-screen flex-col bg-paper text-ink">
@@ -26,6 +26,11 @@ export function Layout({ children }: { children: ReactNode }) {
                     </Link>
                     {isAuthenticated ? (
                         <>
+                            {(role === 'ROLE_SELLER' || role === 'ROLE_ADMIN') && (
+                                <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/seller" aria-label="판매자 관리">
+                                    <Store className="size-5" aria-hidden="true" />
+                                </Link>
+                            )}
                             <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/orders" aria-label="주문 내역">
                                 <ReceiptText className="size-5" aria-hidden="true" />
                             </Link>

@@ -1,0 +1,73 @@
+import type {
+    SellerOrder,
+    SellerOrderPage,
+    SellerProductDetail,
+    SellerProductPage,
+    SellerProductRequest,
+    SellerProfile,
+    SellerProfileCreateRequest,
+    SellerProfileUpdateRequest,
+    FulfillmentStatus,
+} from '../types/seller'
+import { apiRequest } from './client'
+
+export function getSellerProfile(signal?: AbortSignal) {
+    return apiRequest<SellerProfile>('/seller/profile', { signal })
+}
+
+export function createSellerProfile(request: SellerProfileCreateRequest) {
+    return apiRequest<SellerProfile>('/seller/profile', { method: 'POST', body: request })
+}
+
+export function updateSellerProfile(request: SellerProfileUpdateRequest) {
+    return apiRequest<SellerProfile>('/seller/profile', { method: 'PUT', body: request })
+}
+
+const SELLER_PAGE_SIZE = 20
+
+interface SellerPageOptions {
+    page?: number
+    signal?: AbortSignal
+}
+
+export function getSellerProducts(options: SellerPageOptions = {}) {
+    const { page = 1, signal } = options
+    return apiRequest<SellerProductPage>(
+        `/seller/products?page=${page}&size=${SELLER_PAGE_SIZE}`,
+        { signal },
+    )
+}
+
+export function getSellerProduct(productId: number) {
+    return apiRequest<SellerProductDetail>(`/seller/products/${productId}`)
+}
+
+export function createSellerProduct(request: SellerProductRequest) {
+    return apiRequest<SellerProductDetail>('/seller/products', { method: 'POST', body: request })
+}
+
+export function updateSellerProduct(productId: number, request: SellerProductRequest) {
+    return apiRequest<SellerProductDetail>(`/seller/products/${productId}`, {
+        method: 'PUT',
+        body: request,
+    })
+}
+
+export function deleteSellerProduct(productId: number) {
+    return apiRequest<void>(`/seller/products/${productId}`, { method: 'DELETE' })
+}
+
+export function getSellerOrders(options: SellerPageOptions = {}) {
+    const { page = 1, signal } = options
+    return apiRequest<SellerOrderPage>(
+        `/seller/orders?page=${page}&size=${SELLER_PAGE_SIZE}`,
+        { signal },
+    )
+}
+
+export function updateSellerOrderStatus(orderId: number, fulfillmentStatus: FulfillmentStatus) {
+    return apiRequest<SellerOrder>(`/seller/orders/${orderId}/status`, {
+        method: 'PATCH',
+        body: { fulfillmentStatus },
+    })
+}

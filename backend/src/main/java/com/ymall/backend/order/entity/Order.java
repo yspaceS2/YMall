@@ -93,6 +93,30 @@ public class Order {
         this.status = OrderStatus.CANCELED;
     }
 
+    public void refreshFulfillmentStatus() {
+        if (items.stream().allMatch(item ->
+            item.getEffectiveFulfillmentStatus() == OrderItemFulfillmentStatus.DELIVERED
+        )) {
+            this.status = OrderStatus.DELIVERED;
+            return;
+        }
+        if (items.stream().allMatch(item -> {
+            OrderItemFulfillmentStatus itemStatus = item.getEffectiveFulfillmentStatus();
+            return itemStatus == OrderItemFulfillmentStatus.SHIPPED
+                || itemStatus == OrderItemFulfillmentStatus.DELIVERED;
+        })) {
+            this.status = OrderStatus.SHIPPED;
+            return;
+        }
+        if (items.stream().anyMatch(item ->
+            item.getEffectiveFulfillmentStatus() != OrderItemFulfillmentStatus.PENDING
+        )) {
+            this.status = OrderStatus.PREPARING;
+            return;
+        }
+        this.status = OrderStatus.PAID;
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();

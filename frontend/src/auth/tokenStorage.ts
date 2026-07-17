@@ -1,3 +1,5 @@
+import type { MemberRole } from '../types/auth'
+
 const ACCESS_TOKEN_KEY = 'ymall.accessToken'
 
 export const AUTH_CHANGED_EVENT = 'ymall:auth-changed'
@@ -27,6 +29,19 @@ export function notifyUnauthorized() {
 }
 
 export function getTokenExpiration(token: string) {
+    const payload = getTokenPayload(token)
+    return typeof payload?.exp === 'number' ? payload.exp * 1000 : null
+}
+
+export function getTokenRole(token: string | null): MemberRole | null {
+    if (!token) return null
+    const role = getTokenPayload(token)?.role
+    return role === 'ROLE_USER' || role === 'ROLE_SELLER' || role === 'ROLE_ADMIN'
+        ? role
+        : null
+}
+
+function getTokenPayload(token: string): { exp?: number; role?: unknown } | null {
     try {
         const payloadPart = token.split('.')[1]
         if (!payloadPart) {
@@ -35,8 +50,7 @@ export function getTokenExpiration(token: string) {
 
         const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
         const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
-        const payload = JSON.parse(atob(padded)) as { exp?: number }
-        return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+        return JSON.parse(atob(padded)) as { exp?: number; role?: unknown }
     } catch {
         return null
     }

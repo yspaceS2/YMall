@@ -35,6 +35,20 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @EntityGraph(attributePaths = {"category", "images"})
     Optional<Product> findWithCategoryAndImagesById(Long productId);
 
+    @EntityGraph(attributePaths = "category")
+    Page<Product> findBySellerProfileIdAndStatusNot(
+        Long sellerProfileId,
+        ProductStatus status,
+        Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"category", "images", "sellerProfile"})
+    Optional<Product> findByIdAndSellerProfileIdAndStatusNot(
+        Long productId,
+        Long sellerProfileId,
+        ProductStatus status
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select product from Product product where product.id in :productIds order by product.id")
     List<Product> findAllByIdForUpdate(@Param("productIds") List<Long> productIds);

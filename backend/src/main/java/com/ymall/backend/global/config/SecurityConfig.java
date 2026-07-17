@@ -1,7 +1,9 @@
 package com.ymall.backend.global.config;
 
+import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpMethod.PUT;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -58,9 +60,10 @@ public class SecurityConfig {
                 .requestMatchers(GET, "/api/products/**", "/api/categories/**", "/images/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/seller/**").hasAnyRole("SELLER", "ADMIN")
-                .requestMatchers(POST, "/api/products/**", "/api/files/images")
-                    .hasAnyRole("SELLER", "ADMIN")
-                .requestMatchers("/api/products/**").hasAnyRole("SELLER", "ADMIN")
+                .requestMatchers(POST, "/api/files/images").hasAnyRole("SELLER", "ADMIN")
+                .requestMatchers(POST, "/api/products/**").hasRole("ADMIN")
+                .requestMatchers(PUT, "/api/products/**").hasRole("ADMIN")
+                .requestMatchers(DELETE, "/api/products/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(
