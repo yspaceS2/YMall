@@ -1,5 +1,5 @@
 import { ChevronLeft, Heart, Minus, Plus, ShieldCheck, Star, Truck } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { addCartItem } from '../api/cart'
 import { ApiError } from '../api/client'
@@ -29,10 +29,13 @@ export function ProductDetailPage() {
     const [hasMoreReviews, setHasMoreReviews] = useState(false)
     const [isLoadingReviews, setIsLoadingReviews] = useState(false)
     const [reviewError, setReviewError] = useState('')
+    const reviewLoadMoreControllerRef = useRef<AbortController | null>(null)
 
     useEffect(() => {
         const controller = new AbortController()
         if (invalidProductId) return () => controller.abort()
+        reviewLoadMoreControllerRef.current?.abort()
+        reviewLoadMoreControllerRef.current = null
 
         getProduct(id, controller.signal)
             .then((data) => {
@@ -48,13 +51,25 @@ export function ProductDetailPage() {
                 setReviews(reviewPage.content)
                 setReviewCount(reviewPage.totalElements)
                 setHasMoreReviews(reviewPage.hasNext)
+                setReviewNextPage(2)
+                setReviewError('')
+                setIsLoadingReviews(false)
             })
             .catch((requestError: unknown) => {
                 if (requestError instanceof Error && requestError.name !== 'AbortError') {
+                    setReviews([])
+                    setReviewCount(0)
+                    setHasMoreReviews(false)
+                    setReviewNextPage(2)
+                    setIsLoadingReviews(false)
                     setReviewError(requestError instanceof ApiError ? requestError.message : '리뷰를 불러오지 못했습니다.')
                 }
             })
-        return () => controller.abort()
+        return () => {
+            controller.abort()
+            reviewLoadMoreControllerRef.current?.abort()
+            reviewLoadMoreControllerRef.current = null
+        }
     }, [id, invalidProductId])
 
     const discountedPrice = useMemo(() => product ? getDiscountedPrice(product.price, product.discountPercentage) : 0, [product])
@@ -86,21 +101,28 @@ export function ProductDetailPage() {
 
     async function loadMoreReviews() {
         if (!product || !hasMoreReviews || isLoadingReviews) return
+        const controller = new AbortController()
+        reviewLoadMoreControllerRef.current?.abort()
+        reviewLoadMoreControllerRef.current = controller
         setReviewError('')
         setIsLoadingReviews(true)
         try {
-            const response = await getProductReviews(product.productId, reviewNextPage, 10)
+            const response = await getProductReviews(product.productId, reviewNextPage, 10, controller.signal)
             setReviews((current) => [...current, ...response.content])
             setHasMoreReviews(response.hasNext)
             setReviewNextPage((current) => current + 1)
         } catch (requestError) {
+            if (requestError instanceof Error && requestError.name === 'AbortError') return
             setReviewError(
                 requestError instanceof ApiError
                     ? requestError.message
                     : '리뷰를 더 불러오지 못했습니다.',
             )
         } finally {
-            setIsLoadingReviews(false)
+            if (reviewLoadMoreControllerRef.current === controller) {
+                reviewLoadMoreControllerRef.current = null
+                setIsLoadingReviews(false)
+            }
         }
     }
 
