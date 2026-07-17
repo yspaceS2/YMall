@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Heart, LogOut, ReceiptText, Search, ShoppingBag, Store, UserRound } from 'lucide-react'
+import { Heart, LogOut, ReceiptText, Search, ShieldCheck, ShoppingBag, Store, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 
@@ -29,6 +29,11 @@ export function Layout({ children }: { children: ReactNode }) {
                             {(role === 'ROLE_SELLER' || role === 'ROLE_ADMIN') && (
                                 <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/seller" aria-label="판매자 관리">
                                     <Store className="size-5" aria-hidden="true" />
+                                </Link>
+                            )}
+                            {role === 'ROLE_ADMIN' && (
+                                <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/admin" aria-label="관리자 운영">
+                                    <ShieldCheck className="size-5" aria-hidden="true" />
                                 </Link>
                             )}
                             <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/orders" aria-label="주문 내역">

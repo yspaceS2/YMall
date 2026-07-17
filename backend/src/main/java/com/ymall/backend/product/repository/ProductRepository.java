@@ -19,7 +19,7 @@ import com.ymall.backend.product.entity.ProductStatus;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    @EntityGraph(attributePaths = "category")
+    @EntityGraph(attributePaths = {"category", "sellerProfile"})
     Page<Product> findByStatus(ProductStatus status, Pageable pageable);
 
     @EntityGraph(attributePaths = "category")
@@ -48,6 +48,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         Long sellerProfileId,
         ProductStatus status
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"category", "sellerProfile"})
+    @Query("select product from Product product where product.id = :productId")
+    Optional<Product> findByIdForReview(@Param("productId") Long productId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select product from Product product where product.id in :productIds order by product.id")
