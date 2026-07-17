@@ -2,7 +2,6 @@ package com.ymall.backend.seller.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,11 +29,11 @@ public class SellerOrderController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<SellerOrderResponse>>> getOrders(
         @AuthenticationPrincipal MemberPrincipal principal,
-        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-            sellerOrderService.getOrders(principal.memberId(), PageRequest.of(page, size))
+            sellerOrderService.getOrders(principal.memberId(), page, size)
         ));
     }
 

@@ -133,6 +133,23 @@ class SellerManagementApiIntegrationTest {
     }
 
     @Test
+    void normalizesSellerOrderPaginationRange() throws Exception {
+        mockMvc.perform(get("/api/seller/orders")
+                .param("page", "-1")
+                .param("size", "0")
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.page").value(1))
+            .andExpect(jsonPath("$.data.size").value(1));
+
+        mockMvc.perform(get("/api/seller/orders")
+                .param("size", "1000")
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.size").value(100));
+    }
+
+    @Test
     void sellerUpdatesOnlyOwnItemsInMixedSellerOrder() throws Exception {
         Product firstProduct = saveProduct(firstProfile, "첫 번째 상품");
         Product secondProduct = saveProduct(secondProfile, "두 번째 상품");

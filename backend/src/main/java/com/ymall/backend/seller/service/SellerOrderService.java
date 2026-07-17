@@ -6,6 +6,7 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,8 @@ import com.ymall.backend.seller.entity.SellerProfile;
 @Transactional(readOnly = true)
 public class SellerOrderService {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     private static final EnumSet<OrderStatus> SELLER_VISIBLE_STATUSES = EnumSet.of(
         OrderStatus.PAID,
         OrderStatus.PREPARING,
@@ -37,8 +40,12 @@ public class SellerOrderService {
     private final OrderRepository orderRepository;
     private final SellerProfileService sellerProfileService;
 
-    public PageResponse<SellerOrderResponse> getOrders(Long memberId, Pageable pageable) {
+    public PageResponse<SellerOrderResponse> getOrders(Long memberId, int page, int size) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
+        Pageable pageable = PageRequest.of(
+            Math.max(page - 1, 0),
+            Math.min(Math.max(size, 1), MAX_PAGE_SIZE)
+        );
         Page<SellerOrderResponse> orders = orderRepository.findSellerOrders(
             profile.getId(),
             SELLER_VISIBLE_STATUSES,

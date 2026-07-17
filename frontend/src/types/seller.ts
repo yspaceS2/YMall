@@ -30,7 +30,13 @@ export interface SellerProductRequest {
     discountPercentage: number
     stock: number
     thumbnailUrl: string
-    images: []
+    images: SellerProductImageRequest[]
+}
+
+export interface SellerProductImageRequest {
+    originalUrl: string | null
+    imageUrl: string
+    sortOrder: number
 }
 
 export type FulfillmentStatus = 'PENDING' | 'PREPARING' | 'SHIPPED' | 'DELIVERED'

@@ -23,8 +23,19 @@ export function updateSellerProfile(request: SellerProfileUpdateRequest) {
     return apiRequest<SellerProfile>('/seller/profile', { method: 'PUT', body: request })
 }
 
-export function getSellerProducts(signal?: AbortSignal) {
-    return apiRequest<SellerProductPage>('/seller/products?page=1&size=100', { signal })
+const SELLER_PAGE_SIZE = 20
+
+interface SellerPageOptions {
+    page?: number
+    signal?: AbortSignal
+}
+
+export function getSellerProducts(options: SellerPageOptions = {}) {
+    const { page = 1, signal } = options
+    return apiRequest<SellerProductPage>(
+        `/seller/products?page=${page}&size=${SELLER_PAGE_SIZE}`,
+        { signal },
+    )
 }
 
 export function getSellerProduct(productId: number) {
@@ -46,8 +57,12 @@ export function deleteSellerProduct(productId: number) {
     return apiRequest<void>(`/seller/products/${productId}`, { method: 'DELETE' })
 }
 
-export function getSellerOrders(signal?: AbortSignal) {
-    return apiRequest<SellerOrderPage>('/seller/orders?page=0&size=100', { signal })
+export function getSellerOrders(options: SellerPageOptions = {}) {
+    const { page = 1, signal } = options
+    return apiRequest<SellerOrderPage>(
+        `/seller/orders?page=${page}&size=${SELLER_PAGE_SIZE}`,
+        { signal },
+    )
 }
 
 export function updateSellerOrderStatus(orderId: number, fulfillmentStatus: FulfillmentStatus) {

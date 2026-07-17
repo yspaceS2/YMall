@@ -58,6 +58,12 @@ export function SellerManagementPage() {
     const [editingProductId, setEditingProductId] = useState<number | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
+    const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false)
+    const [isLoadingMoreOrders, setIsLoadingMoreOrders] = useState(false)
+    const [nextProductPage, setNextProductPage] = useState(2)
+    const [nextOrderPage, setNextOrderPage] = useState(2)
+    const [hasMoreProducts, setHasMoreProducts] = useState(false)
+    const [hasMoreOrders, setHasMoreOrders] = useState(false)
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
 
@@ -94,11 +100,15 @@ export function SellerManagementPage() {
 
     async function loadManagementData(signal?: AbortSignal) {
         const [productResponse, orderResponse] = await Promise.all([
-            getSellerProducts(signal),
-            getSellerOrders(signal),
+            getSellerProducts({ signal }),
+            getSellerOrders({ signal }),
         ])
         setProducts(productResponse.content)
         setOrders(orderResponse.content)
+        setHasMoreProducts(productResponse.hasNext)
+        setHasMoreOrders(orderResponse.hasNext)
+        setNextProductPage(2)
+        setNextOrderPage(2)
     }
 
     async function saveProfile(event: FormEvent) {
@@ -138,6 +148,8 @@ export function SellerManagementPage() {
             setProductForm({ ...emptyProduct, categoryId: categories[0]?.categoryId ?? 0 })
             const response = await getSellerProducts()
             setProducts(response.content)
+            setHasMoreProducts(response.hasNext)
+            setNextProductPage(2)
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '상품을 저장하지 못했습니다.')
         } finally {
@@ -159,7 +171,11 @@ export function SellerManagementPage() {
                 discountPercentage: product.discountPercentage,
                 stock: product.stock,
                 thumbnailUrl: product.thumbnailUrl ?? '',
-                images: [],
+                images: product.images.map((image) => ({
+                    originalUrl: image.originalUrl,
+                    imageUrl: image.imageUrl,
+                    sortOrder: image.sortOrder,
+                })),
             })
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '상품 정보를 불러오지 못했습니다.')
@@ -170,7 +186,10 @@ export function SellerManagementPage() {
         if (!window.confirm('이 상품을 삭제하시겠습니까?')) return
         try {
             await deleteSellerProduct(productId)
-            setProducts((current) => current.filter((product) => product.productId !== productId))
+            const response = await getSellerProducts()
+            setProducts(response.content)
+            setHasMoreProducts(response.hasNext)
+            setNextProductPage(2)
             setMessage('상품이 삭제되었습니다.')
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '상품을 삭제하지 못했습니다.')
@@ -187,6 +206,38 @@ export function SellerManagementPage() {
             setMessage(`주문 #${order.orderId}의 배송 상태가 변경되었습니다.`)
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '배송 상태를 변경하지 못했습니다.')
+        }
+    }
+
+    async function loadMoreProducts() {
+        if (!hasMoreProducts || isLoadingMoreProducts) return
+        setIsLoadingMoreProducts(true)
+        setErrorMessage('')
+        try {
+            const response = await getSellerProducts({ page: nextProductPage })
+            setProducts((current) => [...current, ...response.content])
+            setHasMoreProducts(response.hasNext)
+            setNextProductPage((current) => current + 1)
+        } catch (error) {
+            setErrorMessage(error instanceof ApiError ? error.message : '상품을 추가로 불러오지 못했습니다.')
+        } finally {
+            setIsLoadingMoreProducts(false)
+        }
+    }
+
+    async function loadMoreOrders() {
+        if (!hasMoreOrders || isLoadingMoreOrders) return
+        setIsLoadingMoreOrders(true)
+        setErrorMessage('')
+        try {
+            const response = await getSellerOrders({ page: nextOrderPage })
+            setOrders((current) => [...current, ...response.content])
+            setHasMoreOrders(response.hasNext)
+            setNextOrderPage((current) => current + 1)
+        } catch (error) {
+            setErrorMessage(error instanceof ApiError ? error.message : '주문을 추가로 불러오지 못했습니다.')
+        } finally {
+            setIsLoadingMoreOrders(false)
         }
     }
 
@@ -228,10 +279,12 @@ export function SellerManagementPage() {
                             </div>
                         </form>
                         <div className="grid gap-3">{products.length === 0 ? <p className="text-sm text-muted">등록한 상품이 없습니다.</p> : products.map((product) => <div className="flex flex-wrap items-center justify-between gap-3 border border-line p-4" key={product.productId}><div><strong>{product.name}</strong><p className="mt-1 text-xs text-muted">{formatPrice(product.price)} · 재고 {product.stock} · {product.status}</p></div><div className="flex gap-2"><button className="p-2" type="button" aria-label="상품 수정" onClick={() => startEditing(product.productId)}><Pencil className="size-4" /></button><button className="p-2 text-[#a22e24]" type="button" aria-label="상품 삭제" onClick={() => removeProduct(product.productId)}><Trash2 className="size-4" /></button></div></div>)}</div>
+                        {hasMoreProducts && <button className="mx-auto mt-5 grid h-10 min-w-32 place-items-center border border-ink px-5 text-xs font-bold disabled:opacity-50" type="button" disabled={isLoadingMoreProducts} onClick={loadMoreProducts}>{isLoadingMoreProducts ? <LoaderCircle className="size-4 animate-spin" /> : '상품 더 보기'}</button>}
                     </Panel>
 
                     <Panel icon={<Truck />} title="주문·배송 관리">
                         <div className="grid gap-4">{orders.length === 0 ? <p className="text-sm text-muted">처리할 주문이 없습니다.</p> : orders.map((order) => { const current = order.items[0]?.fulfillmentStatus; const target = current ? nextStatus[current] : undefined; return <article className="border border-line p-4" key={order.orderId}><div className="flex flex-wrap items-center justify-between gap-3"><div><strong>주문 #{order.orderId}</strong><p className="mt-1 text-xs text-muted">{new Date(order.createdAt).toLocaleString('ko-KR')} · 판매 금액 {formatPrice(order.sellerAmount)}</p></div>{current && <span className="bg-[#eef0df] px-3 py-1 text-xs font-bold text-[#66751c]">{statusLabel[current]}</span>}</div><ul className="my-4 grid gap-1 text-sm">{order.items.map((item) => <li key={item.orderItemId}>{item.productName} × {item.quantity}</li>)}</ul>{target && <button className="h-10 border border-ink px-4 text-xs font-bold" type="button" onClick={() => advanceOrder(order)}>{statusLabel[target]}{target === 'DELIVERED' ? '로' : '으로'} 변경</button>}</article> })}</div>
+                        {hasMoreOrders && <button className="mx-auto mt-5 grid h-10 min-w-32 place-items-center border border-ink px-5 text-xs font-bold disabled:opacity-50" type="button" disabled={isLoadingMoreOrders} onClick={loadMoreOrders}>{isLoadingMoreOrders ? <LoaderCircle className="size-4 animate-spin" /> : '주문 더 보기'}</button>}
                     </Panel>
                 </>}
             </div>
