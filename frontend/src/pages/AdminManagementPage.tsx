@@ -185,7 +185,7 @@ function Summary({ label, value }: { label: string; value: number }) {
 }
 
 function Panel({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
-    return <section className="border-t-2 border-ink pt-5"><h2 className="mb-6 flex items-center gap-2 text-xl font-bold">{icon}{title}</h2>{children}</section>
+    return <section className="min-w-0 border-t-2 border-ink pt-5"><h2 className="mb-6 flex items-center gap-2 text-xl font-bold">{icon}{title}</h2>{children}</section>
 }
 
 function Empty({ children }: { children: ReactNode }) {
