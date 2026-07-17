@@ -22,6 +22,8 @@ import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.notification.event.NotificationEvent;
+import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.order.dto.OrderCreateRequest;
 import com.ymall.backend.order.dto.OrderResponse;
 import com.ymall.backend.order.entity.Order;
@@ -46,6 +48,7 @@ public class OrderService {
     private final MemberRepository memberRepository;
     private final ProductRepository productRepository;
     private final OrderMapper orderMapper;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Transactional
     public OrderResponse createOrder(Long memberId, OrderCreateRequest request) {
@@ -99,6 +102,7 @@ public class OrderService {
             product.increaseStock(item.getQuantity());
         }
         order.cancel();
+        notificationEventPublisher.publish(NotificationEvent.orderCanceled(memberId, orderId));
         return orderMapper.toOrderResponse(order);
     }
 
@@ -135,6 +139,9 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         cartItemRepository.deleteAll(cartItems);
+        notificationEventPublisher.publish(
+            NotificationEvent.orderCreated(member.getId(), savedOrder.getId())
+        );
         return orderMapper.toOrderResponse(savedOrder);
     }
 

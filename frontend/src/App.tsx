@@ -5,6 +5,7 @@ import { Layout } from './components/Layout'
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { LoginPage } from './pages/LoginPage'
+import { NotificationPage } from './pages/NotificationPage'
 import { OrderHistoryPage } from './pages/OrderHistoryPage'
 import { OrderResultPage } from './pages/OrderResultPage'
 import { PaymentPage } from './pages/PaymentPage'
@@ -26,6 +27,7 @@ function App() {
                     element={<RequireAuth><CheckoutPage /></RequireAuth>}
                 />
                 <Route path="/orders" element={<RequireAuth><OrderHistoryPage /></RequireAuth>} />
+                <Route path="/notifications" element={<RequireAuth><NotificationPage /></RequireAuth>} />
                 <Route path="/orders/:orderId/payment" element={<RequireAuth><PaymentPage /></RequireAuth>} />
                 <Route path="/orders/:orderId/result" element={<RequireAuth><OrderResultPage /></RequireAuth>} />
                 <Route path="/seller" element={<RequireRole roles={['ROLE_SELLER', 'ROLE_ADMIN']}><SellerManagementPage /></RequireRole>} />
