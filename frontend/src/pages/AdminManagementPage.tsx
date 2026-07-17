@@ -11,13 +11,18 @@ import { ApiError } from '../api/client'
 import type { AdminMember, AdminOrder, AdminProduct, AdminSeller } from '../types/admin'
 import { formatPrice } from '../utils/product'
 
+type AdminSection = 'products' | 'members' | 'sellers' | 'orders'
+
 export function AdminManagementPage() {
     const [products, setProducts] = useState<AdminProduct[]>([])
     const [members, setMembers] = useState<AdminMember[]>([])
     const [sellers, setSellers] = useState<AdminSeller[]>([])
     const [orders, setOrders] = useState<AdminOrder[]>([])
     const [totals, setTotals] = useState({ products: 0, members: 0, sellers: 0, orders: 0 })
+    const [nextPages, setNextPages] = useState({ products: 2, members: 2, sellers: 2, orders: 2 })
+    const [hasMore, setHasMore] = useState({ products: false, members: false, sellers: false, orders: false })
     const [isLoading, setIsLoading] = useState(true)
+    const [loadingSection, setLoadingSection] = useState<AdminSection | null>(null)
     const [processingProductId, setProcessingProductId] = useState<number | null>(null)
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
@@ -25,10 +30,10 @@ export function AdminManagementPage() {
     useEffect(() => {
         const controller = new AbortController()
         Promise.all([
-            getPendingProducts(controller.signal),
-            getAdminMembers(controller.signal),
-            getAdminSellers(controller.signal),
-            getAdminOrders(controller.signal),
+            getPendingProducts({ signal: controller.signal }),
+            getAdminMembers({ signal: controller.signal }),
+            getAdminSellers({ signal: controller.signal }),
+            getAdminOrders({ signal: controller.signal }),
         ]).then(([productPage, memberPage, sellerPage, orderPage]) => {
             setProducts(productPage.content)
             setMembers(memberPage.content)
@@ -39,6 +44,12 @@ export function AdminManagementPage() {
                 members: memberPage.totalElements,
                 sellers: sellerPage.totalElements,
                 orders: orderPage.totalElements,
+            })
+            setHasMore({
+                products: productPage.hasNext,
+                members: memberPage.hasNext,
+                sellers: sellerPage.hasNext,
+                orders: orderPage.hasNext,
             })
         }).catch((error: unknown) => {
             if (error instanceof Error && error.name === 'AbortError') return
@@ -59,13 +70,47 @@ export function AdminManagementPage() {
         setErrorMessage('')
         try {
             await updateAdminProductStatus(product.productId, status)
-            setProducts((current) => current.filter((item) => item.productId !== product.productId))
-            setTotals((current) => ({ ...current, products: Math.max(current.products - 1, 0) }))
+            const productPage = await getPendingProducts()
+            setProducts(productPage.content)
+            setTotals((current) => ({ ...current, products: productPage.totalElements }))
+            setHasMore((current) => ({ ...current, products: productPage.hasNext }))
+            setNextPages((current) => ({ ...current, products: 2 }))
             setMessage(`'${product.name}' 상품을 ${status === 'APPROVED' ? '승인' : '반려'}했습니다.`)
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '상품 상태를 변경하지 못했습니다.')
         } finally {
             setProcessingProductId(null)
+        }
+    }
+
+    async function loadMore(section: AdminSection) {
+        if (!hasMore[section] || loadingSection !== null) return
+        setLoadingSection(section)
+        setErrorMessage('')
+        try {
+            const page = nextPages[section]
+            if (section === 'products') {
+                const response = await getPendingProducts({ page })
+                setProducts((current) => [...current, ...response.content])
+                setHasMore((current) => ({ ...current, products: response.hasNext }))
+            } else if (section === 'members') {
+                const response = await getAdminMembers({ page })
+                setMembers((current) => [...current, ...response.content])
+                setHasMore((current) => ({ ...current, members: response.hasNext }))
+            } else if (section === 'sellers') {
+                const response = await getAdminSellers({ page })
+                setSellers((current) => [...current, ...response.content])
+                setHasMore((current) => ({ ...current, sellers: response.hasNext }))
+            } else {
+                const response = await getAdminOrders({ page })
+                setOrders((current) => [...current, ...response.content])
+                setHasMore((current) => ({ ...current, orders: response.hasNext }))
+            }
+            setNextPages((current) => ({ ...current, [section]: current[section] + 1 }))
+        } catch (error) {
+            setErrorMessage(error instanceof ApiError ? error.message : '목록을 추가로 불러오지 못했습니다.')
+        } finally {
+            setLoadingSection(null)
         }
     }
 
@@ -113,18 +158,22 @@ export function AdminManagementPage() {
                             ))}
                         </div>
                     )}
+                    {hasMore.products && <LoadMoreButton loading={loadingSection === 'products'} onClick={() => loadMore('products')} />}
                 </Panel>
 
                 <Panel icon={<Users />} title="회원">
                     <div className="overflow-x-auto"><table className="w-full min-w-150 text-left text-sm"><thead className="border-b border-ink text-xs"><tr><th className="p-3">이름</th><th className="p-3">이메일</th><th className="p-3">권한</th><th className="p-3">가입일</th></tr></thead><tbody>{members.map((member) => <tr className="border-b border-line" key={member.memberId}><td className="p-3 font-bold">{member.name}</td><td className="p-3">{member.email}</td><td className="p-3">{member.role}</td><td className="p-3">{formatDate(member.createdAt)}</td></tr>)}</tbody></table></div>
+                    {hasMore.members && <LoadMoreButton loading={loadingSection === 'members'} onClick={() => loadMore('members')} />}
                 </Panel>
 
                 <Panel icon={<Store />} title="판매자">
                     <div className="grid gap-3">{sellers.length === 0 ? <Empty>등록된 판매자가 없습니다.</Empty> : sellers.map((seller) => <article className="border border-line p-4" key={seller.sellerProfileId}><strong>{seller.storeName}</strong><p className="mt-1 text-xs text-muted">{seller.memberName} · {seller.email} · 사업자번호 {seller.businessNumber}</p></article>)}</div>
+                    {hasMore.sellers && <LoadMoreButton loading={loadingSection === 'sellers'} onClick={() => loadMore('sellers')} />}
                 </Panel>
 
                 <Panel icon={<ReceiptText />} title="주문">
                     <div className="grid gap-3">{orders.length === 0 ? <Empty>주문 내역이 없습니다.</Empty> : orders.map((order) => <article className="border border-line p-4" key={order.orderId}><div className="flex flex-wrap items-center justify-between gap-2"><strong>주문 #{order.orderId}</strong><span className="bg-[#eef0df] px-3 py-1 text-xs font-bold text-[#66751c]">{order.status}</span></div><p className="mt-2 text-xs text-muted">{order.memberName} · {order.memberEmail} · {formatDate(order.createdAt)}</p><p className="mt-3 text-sm">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</p><p className="mt-2 font-bold">{formatPrice(order.totalAmount)}</p></article>)}</div>
+                    {hasMore.orders && <LoadMoreButton loading={loadingSection === 'orders'} onClick={() => loadMore('orders')} />}
                 </Panel>
             </div>
         </section>
@@ -141,6 +190,14 @@ function Panel({ icon, title, children }: { icon: ReactNode; title: string; chil
 
 function Empty({ children }: { children: ReactNode }) {
     return <p className="text-sm text-muted">{children}</p>
+}
+
+function LoadMoreButton({ loading, onClick }: { loading: boolean; onClick: () => void }) {
+    return (
+        <button className="mx-auto mt-5 grid h-10 min-w-32 place-items-center border border-ink px-5 text-xs font-bold disabled:opacity-50" type="button" disabled={loading} onClick={onClick}>
+            {loading ? <LoaderCircle className="size-4 animate-spin" /> : '더 보기'}
+        </button>
+    )
 }
 
 function formatDate(value: string) {

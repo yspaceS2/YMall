@@ -133,6 +133,22 @@ class AdminManagementApiIntegrationTest {
     }
 
     @Test
+    void adminReadsPendingProductsAfterFirstPage() throws Exception {
+        for (int index = 1; index <= 21; index++) {
+            saveProduct("승인 대기 상품 " + index, ProductStatus.PENDING);
+        }
+
+        mockMvc.perform(get("/api/admin/products")
+                .param("page", "2")
+                .param("size", "20")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.page").value(2))
+            .andExpect(jsonPath("$.data.totalElements").value(21))
+            .andExpect(jsonPath("$.data.content.length()").value(1));
+    }
+
+    @Test
     void adminReadsMembersSellersAndOrders() throws Exception {
         Product product = saveProduct("주문 상품", ProductStatus.APPROVED);
         Order order = new Order(buyer, "admin-management-test");
@@ -182,8 +198,8 @@ class AdminManagementApiIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"REJECTED\"}"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error.code").value("PRODUCT_REVIEW_NOT_ALLOWED"));
     }
 
     private Member saveMember(String email, String name, MemberRole role) {

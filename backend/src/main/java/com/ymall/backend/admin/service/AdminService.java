@@ -53,19 +53,22 @@ public class AdminService {
         Long productId,
         AdminProductStatusUpdateRequest request
     ) {
+        if (request.status() != ProductStatus.APPROVED
+            && request.status() != ProductStatus.REJECTED) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+
         Product product = productRepository.findByIdForReview(productId)
             .filter(foundProduct -> foundProduct.getStatus() != ProductStatus.DELETED)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
 
         if (product.getStatus() != ProductStatus.PENDING) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+            throw new BusinessException(ErrorCode.PRODUCT_REVIEW_NOT_ALLOWED);
         }
         if (request.status() == ProductStatus.APPROVED) {
             product.approve();
-        } else if (request.status() == ProductStatus.REJECTED) {
-            product.reject();
         } else {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+            product.reject();
         }
 
         return adminMapper.toProductResponse(product);
