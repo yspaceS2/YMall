@@ -9,11 +9,14 @@ import {
     clearAccessToken,
     getAccessToken,
     getTokenExpiration,
+    getTokenRole,
     setAccessToken,
 } from './tokenStorage'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [isAuthenticated, setIsAuthenticated] = useState(() => getAccessToken() !== null)
+    const initialToken = getAccessToken()
+    const [isAuthenticated, setIsAuthenticated] = useState(() => initialToken !== null)
+    const [role, setRole] = useState(() => getTokenRole(initialToken))
     const location = useLocation()
     const navigate = useNavigate()
 
@@ -43,10 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const syncAuthentication = () => {
             const token = getAccessToken()
             setIsAuthenticated(token !== null)
+            setRole(getTokenRole(token))
             scheduleExpiration(token)
         }
         const handleUnauthorized = () => {
             setIsAuthenticated(false)
+            setRole(null)
             if (location.pathname !== '/login') {
                 navigate('/login', {
                     replace: true,
@@ -73,17 +78,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await loginMember(request)
         setAccessToken(response.accessToken)
         setIsAuthenticated(true)
+        setRole(getTokenRole(response.accessToken))
     }, [])
 
     const logout = useCallback(() => {
         clearAccessToken()
         setIsAuthenticated(false)
+        setRole(null)
         navigate('/', { replace: true })
     }, [navigate])
 
     const value = useMemo(
-        () => ({ isAuthenticated, login, logout }),
-        [isAuthenticated, login, logout],
+        () => ({ isAuthenticated, role, login, logout }),
+        [isAuthenticated, role, login, logout],
     )
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

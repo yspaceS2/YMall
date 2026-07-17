@@ -24,6 +24,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import com.ymall.backend.seller.entity.SellerProfile;
+
 @Getter
 @Entity
 @Table(name = "products")
@@ -37,6 +39,10 @@ public class Product {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seller_profile_id")
+    private SellerProfile sellerProfile;
 
     @Column(nullable = false, length = 255)
     private String name;
@@ -102,6 +108,14 @@ public class Product {
     public void addImage(ProductImage image) {
         images.add(image);
         image.assignProduct(this);
+    }
+
+    public void assignSellerProfile(SellerProfile sellerProfile) {
+        this.sellerProfile = sellerProfile;
+    }
+
+    public void requestApproval() {
+        this.status = ProductStatus.PENDING;
     }
 
     /**

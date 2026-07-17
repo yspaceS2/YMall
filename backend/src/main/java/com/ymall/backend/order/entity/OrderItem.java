@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -47,6 +49,10 @@ public class OrderItem {
     @Column(nullable = false, precision = 22, scale = 2)
     private BigDecimal lineTotal;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private OrderItemFulfillmentStatus fulfillmentStatus;
+
     public OrderItem(Product product, String productName, BigDecimal unitPrice, Integer quantity) {
         if (quantity == null || quantity < 1) {
             throw new IllegalArgumentException("주문 수량은 1개 이상이어야 합니다.");
@@ -56,9 +62,25 @@ public class OrderItem {
         this.unitPrice = unitPrice;
         this.quantity = quantity;
         this.lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        this.fulfillmentStatus = OrderItemFulfillmentStatus.PENDING;
     }
 
     void assignOrder(Order order) {
         this.order = order;
+    }
+
+    public OrderItemFulfillmentStatus getEffectiveFulfillmentStatus() {
+        return fulfillmentStatus == null ? OrderItemFulfillmentStatus.PENDING : fulfillmentStatus;
+    }
+
+    public void updateFulfillmentStatus(OrderItemFulfillmentStatus targetStatus) {
+        OrderItemFulfillmentStatus currentStatus = getEffectiveFulfillmentStatus();
+        if (currentStatus == targetStatus) {
+            return;
+        }
+        if (targetStatus == null || targetStatus.ordinal() != currentStatus.ordinal() + 1) {
+            throw new IllegalStateException("배송 상태는 한 단계씩 변경해야 합니다.");
+        }
+        this.fulfillmentStatus = targetStatus;
     }
 }
