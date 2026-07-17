@@ -19,6 +19,8 @@ import com.ymall.backend.product.entity.ProductStatus;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    boolean existsByIdAndStatus(Long productId, ProductStatus status);
+
     @EntityGraph(attributePaths = {"category", "sellerProfile"})
     Page<Product> findByStatus(ProductStatus status, Pageable pageable);
 
@@ -53,6 +55,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @EntityGraph(attributePaths = {"category", "sellerProfile"})
     @Query("select product from Product product where product.id = :productId")
     Optional<Product> findByIdForReview(@Param("productId") Long productId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select product from Product product where product.id = :productId")
+    Optional<Product> findByIdForRatingUpdate(@Param("productId") Long productId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select product from Product product where product.id in :productIds order by product.id")

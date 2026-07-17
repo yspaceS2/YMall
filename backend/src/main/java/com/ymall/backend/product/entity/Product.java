@@ -126,6 +126,10 @@ public class Product {
         this.status = ProductStatus.REJECTED;
     }
 
+    public void updateRating(BigDecimal rating) {
+        this.rating = rating;
+    }
+
     /**
      * 상품의 기본 정보만 수정한다.
      * 평점은 리뷰 도메인에서 집계되어야 하므로 상품 수정 요청으로 직접 변경하지 않는다.

@@ -4,8 +4,10 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { addCartItem } from '../api/cart'
 import { ApiError } from '../api/client'
 import { getProduct } from '../api/products'
+import { getProductReviews } from '../api/reviews'
 import { useAuth } from '../auth/useAuth'
 import type { ProductDetail } from '../types/product'
+import type { Review } from '../types/review'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
 
 export function ProductDetailPage() {
@@ -21,6 +23,12 @@ export function ProductDetailPage() {
     const [selectedImage, setSelectedImage] = useState('')
     const [cartError, setCartError] = useState('')
     const [isAddingToCart, setIsAddingToCart] = useState(false)
+    const [reviews, setReviews] = useState<Review[]>([])
+    const [reviewCount, setReviewCount] = useState(0)
+    const [reviewNextPage, setReviewNextPage] = useState(2)
+    const [hasMoreReviews, setHasMoreReviews] = useState(false)
+    const [isLoadingReviews, setIsLoadingReviews] = useState(false)
+    const [reviewError, setReviewError] = useState('')
 
     useEffect(() => {
         const controller = new AbortController()
@@ -34,6 +42,17 @@ export function ProductDetailPage() {
             })
             .catch((requestError: unknown) => {
                 if (requestError instanceof Error && requestError.name !== 'AbortError') setError(requestError.message)
+            })
+        getProductReviews(id, 1, 10, controller.signal)
+            .then((reviewPage) => {
+                setReviews(reviewPage.content)
+                setReviewCount(reviewPage.totalElements)
+                setHasMoreReviews(reviewPage.hasNext)
+            })
+            .catch((requestError: unknown) => {
+                if (requestError instanceof Error && requestError.name !== 'AbortError') {
+                    setReviewError(requestError instanceof ApiError ? requestError.message : '리뷰를 불러오지 못했습니다.')
+                }
             })
         return () => controller.abort()
     }, [id, invalidProductId])
@@ -65,6 +84,26 @@ export function ProductDetailPage() {
         }
     }
 
+    async function loadMoreReviews() {
+        if (!product || !hasMoreReviews || isLoadingReviews) return
+        setReviewError('')
+        setIsLoadingReviews(true)
+        try {
+            const response = await getProductReviews(product.productId, reviewNextPage, 10)
+            setReviews((current) => [...current, ...response.content])
+            setHasMoreReviews(response.hasNext)
+            setReviewNextPage((current) => current + 1)
+        } catch (requestError) {
+            setReviewError(
+                requestError instanceof ApiError
+                    ? requestError.message
+                    : '리뷰를 더 불러오지 못했습니다.',
+            )
+        } finally {
+            setIsLoadingReviews(false)
+        }
+    }
+
     if (invalidProductId || error) return <div className="grid min-h-80 place-content-center gap-2 text-center text-muted"><strong className="text-ink">상품을 찾을 수 없습니다.</strong><p className="m-0">{invalidProductId ? '잘못된 상품 주소입니다.' : error}</p><Link className="mt-3 underline" to="/">상품 목록으로 돌아가기</Link></div>
     if (!product) return <div className="grid min-h-80 place-content-center gap-2 text-center text-muted"><strong className="text-ink">상품 정보를 불러오는 중입니다.</strong></div>
 
@@ -89,6 +128,50 @@ export function ProductDetailPage() {
                     <div className="grid grid-cols-1 gap-2 min-[601px]:grid-cols-[120px_1fr]"><button className="h-13.5 border border-ink bg-transparent font-extrabold" type="button"><Heart className="inline size-4" /> 찜하기</button><button className="h-13.5 border border-ink bg-ink font-extrabold text-white disabled:border-[#ddd] disabled:bg-[#ddd] disabled:text-[#888]" disabled={isAddingToCart || product.stock === 0 || product.status !== 'APPROVED'} onClick={handleAddToCart} type="button">{product.stock === 0 || product.status === 'SOLD_OUT' ? '품절된 상품입니다' : product.status !== 'APPROVED' ? '구매할 수 없는 상품입니다' : isAddingToCart ? '장바구니에 담는 중...' : `${formatPrice(discountedPrice * quantity)} · 장바구니 담기`}</button></div>
                     <div className="mt-5.5 flex gap-6.5 text-[11px] text-muted"><span className="flex items-center gap-1.5"><Truck className="size-4" /> 무료 배송</span><span className="flex items-center gap-1.5"><ShieldCheck className="size-4" /> 안전 결제</span></div>
                 </div>
+            </div>
+            <div className="mt-20 border-t border-ink pt-9">
+                <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                        <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">REVIEWS</p>
+                        <h2 className="font-serif text-4xl tracking-tight">상품 리뷰</h2>
+                    </div>
+                    <p className="text-sm text-muted">총 {reviewCount}개의 리뷰</p>
+                </div>
+                {reviewError && <p className="mb-5 text-sm text-[#b23b2f]" role="alert">{reviewError}</p>}
+                {reviews.length === 0 ? (
+                    <div className="grid min-h-40 place-content-center border-y border-line text-sm text-muted">
+                        아직 작성된 리뷰가 없습니다.
+                    </div>
+                ) : (
+                    <div className="border-t border-line">
+                        {reviews.map((review) => (
+                            <article className="grid gap-3 border-b border-line py-6 min-[701px]:grid-cols-[180px_1fr]" key={review.reviewId}>
+                                <div>
+                                    <strong className="block text-sm">{review.authorName}</strong>
+                                    <span className="mt-1 block text-xs text-muted">
+                                        {new Date(review.createdAt).toLocaleDateString('ko-KR')}
+                                    </span>
+                                </div>
+                                <div>
+                                    <div className="mb-3 text-sm tracking-wider text-[#849b21]" aria-label={`평점 ${review.rating}점`}>
+                                        {'★'.repeat(review.rating)}<span className="text-[#d8d8d0]">{'★'.repeat(5 - review.rating)}</span>
+                                    </div>
+                                    <p className="whitespace-pre-wrap text-sm leading-7 text-[#55554f]">{review.content}</p>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                )}
+                {hasMoreReviews && (
+                    <button
+                        className="mx-auto mt-8 block h-11 border border-ink bg-white px-7 text-xs font-bold disabled:opacity-50"
+                        type="button"
+                        disabled={isLoadingReviews}
+                        onClick={loadMoreReviews}
+                    >
+                        {isLoadingReviews ? '불러오는 중...' : '리뷰 더 보기'}
+                    </button>
+                )}
             </div>
         </section>
     )
