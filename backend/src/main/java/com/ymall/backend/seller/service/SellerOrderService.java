@@ -72,9 +72,7 @@ public class SellerOrderService {
         }
 
         List<OrderItem> sellerItems = ownedItems(order, profile.getId());
-        boolean statusChanged = sellerItems.stream().anyMatch(item ->
-            item.getEffectiveFulfillmentStatus() != request.fulfillmentStatus()
-        );
+        OrderStatus previousOrderStatus = order.getStatus();
         try {
             sellerItems.forEach(item ->
                 item.updateFulfillmentStatus(request.fulfillmentStatus())
@@ -83,7 +81,7 @@ public class SellerOrderService {
             throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
         }
         order.refreshFulfillmentStatus();
-        if (statusChanged) {
+        if (order.getStatus() != previousOrderStatus) {
             notificationEventPublisher.publish(NotificationEvent.fulfillmentChanged(
                 order.getMember().getId(),
                 order.getId(),

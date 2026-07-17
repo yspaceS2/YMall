@@ -72,17 +72,28 @@ class NotificationApiIntegrationTest {
     private String buyerToken;
     private String otherToken;
     private String sellerToken;
+    private String secondSellerToken;
 
     @BeforeEach
     void setUp() {
         Member buyer = saveMember("notification-buyer@example.com", MemberRole.ROLE_USER);
         Member other = saveMember("notification-other@example.com", MemberRole.ROLE_USER);
         Member seller = saveMember("notification-seller@example.com", MemberRole.ROLE_SELLER);
+        Member secondSeller = saveMember(
+            "notification-second-seller@example.com",
+            MemberRole.ROLE_SELLER
+        );
         SellerProfile sellerProfile = sellerProfileRepository.save(new SellerProfile(
             seller,
             "알림 상점",
             "333-33-33333",
             "알림 통합 테스트 판매자"
+        ));
+        SellerProfile secondSellerProfile = sellerProfileRepository.save(new SellerProfile(
+            secondSeller,
+            "두 번째 알림 상점",
+            "444-44-44444",
+            "다중 판매자 알림 통합 테스트 판매자"
         ));
         Category category = categoryRepository.save(new Category("알림 상품", "notification-products"));
         Product product = new Product(
@@ -99,10 +110,26 @@ class NotificationApiIntegrationTest {
         );
         product.assignSellerProfile(sellerProfile);
         productRepository.save(product);
+        Product secondProduct = new Product(
+            category,
+            "두 번째 알림 테스트 상품",
+            "두 번째 상품 설명",
+            "YMall",
+            BigDecimal.valueOf(20000),
+            BigDecimal.ZERO,
+            BigDecimal.ZERO,
+            10,
+            "second-thumbnail",
+            ProductStatus.APPROVED
+        );
+        secondProduct.assignSellerProfile(secondSellerProfile);
+        productRepository.save(secondProduct);
         cartItemRepository.save(new CartItem(buyer, product, 1));
+        cartItemRepository.save(new CartItem(buyer, secondProduct, 1));
         buyerToken = token(buyer);
         otherToken = token(other);
         sellerToken = token(seller);
+        secondSellerToken = token(secondSeller);
     }
 
     @Test
@@ -169,6 +196,37 @@ class NotificationApiIntegrationTest {
             .andExpect(jsonPath("$.data.unreadCount").value(0));
     }
 
+    @Test
+    void recordsFulfillmentNotificationOnlyWhenMultiSellerOrderStatusChanges() throws Exception {
+        createOrder();
+        Long orderId = orderRepository.findAll().get(0).getId();
+
+        mockMvc.perform(post("/api/orders/{orderId}/payments", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"idempotencyKey":"multi-seller-payment","result":"SUCCESS"}
+                    """))
+            .andExpect(status().isCreated());
+
+        updateFulfillment(orderId, sellerToken, "PREPARING");
+        updateFulfillment(orderId, secondSellerToken, "PREPARING");
+        updateFulfillment(orderId, sellerToken, "SHIPPED");
+        updateFulfillment(orderId, sellerToken, "DELIVERED");
+        updateFulfillment(orderId, secondSellerToken, "SHIPPED");
+        updateFulfillment(orderId, secondSellerToken, "DELIVERED");
+
+        mockMvc.perform(get("/api/notifications")
+                .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.content.length()").value(5))
+            .andExpect(jsonPath("$.data.content[0].type").value("ORDER_DELIVERED"))
+            .andExpect(jsonPath("$.data.content[1].type").value("ORDER_SHIPPED"))
+            .andExpect(jsonPath("$.data.content[2].type").value("ORDER_PREPARING"))
+            .andExpect(jsonPath("$.data.content[3].type").value("PAYMENT_COMPLETED"))
+            .andExpect(jsonPath("$.data.content[4].type").value("ORDER_CREATED"));
+    }
+
     private void createOrder() throws Exception {
         mockMvc.perform(post("/api/orders")
                 .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken))
@@ -177,6 +235,15 @@ class NotificationApiIntegrationTest {
                     {"idempotencyKey":"notification-order"}
                     """))
             .andExpect(status().isCreated());
+    }
+
+    private void updateFulfillment(Long orderId, String token, String fulfillmentStatus)
+        throws Exception {
+        mockMvc.perform(patch("/api/seller/orders/{orderId}/status", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fulfillmentStatus\":\"%s\"}".formatted(fulfillmentStatus)))
+            .andExpect(status().isOk());
     }
 
     private Member saveMember(String email, MemberRole role) {

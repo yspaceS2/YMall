@@ -34,6 +34,11 @@ export function Layout({ children }: { children: ReactNode }) {
         }
     }, [isAuthenticated])
 
+    const handleLogout = () => {
+        setUnreadCount(0)
+        logout()
+    }
+
     return (
         <div className="flex min-h-screen flex-col bg-paper text-ink">
             <header className="sticky top-0 z-20 grid h-16 grid-cols-[1fr_auto] items-center border-b border-line bg-paper/95 px-4.5 backdrop-blur-md min-[601px]:h-19 min-[601px]:grid-cols-[1fr_auto_1fr] min-[601px]:px-[clamp(24px,5vw,80px)]">
@@ -75,7 +80,7 @@ export function Layout({ children }: { children: ReactNode }) {
                                     </span>
                                 )}
                             </Link>
-                            <button className="inline-grid size-5 place-items-center border-0 bg-transparent p-0" type="button" onClick={logout} aria-label="로그아웃">
+                            <button className="inline-grid size-5 place-items-center border-0 bg-transparent p-0" type="button" onClick={handleLogout} aria-label="로그아웃">
                                 <LogOut className="size-5" aria-hidden="true" />
                             </button>
                         </>
