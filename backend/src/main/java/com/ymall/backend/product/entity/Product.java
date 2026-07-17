@@ -118,6 +118,14 @@ public class Product {
         this.status = ProductStatus.PENDING;
     }
 
+    public void approve() {
+        this.status = ProductStatus.APPROVED;
+    }
+
+    public void reject() {
+        this.status = ProductStatus.REJECTED;
+    }
+
     /**
      * 상품의 기본 정보만 수정한다.
      * 평점은 리뷰 도메인에서 집계되어야 하므로 상품 수정 요청으로 직접 변경하지 않는다.

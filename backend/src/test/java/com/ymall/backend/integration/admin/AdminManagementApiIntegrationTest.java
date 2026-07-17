@@ -1,0 +1,217 @@
+package com.ymall.backend.integration.admin;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.math.BigDecimal;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberRole;
+import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.order.entity.Order;
+import com.ymall.backend.order.entity.OrderItem;
+import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.product.entity.Category;
+import com.ymall.backend.product.entity.Product;
+import com.ymall.backend.product.entity.ProductStatus;
+import com.ymall.backend.product.repository.CategoryRepository;
+import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.seller.entity.SellerProfile;
+import com.ymall.backend.seller.repository.SellerProfileRepository;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Transactional
+class AdminManagementApiIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Autowired
+    private SellerProfileRepository sellerProfileRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    private Member admin;
+    private Member seller;
+    private Member buyer;
+    private SellerProfile sellerProfile;
+    private Category category;
+    private String adminToken;
+    private String sellerToken;
+
+    @BeforeEach
+    void setUp() {
+        admin = saveMember("admin@example.com", "관리자", MemberRole.ROLE_ADMIN);
+        seller = saveMember("seller@example.com", "판매자", MemberRole.ROLE_SELLER);
+        buyer = saveMember("buyer@example.com", "구매자", MemberRole.ROLE_USER);
+        sellerProfile = sellerProfileRepository.save(new SellerProfile(
+            seller,
+            "테스트 상점",
+            "123-45-67890",
+            "관리자 테스트 판매자"
+        ));
+        category = categoryRepository.save(new Category("전자기기", "electronics"));
+        adminToken = token(admin);
+        sellerToken = token(seller);
+    }
+
+    @Test
+    void adminApprovesPendingProductAndMakesItPublic() throws Exception {
+        Product product = saveProduct("승인 대기 상품", ProductStatus.PENDING);
+
+        mockMvc.perform(get("/api/admin/products")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.content[0].productId").value(product.getId()))
+            .andExpect(jsonPath("$.data.content[0].storeName").value("테스트 상점"))
+            .andExpect(jsonPath("$.data.content[0].status").value("PENDING"));
+
+        mockMvc.perform(patch("/api/admin/products/{productId}/status", product.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"APPROVED\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("APPROVED"));
+
+        mockMvc.perform(get("/api/products/{productId}", product.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.productId").value(product.getId()));
+    }
+
+    @Test
+    void rejectedProductRemainsHiddenFromPublicApi() throws Exception {
+        Product product = saveProduct("반려 대상 상품", ProductStatus.PENDING);
+
+        mockMvc.perform(patch("/api/admin/products/{productId}/status", product.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"REJECTED\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("REJECTED"));
+
+        mockMvc.perform(get("/api/products/{productId}", product.getId()))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("PRODUCT_NOT_FOUND"));
+    }
+
+    @Test
+    void nonAdminCannotAccessAdminApi() throws Exception {
+        mockMvc.perform(get("/api/admin/members")
+                .header(HttpHeaders.AUTHORIZATION, bearer(sellerToken)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void adminReadsMembersSellersAndOrders() throws Exception {
+        Product product = saveProduct("주문 상품", ProductStatus.APPROVED);
+        Order order = new Order(buyer, "admin-management-test");
+        order.addItem(new OrderItem(product, product.getName(), product.getPrice(), 2));
+        order.completePayment();
+        orderRepository.save(order);
+
+        mockMvc.perform(get("/api/admin/members")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(3));
+
+        mockMvc.perform(get("/api/admin/sellers")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.content[0].storeName").value("테스트 상점"))
+            .andExpect(jsonPath("$.data.content[0].email").value("seller@example.com"));
+
+        mockMvc.perform(get("/api/admin/orders")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.content[0].orderId").value(order.getId()))
+            .andExpect(jsonPath("$.data.content[0].memberEmail").value("buyer@example.com"))
+            .andExpect(jsonPath("$.data.content[0].items[0].productName").value("주문 상품"));
+    }
+
+    @Test
+    void adminCannotApplyUnsupportedStatusOrReviewFinishedProductAgain() throws Exception {
+        Product product = saveProduct("상태 검증 상품", ProductStatus.PENDING);
+
+        mockMvc.perform(patch("/api/admin/products/{productId}/status", product.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DRAFT\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        assertThat(product.getStatus()).isEqualTo(ProductStatus.PENDING);
+
+        mockMvc.perform(patch("/api/admin/products/{productId}/status", product.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"APPROVED\"}"))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/admin/products/{productId}/status", product.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"REJECTED\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    private Member saveMember(String email, String name, MemberRole role) {
+        return memberRepository.save(new Member(email, "password", name, role));
+    }
+
+    private Product saveProduct(String name, ProductStatus status) {
+        Product product = new Product(
+            category,
+            name,
+            "상품 설명",
+            "YMall",
+            BigDecimal.valueOf(10000),
+            BigDecimal.ZERO,
+            BigDecimal.ZERO,
+            10,
+            "thumbnail",
+            status
+        );
+        product.assignSellerProfile(sellerProfile);
+        return productRepository.save(product);
+    }
+
+    private String token(Member member) {
+        return jwtTokenProvider.createAccessToken(member).accessToken();
+    }
+
+    private String bearer(String token) {
+        return "Bearer " + token;
+    }
+}

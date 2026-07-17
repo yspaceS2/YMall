@@ -11,6 +11,7 @@ import { PaymentPage } from './pages/PaymentPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ProductListPage } from './pages/ProductListPage'
 import { SellerManagementPage } from './pages/SellerManagementPage'
+import { AdminManagementPage } from './pages/AdminManagementPage'
 
 function App() {
     return (
@@ -28,6 +29,7 @@ function App() {
                 <Route path="/orders/:orderId/payment" element={<RequireAuth><PaymentPage /></RequireAuth>} />
                 <Route path="/orders/:orderId/result" element={<RequireAuth><OrderResultPage /></RequireAuth>} />
                 <Route path="/seller" element={<RequireRole roles={['ROLE_SELLER', 'ROLE_ADMIN']}><SellerManagementPage /></RequireRole>} />
+                <Route path="/admin" element={<RequireRole roles={['ROLE_ADMIN']}><AdminManagementPage /></RequireRole>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Layout>
