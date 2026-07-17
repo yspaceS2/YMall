@@ -9,6 +9,8 @@ export type OrderStatus =
 
 export type PaymentResult = 'SUCCESS' | 'FAILURE'
 
+export type OrderItemFulfillmentStatus = 'PENDING' | 'PREPARING' | 'SHIPPED' | 'DELIVERED'
+
 export interface OrderItem {
     orderItemId: number
     productId: number
@@ -16,6 +18,7 @@ export interface OrderItem {
     unitPrice: number
     quantity: number
     totalPrice: number
+    fulfillmentStatus: OrderItemFulfillmentStatus
 }
 
 export interface Order {
