@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { changeMemberPassword, getMemberProfile, updateMemberProfile } from '../api/auth'
 import { ApiError } from '../api/client'
 import type { MemberProfile } from '../types/auth'
+import { AddressManager } from '../components/AddressManager'
 
 export function MyPage() {
     const [profile, setProfile] = useState<MemberProfile | null>(null)
@@ -143,6 +144,7 @@ export function MyPage() {
                     </button>
                 </form>
             </div>
+            <AddressManager defaultRecipientName={profile.name} defaultRecipientPhone={profile.phone ?? ''} />
         </section>
     )
 }

@@ -22,11 +22,14 @@ import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.member.repository.MemberAddressRepository;
+import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.notification.event.NotificationEvent;
 import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.order.dto.OrderCreateRequest;
 import com.ymall.backend.order.dto.OrderResponse;
 import com.ymall.backend.order.entity.Order;
+import com.ymall.backend.order.entity.DeliveryAddressSnapshot;
 import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.mapper.OrderMapper;
@@ -46,6 +49,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CartItemRepository cartItemRepository;
     private final MemberRepository memberRepository;
+    private final MemberAddressRepository memberAddressRepository;
     private final ProductRepository productRepository;
     private final OrderMapper orderMapper;
     private final NotificationEventPublisher notificationEventPublisher;
@@ -57,7 +61,7 @@ public class OrderService {
 
         return orderRepository.findByMemberIdAndIdempotencyKey(memberId, request.idempotencyKey())
             .map(orderMapper::toOrderResponse)
-            .orElseGet(() -> createNewOrder(member, request.idempotencyKey()));
+            .orElseGet(() -> createNewOrder(member, request));
     }
 
     public OrderResponse getOrder(Long memberId, Long orderId) {
@@ -106,7 +110,7 @@ public class OrderService {
         return orderMapper.toOrderResponse(order);
     }
 
-    private OrderResponse createNewOrder(Member member, String idempotencyKey) {
+    private OrderResponse createNewOrder(Member member, OrderCreateRequest request) {
         List<CartItem> cartItems = cartItemRepository.findAllByMemberIdForUpdate(member.getId());
         if (cartItems.isEmpty()) {
             throw new BusinessException(ErrorCode.CART_EMPTY);
@@ -120,7 +124,8 @@ public class OrderService {
             .stream()
             .collect(Collectors.toMap(Product::getId, Function.identity()));
 
-        Order order = new Order(member, idempotencyKey);
+        DeliveryAddressSnapshot deliveryAddress = resolveDeliveryAddress(member.getId(), request.addressId());
+        Order order = new Order(member, request.idempotencyKey(), deliveryAddress);
         for (CartItem cartItem : cartItems) {
             Product product = products.get(cartItem.getProduct().getId());
             if (product == null) {
@@ -143,6 +148,15 @@ public class OrderService {
             NotificationEvent.orderCreated(member.getId(), savedOrder.getId())
         );
         return orderMapper.toOrderResponse(savedOrder);
+    }
+
+    private DeliveryAddressSnapshot resolveDeliveryAddress(Long memberId, Long addressId) {
+        if (addressId == null) {
+            return null;
+        }
+        MemberAddress address = memberAddressRepository.findByIdAndMemberId(addressId, memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_ADDRESS_NOT_FOUND));
+        return new DeliveryAddressSnapshot(address);
     }
 
     private void validateOrderable(Product product, int quantity) {

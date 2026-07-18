@@ -23,6 +23,8 @@ import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
+import com.ymall.backend.member.entity.MemberAddress;
+import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
@@ -57,6 +59,9 @@ class OrderApiIntegrationTest {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private MemberAddressRepository memberAddressRepository;
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
@@ -108,6 +113,30 @@ class OrderApiIntegrationTest {
         assertThat(orderItem.getUnitPrice()).isEqualByComparingTo("9000.00");
         assertThat(product.getStock()).isEqualTo(8);
         assertThat(cartItemRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void keepsDeliveryAddressSnapshotAfterMemberAddressChanges() throws Exception {
+        MemberAddress address = memberAddressRepository.save(new MemberAddress(member, "집", "수령인",
+            "01012345678", "12159", "비룡로 186", "101동", true));
+        cartItemRepository.save(new CartItem(member, product, 1));
+
+        mockMvc.perform(post("/api/orders")
+                .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"idempotencyKey":"address-snapshot","addressId":%d}
+                    """.formatted(address.getId())))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.data.deliveryAddress.roadAddress").value("비룡로 186"))
+            .andExpect(jsonPath("$.data.deliveryAddress.detailAddress").value("101동"));
+
+        address.update("집", "수령인", "01012345678", "12159", "변경된 주소", "202호");
+        memberAddressRepository.flush();
+
+        Order order = orderRepository.findAll().get(0);
+        assertThat(order.getDeliveryAddress().getRoadAddress()).isEqualTo("비룡로 186");
+        assertThat(order.getDeliveryAddress().getDetailAddress()).isEqualTo("101동");
     }
 
     @Test

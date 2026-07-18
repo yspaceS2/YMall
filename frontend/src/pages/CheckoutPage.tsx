@@ -4,11 +4,15 @@ import { Link, useNavigate } from 'react-router-dom'
 import { getCart } from '../api/cart'
 import { ApiError } from '../api/client'
 import { createOrder } from '../api/orders'
+import { getMemberAddresses } from '../api/auth'
 import type { CartItem } from '../types/cart'
+import type { MemberAddress } from '../types/auth'
 import { formatPrice, getDiscountedPrice } from '../utils/product'
 
 export function CheckoutPage() {
     const [items, setItems] = useState<CartItem[]>([])
+    const [addresses, setAddresses] = useState<MemberAddress[]>([])
+    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [errorMessage, setErrorMessage] = useState('')
@@ -17,8 +21,12 @@ export function CheckoutPage() {
 
     useEffect(() => {
         const controller = new AbortController()
-        getCart(controller.signal)
-            .then((cart) => setItems(cart.items))
+        Promise.all([getCart(controller.signal), getMemberAddresses(controller.signal)])
+            .then(([cart, memberAddresses]) => {
+                setItems(cart.items)
+                setAddresses(memberAddresses)
+                setSelectedAddressId((memberAddresses.find((address) => address.isDefault) ?? memberAddresses[0])?.addressId ?? null)
+            })
             .catch((error: unknown) => {
                 if (error instanceof Error && error.name === 'AbortError') return
                 setErrorMessage(error instanceof ApiError ? error.message : '장바구니를 불러오지 못했습니다.')
@@ -39,11 +47,11 @@ export function CheckoutPage() {
     )
 
     async function submitOrder() {
-        if (items.length === 0 || isSubmitting) return
+        if (items.length === 0 || selectedAddressId === null || isSubmitting) return
         setIsSubmitting(true)
         setErrorMessage('')
         try {
-            const order = await createOrder({ idempotencyKey: orderKeyRef.current })
+            const order = await createOrder({ idempotencyKey: orderKeyRef.current, addressId: selectedAddressId })
             navigate(`/orders/${order.orderId}/payment`)
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '주문을 생성하지 못했습니다.')
@@ -72,7 +80,26 @@ export function CheckoutPage() {
                 </div>
             ) : (
                 <div className="grid gap-10 min-[901px]:grid-cols-[minmax(0,1fr)_340px]">
-                    <div className="border-t border-ink">
+                    <div>
+                        <div className="mb-8 border-t border-ink">
+                            <h2 className="border-b border-line py-4 font-serif text-2xl">배송지</h2>
+                            {addresses.length === 0 ? (
+                                <div className="border-b border-line py-6 text-sm">
+                                    <p>주문 전에 배송지를 등록해 주세요.</p>
+                                    <Link className="mt-3 inline-block text-xs underline" to="/mypage">배송지 등록하기</Link>
+                                </div>
+                            ) : addresses.map((address) => (
+                                <label className="flex cursor-pointer gap-3 border-b border-line py-4" key={address.addressId}>
+                                    <input type="radio" name="deliveryAddress" checked={selectedAddressId === address.addressId} onChange={() => setSelectedAddressId(address.addressId)} />
+                                    <span>
+                                        <strong className="text-sm">{address.addressName}{address.isDefault ? ' · 기본 배송지' : ''}</strong>
+                                        <span className="mt-1 block text-xs">{address.recipientName} · {address.recipientPhone}</span>
+                                        <span className="mt-1 block text-xs text-muted">[{address.postalCode}] {address.roadAddress} {address.detailAddress}</span>
+                                    </span>
+                                </label>
+                            ))}
+                        </div>
+                        <div className="border-t border-ink">
                         {items.map((item) => {
                             const unitPrice = getDiscountedPrice(item.price, item.discountPercentage)
                             return (
@@ -85,6 +112,7 @@ export function CheckoutPage() {
                                 </article>
                             )
                         })}
+                        </div>
                     </div>
 
                     <aside className="border border-line p-6">
@@ -96,7 +124,7 @@ export function CheckoutPage() {
                         <button
                             className="grid h-13 w-full place-items-center border-0 bg-ink text-sm font-extrabold text-white disabled:bg-[#aaa]"
                             type="button"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || selectedAddressId === null}
                             onClick={submitOrder}
                         >
                             {isSubmitting ? <LoaderCircle className="size-5 animate-spin" /> : '주문 생성 후 결제하기'}

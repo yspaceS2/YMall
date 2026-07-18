@@ -44,6 +44,19 @@ export interface MemberPasswordChangeRequest {
   newPasswordConfirmation: string
 }
 
+export interface MemberAddress {
+  addressId: number
+  addressName: string
+  recipientName: string
+  recipientPhone: string
+  postalCode: string
+  roadAddress: string
+  detailAddress: string
+  isDefault: boolean
+}
+
+export type MemberAddressRequest = Omit<MemberAddress, 'addressId'>
+
 export type MemberRole = 'ROLE_USER' | 'ROLE_SELLER' | 'ROLE_ADMIN'
 
 export interface TokenResponse {

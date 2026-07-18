@@ -8,6 +8,7 @@ import java.util.List;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -58,6 +59,9 @@ public class Order {
     @Column(nullable = false, precision = 38, scale = 2)
     private BigDecimal totalAmount;
 
+    @Embedded
+    private DeliveryAddressSnapshot deliveryAddress;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 100)
     private List<OrderItem> items = new ArrayList<>();
@@ -69,10 +73,15 @@ public class Order {
     private LocalDateTime updatedAt;
 
     public Order(Member member, String idempotencyKey) {
+        this(member, idempotencyKey, null);
+    }
+
+    public Order(Member member, String idempotencyKey, DeliveryAddressSnapshot deliveryAddress) {
         this.member = member;
         this.idempotencyKey = idempotencyKey;
         this.status = OrderStatus.PENDING_PAYMENT;
         this.totalAmount = BigDecimal.ZERO.setScale(2);
+        this.deliveryAddress = deliveryAddress;
     }
 
     public void addItem(OrderItem item) {
