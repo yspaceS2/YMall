@@ -35,6 +35,9 @@ public class Member {
     @Column(nullable = false, length = 50)
     private String name;
 
+    @Column(length = 20)
+    private String phone;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MemberRole role;
@@ -46,9 +49,14 @@ public class Member {
     private LocalDateTime updatedAt;
 
     public Member(String email, String password, String name, MemberRole role) {
+        this(email, password, name, null, role);
+    }
+
+    public Member(String email, String password, String name, String phone, MemberRole role) {
         this.email = email;
         this.password = password;
         this.name = name;
+        this.phone = phone;
         this.role = role;
     }
 

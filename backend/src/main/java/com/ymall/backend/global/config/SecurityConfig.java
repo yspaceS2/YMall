@@ -57,6 +57,7 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(POST, "/api/members/signup", "/api/members/login").permitAll()
+                .requestMatchers(GET, "/api/members/email-availability").permitAll()
                 .requestMatchers(GET, "/api/products/**", "/api/categories/**", "/images/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/seller/**").hasAnyRole("SELLER", "ADMIN")
