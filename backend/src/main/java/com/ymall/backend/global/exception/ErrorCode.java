@@ -6,6 +6,7 @@ import lombok.Getter;
 
 @Getter
 public enum ErrorCode {
+    MEMBER_ADDRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "배송지를 찾을 수 없습니다."),
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "리뷰를 찾을 수 없습니다."),
     REVIEW_NOT_ALLOWED(HttpStatus.CONFLICT, "배송이 완료된 구매 상품만 리뷰를 작성할 수 있습니다."),

@@ -20,7 +20,9 @@ import org.springframework.test.context.DynamicPropertySource;
 import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.member.entity.MemberRole;
+import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.order.dto.OrderCreateRequest;
 import com.ymall.backend.order.dto.OrderResponse;
@@ -41,6 +43,9 @@ class OrderConcurrencyIntegrationTest {
 
     @Autowired
     private MemberRepository memberRepository;
+
+    @Autowired
+    private MemberAddressRepository memberAddressRepository;
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -85,14 +90,17 @@ class OrderConcurrencyIntegrationTest {
             ProductStatus.APPROVED
         ));
         cartItemRepository.save(new CartItem(member, product, 2));
+        MemberAddress address = memberAddressRepository.save(new MemberAddress(
+            member, "Home", "Recipient", "01012345678", "12159", "186 Biryong-ro", "101", true
+        ));
 
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             List<Future<OrderResponse>> responses = List.of(
-                submitOrder(executor, ready, start, member.getId()),
-                submitOrder(executor, ready, start, member.getId())
+                submitOrder(executor, ready, start, member.getId(), address.getId()),
+                submitOrder(executor, ready, start, member.getId(), address.getId())
             );
 
             assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
@@ -115,12 +123,16 @@ class OrderConcurrencyIntegrationTest {
         ExecutorService executor,
         CountDownLatch ready,
         CountDownLatch start,
-        Long memberId
+        Long memberId,
+        Long addressId
     ) {
         return executor.submit(() -> {
             ready.countDown();
             start.await();
-            return orderService.createOrder(memberId, new OrderCreateRequest("concurrent-request"));
+            return orderService.createOrder(
+                memberId,
+                new OrderCreateRequest("concurrent-request", addressId)
+            );
         });
     }
 }

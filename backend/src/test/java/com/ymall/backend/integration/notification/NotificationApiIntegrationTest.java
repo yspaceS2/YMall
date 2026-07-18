@@ -23,7 +23,9 @@ import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.member.entity.MemberRole;
+import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.notification.entity.NotificationType;
 import com.ymall.backend.notification.repository.NotificationRepository;
@@ -47,6 +49,9 @@ class NotificationApiIntegrationTest {
 
     @Autowired
     private MemberRepository memberRepository;
+
+    @Autowired
+    private MemberAddressRepository memberAddressRepository;
 
     @Autowired
     private SellerProfileRepository sellerProfileRepository;
@@ -73,10 +78,14 @@ class NotificationApiIntegrationTest {
     private String otherToken;
     private String sellerToken;
     private String secondSellerToken;
+    private Long buyerAddressId;
 
     @BeforeEach
     void setUp() {
         Member buyer = saveMember("notification-buyer@example.com", MemberRole.ROLE_USER);
+        buyerAddressId = memberAddressRepository.save(new MemberAddress(
+            buyer, "Home", "Recipient", "01012345678", "12159", "186 Biryong-ro", "101", true
+        )).getId();
         Member other = saveMember("notification-other@example.com", MemberRole.ROLE_USER);
         Member seller = saveMember("notification-seller@example.com", MemberRole.ROLE_SELLER);
         Member secondSeller = saveMember(
@@ -232,8 +241,8 @@ class NotificationApiIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"idempotencyKey":"notification-order"}
-                    """))
+                    {"idempotencyKey":"notification-order","addressId":%d}
+                    """.formatted(buyerAddressId)))
             .andExpect(status().isCreated());
     }
 

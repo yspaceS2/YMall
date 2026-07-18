@@ -11,6 +11,11 @@ public record OrderResponse(
     OrderStatus status,
     BigDecimal totalAmount,
     List<OrderItemResponse> items,
+    OrderDeliveryAddressResponse deliveryAddress,
     LocalDateTime createdAt
 ) {
+    public OrderResponse(Long orderId, OrderStatus status, BigDecimal totalAmount,
+        List<OrderItemResponse> items, LocalDateTime createdAt) {
+        this(orderId, status, totalAmount, items, null, createdAt);
+    }
 }

@@ -23,7 +23,9 @@ import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.member.entity.MemberRole;
+import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderStatus;
@@ -48,6 +50,9 @@ class PaymentApiIntegrationTest {
     private MemberRepository memberRepository;
 
     @Autowired
+    private MemberAddressRepository memberAddressRepository;
+
+    @Autowired
     private CategoryRepository categoryRepository;
 
     @Autowired
@@ -66,6 +71,7 @@ class PaymentApiIntegrationTest {
     private JwtTokenProvider jwtTokenProvider;
 
     private Product product;
+    private Long addressId;
     private String accessToken;
 
     @BeforeEach
@@ -76,6 +82,9 @@ class PaymentApiIntegrationTest {
             "결제 사용자",
             MemberRole.ROLE_USER
         ));
+        addressId = memberAddressRepository.save(new MemberAddress(
+            member, "Home", "Recipient", "01012345678", "12159", "186 Biryong-ro", "101", true
+        )).getId();
         Category category = categoryRepository.save(new Category("결제 상품", "payment-products"));
         product = productRepository.save(new Product(
             category,
@@ -166,8 +175,8 @@ class PaymentApiIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"idempotencyKey":"order-request"}
-                    """))
+                    {"idempotencyKey":"order-request","addressId":%d}
+                    """.formatted(addressId)))
             .andExpect(status().isCreated());
         return orderRepository.findAll().get(0).getId();
     }

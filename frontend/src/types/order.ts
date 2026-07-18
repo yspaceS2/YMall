@@ -26,11 +26,21 @@ export interface Order {
     status: OrderStatus
     totalAmount: number
     items: OrderItem[]
+    deliveryAddress: OrderDeliveryAddress | null
     createdAt: string
+}
+
+export interface OrderDeliveryAddress {
+    recipientName: string
+    recipientPhone: string
+    postalCode: string
+    roadAddress: string
+    detailAddress: string
 }
 
 export interface OrderCreateRequest {
     idempotencyKey: string
+    addressId?: number
 }
 
 export interface MockPaymentRequest {
