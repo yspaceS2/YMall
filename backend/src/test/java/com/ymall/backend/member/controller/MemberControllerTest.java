@@ -48,6 +48,23 @@ class MemberControllerTest {
     }
 
     @Test
+    void emailAvailabilityRejectsInvalidEmail() throws Exception {
+        mockMvc.perform(get("/api/members/email-availability")
+                .param("email", "invalid-email"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    void emailAvailabilityRejectsMissingEmail() throws Exception {
+        mockMvc.perform(get("/api/members/email-availability"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
     void signupReturnsCreatedMember() throws Exception {
         given(memberService.signup(any())).willReturn(new MemberResponse(
             1L,
