@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.member.dto.EmailAvailabilityResponse;
 import com.ymall.backend.member.dto.MemberLoginRequest;
 import com.ymall.backend.member.dto.MemberResponse;
 import com.ymall.backend.member.dto.MemberSignupRequest;
@@ -29,6 +30,11 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
+    public EmailAvailabilityResponse checkEmailAvailability(String requestedEmail) {
+        String email = requestedEmail.trim().toLowerCase(Locale.ROOT);
+        return new EmailAvailabilityResponse(!memberRepository.existsByEmailIgnoreCase(email));
+    }
+
     @Transactional
     public MemberResponse signup(MemberSignupRequest request) {
         String email = request.email().trim().toLowerCase(Locale.ROOT);
@@ -40,6 +46,7 @@ public class MemberService {
             email,
             passwordEncoder.encode(request.password()),
             request.name().trim(),
+            request.phone(),
             MemberRole.ROLE_USER
         );
         Member savedMember;
@@ -53,6 +60,7 @@ public class MemberService {
             savedMember.getId(),
             savedMember.getEmail(),
             savedMember.getName(),
+            savedMember.getPhone(),
             savedMember.getRole(),
             savedMember.getCreatedAt()
         );

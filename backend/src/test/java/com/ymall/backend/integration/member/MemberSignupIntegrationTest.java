@@ -52,6 +52,7 @@ class MemberSignupIntegrationTest {
         assertThat(savedMember.getEmail()).isEqualTo("user@example.com");
         assertThat(savedMember.getPassword()).isNotEqualTo("password123");
         assertThat(passwordEncoder.matches("password123", savedMember.getPassword())).isTrue();
+        assertThat(savedMember.getPhone()).isEqualTo("01012345678");
         assertThat(savedMember.getRole()).isEqualTo(MemberRole.ROLE_USER);
     }
 
@@ -78,7 +79,9 @@ class MemberSignupIntegrationTest {
             {
                 "email": "%s",
                 "password": "password123",
-                "name": "홍길동"
+                "passwordConfirmation": "password123",
+                "name": "홍길동",
+                "phone": "010-1234-5678"
             }
             """.formatted(email);
     }

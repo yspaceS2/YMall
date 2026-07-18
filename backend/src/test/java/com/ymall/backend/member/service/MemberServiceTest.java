@@ -18,8 +18,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.security.JwtTokenProvider;
-import com.ymall.backend.member.dto.MemberResponse;
+import com.ymall.backend.member.dto.EmailAvailabilityResponse;
 import com.ymall.backend.member.dto.MemberLoginRequest;
+import com.ymall.backend.member.dto.MemberResponse;
 import com.ymall.backend.member.dto.MemberSignupRequest;
 import com.ymall.backend.member.dto.TokenResponse;
 import com.ymall.backend.member.entity.Member;
@@ -46,11 +47,23 @@ class MemberServiceTest {
     }
 
     @Test
+    void checkEmailAvailabilityReturnsNormalizedEmailResult() {
+        given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(false);
+
+        EmailAvailabilityResponse response = memberService.checkEmailAvailability(" User@Example.com ");
+
+        assertThat(response.available()).isTrue();
+        verify(memberRepository).existsByEmailIgnoreCase("user@example.com");
+    }
+
+    @Test
     void signupStoresNormalizedEmailAndEncodedPassword() {
         MemberSignupRequest request = new MemberSignupRequest(
             " User@Example.com ",
             "password123",
-            "홍길동"
+            "password123",
+            "홍길동",
+            "010-1234-5678"
         );
         given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(false);
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");
@@ -64,6 +77,8 @@ class MemberServiceTest {
         assertThat(savedMember.getEmail()).isEqualTo("user@example.com");
         assertThat(savedMember.getPassword()).isEqualTo("encoded-password");
         assertThat(savedMember.getPassword()).isNotEqualTo(request.password());
+        assertThat(savedMember.getPhone()).isEqualTo("01012345678");
+        assertThat(response.phone()).isEqualTo("01012345678");
         assertThat(response.role()).isEqualTo(MemberRole.ROLE_USER);
     }
 
@@ -72,7 +87,9 @@ class MemberServiceTest {
         MemberSignupRequest request = new MemberSignupRequest(
             "user@example.com",
             "password123",
-            "홍길동"
+            "password123",
+            "홍길동",
+            "01012345678"
         );
         given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(true);
 
@@ -87,7 +104,9 @@ class MemberServiceTest {
         MemberSignupRequest request = new MemberSignupRequest(
             "user@example.com",
             "password123",
-            "홍길동"
+            "password123",
+            "홍길동",
+            "01012345678"
         );
         given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(false);
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");

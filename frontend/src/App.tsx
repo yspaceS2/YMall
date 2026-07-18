@@ -12,6 +12,7 @@ import { PaymentPage } from './pages/PaymentPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ProductListPage } from './pages/ProductListPage'
 import { SellerManagementPage } from './pages/SellerManagementPage'
+import { SignupPage } from './pages/SignupPage'
 import { AdminManagementPage } from './pages/AdminManagementPage'
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
             <Routes>
                 <Route path="/" element={<ProductListPage />} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
                 <Route path="/products/:productId" element={<ProductDetailPage />} />
                 <Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />
                 <Route

@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 
 interface LoginLocationState {
     from?: string
+    signupCompleted?: boolean
 }
 
 export function LoginPage() {
@@ -46,6 +47,12 @@ export function LoginPage() {
                 <h1 className="m-0 font-serif text-[clamp(38px,5vw,62px)] leading-none font-medium tracking-[-.05em]">다시 만나 반갑습니다.</h1>
                 <p className="mt-5 mb-10.5 text-sm leading-7 text-muted">로그인하고 장바구니와 주문 내역을 이어서 확인하세요.</p>
 
+                {state?.signupCompleted && (
+                    <p className="mb-6 border border-[#a7b866] bg-[#eef3d8] px-4 py-3 text-sm text-[#55620f]" role="status">
+                        회원가입이 완료되었습니다. 새 계정으로 로그인해 주세요.
+                    </p>
+                )}
+
                 <form className="grid gap-6" onSubmit={handleSubmit}>
                     <label className="grid gap-2 text-xs font-bold text-muted">
                         <span>이메일</span>
@@ -76,6 +83,12 @@ export function LoginPage() {
                         {isSubmitting ? '로그인 중...' : '로그인'}
                     </button>
                 </form>
+                <p className="mt-7 text-sm text-muted">
+                    아직 회원이 아니신가요?{' '}
+                    <Link className="font-bold text-ink underline underline-offset-4" to="/signup">
+                        회원가입
+                    </Link>
+                </p>
             </div>
             <aside className="flex min-h-75 flex-col justify-end bg-[radial-gradient(circle_at_75%_22%,rgba(217,255,67,.95),transparent_21%),linear-gradient(145deg,#d9ddc8,#f1f0e8_58%,#c8cfab)] p-5 text-ink min-[601px]:min-h-95 min-[601px]:p-[clamp(40px,7vw,100px)]" aria-hidden="true">
                 <span className="mb-4.5 text-[11px] font-extrabold tracking-[.2em]">YMALL MEMBERS</span>

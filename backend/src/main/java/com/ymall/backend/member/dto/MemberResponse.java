@@ -8,6 +8,7 @@ public record MemberResponse(
     Long memberId,
     String email,
     String name,
+    String phone,
     MemberRole role,
     LocalDateTime createdAt
 ) {
