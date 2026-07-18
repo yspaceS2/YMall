@@ -72,6 +72,9 @@ export function Layout({ children }: { children: ReactNode }) {
                             <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/orders" aria-label="주문 내역">
                                 <ReceiptText className="size-5" aria-hidden="true" />
                             </Link>
+                            <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/mypage" aria-label="내 정보 관리">
+                                <UserRound className="size-5" aria-hidden="true" />
+                            </Link>
                             <Link className="relative inline-grid size-5 place-items-center bg-transparent p-0" to="/notifications" aria-label={`알림 ${unreadCount}개`}>
                                 <Bell className="size-5" aria-hidden="true" />
                                 {unreadCount > 0 && (
