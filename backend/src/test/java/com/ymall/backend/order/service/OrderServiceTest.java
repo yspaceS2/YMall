@@ -23,7 +23,9 @@ import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.member.entity.MemberRole;
+import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.order.dto.OrderCreateRequest;
@@ -50,6 +52,9 @@ class OrderServiceTest {
     private MemberRepository memberRepository;
 
     @Mock
+    private MemberAddressRepository memberAddressRepository;
+
+    @Mock
     private ProductRepository productRepository;
 
     @Mock
@@ -71,12 +76,14 @@ class OrderServiceTest {
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(orderRepository.findByMemberIdAndIdempotencyKey(1L, "request-1"))
             .willReturn(Optional.empty());
+        given(memberAddressRepository.findByIdAndMemberId(1L, 1L))
+            .willReturn(Optional.of(address(member)));
         given(cartItemRepository.findAllByMemberIdForUpdate(1L)).willReturn(List.of(cartItem));
         given(productRepository.findAllByIdForUpdate(List.of(1L))).willReturn(List.of(product));
         given(orderRepository.save(any(Order.class))).willAnswer(invocation -> invocation.getArgument(0));
         given(orderMapper.toOrderResponse(any(Order.class))).willReturn(response);
 
-        OrderResponse result = orderService.createOrder(1L, new OrderCreateRequest("request-1"));
+        OrderResponse result = orderService.createOrder(1L, new OrderCreateRequest("request-1", 1L));
 
         assertThat(result.orderId()).isEqualTo(1L);
         assertThat(product.getStock()).isEqualTo(7);
@@ -95,7 +102,7 @@ class OrderServiceTest {
             .willReturn(Optional.of(existingOrder));
         given(orderMapper.toOrderResponse(existingOrder)).willReturn(response);
 
-        OrderResponse result = orderService.createOrder(1L, new OrderCreateRequest("request-1"));
+        OrderResponse result = orderService.createOrder(1L, new OrderCreateRequest("request-1", 1L));
 
         assertThat(result.orderId()).isEqualTo(10L);
         then(cartItemRepository).shouldHaveNoInteractions();
@@ -112,10 +119,12 @@ class OrderServiceTest {
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(orderRepository.findByMemberIdAndIdempotencyKey(1L, "request-1"))
             .willReturn(Optional.empty());
+        given(memberAddressRepository.findByIdAndMemberId(1L, 1L))
+            .willReturn(Optional.of(address(member)));
         given(cartItemRepository.findAllByMemberIdForUpdate(1L)).willReturn(List.of(cartItem));
         given(productRepository.findAllByIdForUpdate(List.of(1L))).willReturn(List.of(product));
 
-        assertThatThrownBy(() -> orderService.createOrder(1L, new OrderCreateRequest("request-1")))
+        assertThatThrownBy(() -> orderService.createOrder(1L, new OrderCreateRequest("request-1", 1L)))
             .isInstanceOf(BusinessException.class)
             .extracting(exception -> ((BusinessException) exception).getErrorCode())
             .isEqualTo(ErrorCode.INSUFFICIENT_STOCK);
@@ -146,6 +155,19 @@ class OrderServiceTest {
         );
         ReflectionTestUtils.setField(product, "id", 1L);
         return product;
+    }
+
+    private MemberAddress address(Member member) {
+        return new MemberAddress(
+            member,
+            "Home",
+            "Recipient",
+            "01012345678",
+            "12159",
+            "186 Biryong-ro",
+            "101",
+            true
+        );
     }
 
     private OrderResponse response(Long orderId) {

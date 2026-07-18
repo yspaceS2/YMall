@@ -67,6 +67,7 @@ class OrderApiIntegrationTest {
     private JwtTokenProvider jwtTokenProvider;
 
     private Member member;
+    private MemberAddress deliveryAddress;
     private Product product;
     private String accessToken;
 
@@ -77,6 +78,9 @@ class OrderApiIntegrationTest {
             "password",
             "홍길동",
             MemberRole.ROLE_USER
+        ));
+        deliveryAddress = memberAddressRepository.save(new MemberAddress(
+            member, "Home", "Recipient", "01012345678", "12159", "186 Biryong-ro", "101", true
         ));
         Category category = categoryRepository.save(new Category("전자기기", "electronics"));
         product = productRepository.save(new Product(
@@ -212,6 +216,41 @@ class OrderApiIntegrationTest {
             .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"));
     }
 
+    @Test
+    void rejectsOrderWithoutDeliveryAddress() throws Exception {
+        cartItemRepository.save(new CartItem(member, product, 1));
+
+        mockMvc.perform(post("/api/orders")
+                .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"idempotencyKey\":\"missing-address\"}"))
+            .andExpect(status().isBadRequest());
+
+        assertThat(orderRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void rejectsDeliveryAddressOwnedByAnotherMember() throws Exception {
+        Member otherMember = memberRepository.save(new Member(
+            "other@example.com", "password", "Other", MemberRole.ROLE_USER
+        ));
+        MemberAddress otherAddress = memberAddressRepository.save(new MemberAddress(
+            otherMember, "Home", "Other", "01099999999", "12345", "Other road", "202", true
+        ));
+        cartItemRepository.save(new CartItem(member, product, 1));
+
+        mockMvc.perform(post("/api/orders")
+                .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"idempotencyKey":"foreign-address","addressId":%d}
+                    """.formatted(otherAddress.getId())))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("MEMBER_ADDRESS_NOT_FOUND"));
+
+        assertThat(orderRepository.findAll()).isEmpty();
+    }
+
     private org.springframework.test.web.servlet.ResultActions createOrder(String idempotencyKey)
         throws Exception {
         return mockMvc.perform(post("/api/orders")
@@ -223,9 +262,10 @@ class OrderApiIntegrationTest {
     private String orderJson(String idempotencyKey) {
         return """
             {
-                "idempotencyKey": "%s"
+                "idempotencyKey": "%s",
+                "addressId": %d
             }
-            """.formatted(idempotencyKey);
+            """.formatted(idempotencyKey, deliveryAddress.getId());
     }
 
     private String bearer(String token) {

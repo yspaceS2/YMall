@@ -2,7 +2,6 @@ interface KakaoPostcodeResult {
     zonecode: string
     roadAddress: string
     jibunAddress: string
-    userSelectedType: 'R' | 'J'
 }
 
 interface KakaoPostcodeConstructor {
@@ -41,7 +40,7 @@ export async function embedPostcodeSearch(
     if (!window.kakao?.Postcode) throw new Error('주소 검색 서비스를 사용할 수 없습니다.')
     new window.kakao.Postcode({
         oncomplete: (data) => {
-            const address = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress
+            const address = data.roadAddress || data.jibunAddress
             onComplete(data.zonecode, address)
         },
         width: '100%',

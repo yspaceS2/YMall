@@ -152,7 +152,7 @@ public class OrderService {
 
     private DeliveryAddressSnapshot resolveDeliveryAddress(Long memberId, Long addressId) {
         if (addressId == null) {
-            return null;
+            throw new BusinessException(ErrorCode.MEMBER_ADDRESS_NOT_FOUND);
         }
         MemberAddress address = memberAddressRepository.findByIdAndMemberId(addressId, memberId)
             .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_ADDRESS_NOT_FOUND));
