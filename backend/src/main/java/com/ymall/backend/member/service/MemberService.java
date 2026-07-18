@@ -14,6 +14,9 @@ import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.member.dto.EmailAvailabilityResponse;
 import com.ymall.backend.member.dto.MemberLoginRequest;
+import com.ymall.backend.member.dto.MemberPasswordChangeRequest;
+import com.ymall.backend.member.dto.MemberProfileResponse;
+import com.ymall.backend.member.dto.MemberProfileUpdateRequest;
 import com.ymall.backend.member.dto.MemberResponse;
 import com.ymall.backend.member.dto.MemberSignupRequest;
 import com.ymall.backend.member.dto.TokenResponse;
@@ -33,6 +36,26 @@ public class MemberService {
     public EmailAvailabilityResponse checkEmailAvailability(String requestedEmail) {
         String email = requestedEmail.trim().toLowerCase(Locale.ROOT);
         return new EmailAvailabilityResponse(!memberRepository.existsByEmailIgnoreCase(email));
+    }
+
+    public MemberProfileResponse getProfile(Long memberId) {
+        return toProfileResponse(findMember(memberId));
+    }
+
+    @Transactional
+    public MemberProfileResponse updateProfile(Long memberId, MemberProfileUpdateRequest request) {
+        Member member = findMember(memberId);
+        member.updateProfile(request.name(), request.phone());
+        return toProfileResponse(member);
+    }
+
+    @Transactional
+    public void changePassword(Long memberId, MemberPasswordChangeRequest request) {
+        Member member = findMember(memberId);
+        if (!passwordEncoder.matches(request.currentPassword(), member.getPassword())) {
+            throw new BusinessException(ErrorCode.CURRENT_PASSWORD_MISMATCH);
+        }
+        member.changePassword(passwordEncoder.encode(request.newPassword()));
     }
 
     @Transactional
@@ -74,5 +97,21 @@ public class MemberService {
         }
 
         return jwtTokenProvider.createAccessToken(member);
+    }
+
+    private Member findMember(Long memberId) {
+        return memberRepository.findById(memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    private MemberProfileResponse toProfileResponse(Member member) {
+        return new MemberProfileResponse(
+            member.getId(),
+            member.getEmail(),
+            member.getName(),
+            member.getPhone(),
+            member.getRole(),
+            member.getCreatedAt()
+        );
     }
 }

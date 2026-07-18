@@ -60,6 +60,15 @@ public class Member {
         this.role = role;
     }
 
+    public void updateProfile(String name, String phone) {
+        this.name = name;
+        this.phone = phone;
+    }
+
+    public void changePassword(String password) {
+        this.password = password;
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
