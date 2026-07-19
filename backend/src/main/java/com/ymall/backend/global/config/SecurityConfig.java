@@ -7,6 +7,7 @@ import static org.springframework.http.HttpMethod.PUT;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -21,6 +22,10 @@ import com.ymall.backend.global.security.JwtAccessDeniedHandler;
 import com.ymall.backend.global.security.JwtAuthenticationEntryPoint;
 import com.ymall.backend.global.security.JwtAuthenticationFilter;
 import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.global.security.CustomOAuth2UserService;
+import com.ymall.backend.global.security.CustomOidcUserService;
+import com.ymall.backend.global.security.OAuth2AuthenticationFailureHandler;
+import com.ymall.backend.global.security.OAuth2AuthenticationSuccessHandler;
 import com.ymall.backend.global.security.SecurityErrorResponseWriter;
 
 @Configuration
@@ -29,9 +34,13 @@ public class SecurityConfig {
 
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
+    private final CustomOAuth2UserService oAuth2UserService;
+    private final CustomOidcUserService oidcUserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oAuth2FailureHandler;
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    public static PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
@@ -46,8 +55,17 @@ public class SecurityConfig {
     ) throws Exception {
         return http
             .csrf(AbstractHttpConfigurer::disable)
+            .cors(Customizer.withDefaults())
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable)
+            .oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo
+                    .userService(oAuth2UserService)
+                    .oidcUserService(oidcUserService)
+                )
+                .successHandler(oAuth2SuccessHandler)
+                .failureHandler(oAuth2FailureHandler)
+            )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
@@ -56,8 +74,16 @@ public class SecurityConfig {
                 .accessDeniedHandler(accessDeniedHandler)
             )
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers(POST, "/api/members/signup", "/api/members/login").permitAll()
+                .requestMatchers(
+                    POST,
+                    "/api/members/signup",
+                    "/api/members/login",
+                    "/api/members/oauth2/signup",
+                    "/api/members/oauth2/email-verifications",
+                    "/api/members/oauth2/email-verifications/confirm"
+                ).permitAll()
                 .requestMatchers(GET, "/api/members/email-availability").permitAll()
+                .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers(GET, "/api/products/**", "/api/categories/**", "/images/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/seller/**").hasAnyRole("SELLER", "ADMIN")

@@ -5,6 +5,7 @@ export interface AuthContextValue {
     isAuthenticated: boolean
     role: MemberRole | null
     login: (request: LoginRequest) => Promise<void>
+    completeOAuthLogin: (accessToken: string) => void
     logout: () => void
 }
 

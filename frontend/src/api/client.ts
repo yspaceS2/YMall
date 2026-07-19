@@ -1,4 +1,4 @@
-import { clearAccessToken, getAccessToken, notifyUnauthorized } from '../auth/tokenStorage'
+import { clearAccessTokenIfMatches, getAccessToken, notifyUnauthorized } from '../auth/tokenStorage'
 import type { ApiResponse, ErrorResponse } from '../types/api'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
@@ -34,6 +34,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
     const response = await fetch(`${API_BASE_URL}${path}`, {
         ...requestInit,
+        credentials: requestInit.credentials ?? 'include',
         headers,
         body: body === undefined ? undefined : JSON.stringify(body),
     })
@@ -41,8 +42,12 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     if (!response.ok) {
         const error = (await response.json().catch(() => null)) as ErrorResponse | null
         if (response.status === 401 && auth) {
-            clearAccessToken()
-            notifyUnauthorized()
+            if (token) {
+                clearAccessTokenIfMatches(token)
+                if (getAccessToken() === null) {
+                    notifyUnauthorized()
+                }
+            }
         }
         throw new ApiError(
             error?.error.message ?? '요청을 처리하지 못했습니다.',

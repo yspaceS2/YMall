@@ -1,4 +1,4 @@
-import type { EmailAvailabilityResponse, LoginRequest, MemberAddress, MemberAddressRequest, MemberPasswordChangeRequest, MemberProfile, MemberProfileUpdateRequest, MemberResponse, SignupRequest, TokenResponse } from '../types/auth'
+import type { EmailAvailabilityResponse, LoginRequest, MemberAddress, MemberAddressRequest, MemberPasswordChangeRequest, MemberProfile, MemberProfileUpdateRequest, MemberResponse, OAuthAccount, OAuthLinkResponse, OAuthProvider, OAuthSignupRequest, SignupRequest, TokenResponse } from '../types/auth'
 import { apiRequest } from './client'
 
 export function loginMember(request: LoginRequest) {
@@ -40,6 +40,41 @@ export function changeMemberPassword(request: MemberPasswordChangeRequest) {
         method: 'PATCH',
         body: request,
     })
+}
+
+export function getOAuthAccounts(signal?: AbortSignal) {
+    return apiRequest<OAuthAccount[]>('/members/me/oauth-accounts', { signal })
+}
+
+export function startOAuthAccountLink(provider: OAuthProvider) {
+    return apiRequest<OAuthLinkResponse>(`/members/me/oauth-accounts/${provider.toLowerCase()}/links`, {
+        method: 'POST',
+    })
+}
+
+export function completeOAuthSignup(request: OAuthSignupRequest) {
+    return apiRequest<TokenResponse>('/members/oauth2/signup', {
+        method: 'POST',
+        body: request,
+        auth: false,
+    })
+}
+
+export function requestOAuthEmailVerification(email: string) {
+    return apiRequest<void>('/members/oauth2/email-verifications', {
+        method: 'POST', body: { email }, auth: false,
+    })
+}
+
+export function confirmOAuthEmailVerification(email: string, code: string) {
+    return apiRequest<void>('/members/oauth2/email-verifications/confirm', {
+        method: 'POST', body: { email, code }, auth: false,
+    })
+}
+
+export function getOAuthAuthorizationUrl(provider: OAuthProvider) {
+    const baseUrl = (import.meta.env.VITE_OAUTH2_BASE_URL ?? '').replace(/\/$/, '')
+    return `${baseUrl}/oauth2/authorization/${provider.toLowerCase()}`
 }
 
 export function getMemberAddresses(signal?: AbortSignal) {

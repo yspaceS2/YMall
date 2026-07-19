@@ -14,6 +14,8 @@ import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ProductListPage } from './pages/ProductListPage'
 import { SellerManagementPage } from './pages/SellerManagementPage'
 import { SignupPage } from './pages/SignupPage'
+import { OAuth2CallbackPage } from './pages/OAuth2CallbackPage'
+import { OAuthSignupPage } from './pages/OAuthSignupPage'
 import { AdminManagementPage } from './pages/AdminManagementPage'
 
 function App() {
@@ -23,6 +25,8 @@ function App() {
                 <Route path="/" element={<ProductListPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
+                <Route path="/oauth2/callback" element={<OAuth2CallbackPage />} />
+                <Route path="/oauth2/signup" element={<OAuthSignupPage />} />
                 <Route path="/products/:productId" element={<ProductDetailPage />} />
                 <Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />
                 <Route

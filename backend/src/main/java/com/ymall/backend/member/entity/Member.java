@@ -29,8 +29,12 @@ public class Member {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(nullable = false, length = 100)
+    @Column(length = 100)
     private String password;
+
+    public boolean hasPassword() {
+        return password != null;
+    }
 
     @Column(nullable = false, length = 50)
     private String name;

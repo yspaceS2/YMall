@@ -29,6 +29,7 @@ export interface MemberProfile {
   email: string
   name: string
   phone: string | null
+  hasPassword: boolean
   role: MemberRole
   createdAt: string
 }
@@ -58,6 +59,22 @@ export interface MemberAddress {
 export type MemberAddressRequest = Omit<MemberAddress, 'addressId'>
 
 export type MemberRole = 'ROLE_USER' | 'ROLE_SELLER' | 'ROLE_ADMIN'
+
+export type OAuthProvider = 'GOOGLE' | 'KAKAO' | 'NAVER'
+
+export interface OAuthAccount {
+  provider: OAuthProvider
+}
+
+export interface OAuthLinkResponse {
+  authorizationUrl: string
+}
+
+export interface OAuthSignupRequest {
+  email: string
+  name: string
+  phone: string
+}
 
 export interface TokenResponse {
   accessToken: string

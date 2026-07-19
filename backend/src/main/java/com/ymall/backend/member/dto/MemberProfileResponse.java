@@ -9,6 +9,7 @@ public record MemberProfileResponse(
     String email,
     String name,
     String phone,
+    boolean hasPassword,
     MemberRole role,
     LocalDateTime createdAt
 ) {
