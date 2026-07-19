@@ -18,6 +18,7 @@ public class OAuthFlowContext {
 
     private static final String SESSION_KEY = OAuthFlowContext.class.getName() + ".request";
     private static final String LINK_SESSION_KEY = OAuthFlowContext.class.getName() + ".link";
+    private static final String EMAIL_SESSION_KEY = OAuthFlowContext.class.getName() + ".email";
 
     public void startLink(HttpServletRequest request, Long memberId, OAuthProvider provider) {
         request.getSession(true).setAttribute(
@@ -66,7 +67,50 @@ public class OAuthFlowContext {
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.removeAttribute(SESSION_KEY);
+            session.removeAttribute(EMAIL_SESSION_KEY);
         }
+    }
+
+    public void startEmailVerification(HttpServletRequest request, String email, String code) {
+        request.getSession(true).setAttribute(
+            EMAIL_SESSION_KEY,
+            new EmailVerification(email, code, false, 0, Instant.now().plus(5, ChronoUnit.MINUTES))
+        );
+    }
+
+    public boolean verifyEmail(HttpServletRequest request, String email, String code) {
+        HttpSession session = request.getSession(false);
+        if (session == null
+            || !(session.getAttribute(EMAIL_SESSION_KEY) instanceof EmailVerification verification)
+            || verification.expiresAt().isBefore(Instant.now())
+            || verification.attempts() >= 5
+            || !verification.email().equals(email)) {
+            return false;
+        }
+        boolean verified = verification.code().equals(code);
+        session.setAttribute(
+            EMAIL_SESSION_KEY,
+            new EmailVerification(
+                verification.email(),
+                verification.code(),
+                verified,
+                verification.attempts() + 1,
+                verification.expiresAt()
+            )
+        );
+        return verified;
+    }
+
+    public Optional<String> getVerifiedEmail(HttpServletRequest request, String email) {
+        HttpSession session = request.getSession(false);
+        if (session == null
+            || !(session.getAttribute(EMAIL_SESSION_KEY) instanceof EmailVerification verification)
+            || !verification.verified()
+            || verification.expiresAt().isBefore(Instant.now())
+            || !verification.email().equals(email)) {
+            return Optional.empty();
+        }
+        return Optional.of(verification.email());
     }
 
     public record PendingSignup(OAuthProvider provider, OAuth2UserProfile profile) {
@@ -80,5 +124,14 @@ public class OAuthFlowContext {
     }
 
     private record LinkRequest(Long memberId, OAuthProvider provider, Instant expiresAt) {
+    }
+
+    private record EmailVerification(
+        String email,
+        String code,
+        boolean verified,
+        int attempts,
+        Instant expiresAt
+    ) {
     }
 }

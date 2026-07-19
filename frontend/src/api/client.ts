@@ -34,6 +34,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
     const response = await fetch(`${API_BASE_URL}${path}`, {
         ...requestInit,
+        credentials: requestInit.credentials ?? 'include',
         headers,
         body: body === undefined ? undefined : JSON.stringify(body),
     })

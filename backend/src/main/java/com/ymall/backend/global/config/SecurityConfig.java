@@ -7,6 +7,7 @@ import static org.springframework.http.HttpMethod.PUT;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -54,6 +55,7 @@ public class SecurityConfig {
     ) throws Exception {
         return http
             .csrf(AbstractHttpConfigurer::disable)
+            .cors(Customizer.withDefaults())
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable)
             .oauth2Login(oauth2 -> oauth2
@@ -76,7 +78,9 @@ public class SecurityConfig {
                     POST,
                     "/api/members/signup",
                     "/api/members/login",
-                    "/api/members/oauth2/signup"
+                    "/api/members/oauth2/signup",
+                    "/api/members/oauth2/email-verifications",
+                    "/api/members/oauth2/email-verifications/confirm"
                 ).permitAll()
                 .requestMatchers(GET, "/api/members/email-availability").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()

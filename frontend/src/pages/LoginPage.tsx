@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { clearAccessToken } from '../auth/tokenStorage'
+import { getOAuthAuthorizationUrl } from '../api/auth'
 
 interface LoginLocationState {
     from?: string
@@ -117,15 +118,15 @@ export function LoginPage() {
                     <span className="h-px flex-1 bg-line" />
                 </div>
                 <div className="grid gap-3">
-                    <a className="relative grid h-12 place-items-center border border-[#dadce0] bg-white px-12 text-sm font-bold text-[#3c4043]" href="/oauth2/authorization/google" onClick={clearAccessToken}>
+                    <a className="relative grid h-12 place-items-center border border-[#dadce0] bg-white px-12 text-sm font-bold text-[#3c4043]" href={getOAuthAuthorizationUrl('GOOGLE')} onClick={clearAccessToken}>
                         <span className="absolute left-4"><GoogleLogo /></span>
                         <span>Google로 계속하기</span>
                     </a>
-                    <a className="relative grid h-12 place-items-center bg-[#fee500] px-12 text-sm font-bold text-[#191919]" href="/oauth2/authorization/kakao" onClick={clearAccessToken}>
+                    <a className="relative grid h-12 place-items-center bg-[#fee500] px-12 text-sm font-bold text-[#191919]" href={getOAuthAuthorizationUrl('KAKAO')} onClick={clearAccessToken}>
                         <span className="absolute left-4"><KakaoLogo /></span>
                         <span>카카오로 계속하기</span>
                     </a>
-                    <a className="relative grid h-12 place-items-center bg-[#03c75a] px-12 text-sm font-bold text-white" href="/oauth2/authorization/naver" onClick={clearAccessToken}>
+                    <a className="relative grid h-12 place-items-center bg-[#03c75a] px-12 text-sm font-bold text-white" href={getOAuthAuthorizationUrl('NAVER')} onClick={clearAccessToken}>
                         <span className="absolute left-4"><NaverLogo /></span>
                         <span>네이버로 계속하기</span>
                     </a>

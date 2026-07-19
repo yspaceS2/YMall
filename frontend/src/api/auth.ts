@@ -60,6 +60,23 @@ export function completeOAuthSignup(request: OAuthSignupRequest) {
     })
 }
 
+export function requestOAuthEmailVerification(email: string) {
+    return apiRequest<void>('/members/oauth2/email-verifications', {
+        method: 'POST', body: { email }, auth: false,
+    })
+}
+
+export function confirmOAuthEmailVerification(email: string, code: string) {
+    return apiRequest<void>('/members/oauth2/email-verifications/confirm', {
+        method: 'POST', body: { email, code }, auth: false,
+    })
+}
+
+export function getOAuthAuthorizationUrl(provider: OAuthProvider) {
+    const baseUrl = (import.meta.env.VITE_OAUTH2_BASE_URL ?? '').replace(/\/$/, '')
+    return `${baseUrl}/oauth2/authorization/${provider.toLowerCase()}`
+}
+
 export function getMemberAddresses(signal?: AbortSignal) {
     return apiRequest<MemberAddress[]>('/members/me/addresses', { signal })
 }

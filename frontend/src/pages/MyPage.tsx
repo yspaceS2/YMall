@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { changeMemberPassword, getMemberProfile, getOAuthAccounts, startOAuthAccountLink, updateMemberProfile } from '../api/auth'
+import { changeMemberPassword, getMemberProfile, getOAuthAccounts, getOAuthAuthorizationUrl, startOAuthAccountLink, updateMemberProfile } from '../api/auth'
 import { ApiError } from '../api/client'
 import type { MemberProfile, OAuthProvider } from '../types/auth'
 import { AddressManager } from '../components/AddressManager'
@@ -41,8 +41,8 @@ export function MyPage() {
         setErrorMessage('')
         setLinkingProvider(provider)
         try {
-            const response = await startOAuthAccountLink(provider)
-            window.location.assign(response.authorizationUrl)
+            await startOAuthAccountLink(provider)
+            window.location.assign(getOAuthAuthorizationUrl(provider))
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '소셜 계정 연결을 시작하지 못했습니다.')
             setLinkingProvider(null)

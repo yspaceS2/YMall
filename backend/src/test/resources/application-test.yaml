@@ -12,6 +12,10 @@ spring:
     properties:
       hibernate:
         format_sql: false
+  flyway:
+    enabled: false
+  mail:
+    host: localhost
 
   security:
     oauth2:
@@ -31,3 +35,5 @@ ymall:
     image-url-prefix: /images
     thumbnail-width: 300
     thumbnail-height: 300
+  mail:
+    from: test@ymall.local
