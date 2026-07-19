@@ -13,6 +13,15 @@ spring:
       hibernate:
         format_sql: false
 
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            scope: openid, profile, email
+
 ymall:
   jwt:
     secret: test-jwt-secret-key-for-ymall-that-is-at-least-32-bytes-long

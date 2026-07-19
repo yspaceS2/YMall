@@ -1,4 +1,4 @@
-import type { EmailAvailabilityResponse, LoginRequest, MemberAddress, MemberAddressRequest, MemberPasswordChangeRequest, MemberProfile, MemberProfileUpdateRequest, MemberResponse, SignupRequest, TokenResponse } from '../types/auth'
+import type { EmailAvailabilityResponse, LoginRequest, MemberAddress, MemberAddressRequest, MemberPasswordChangeRequest, MemberProfile, MemberProfileUpdateRequest, MemberResponse, OAuthAccount, OAuthLinkResponse, OAuthProvider, OAuthSignupRequest, SignupRequest, TokenResponse } from '../types/auth'
 import { apiRequest } from './client'
 
 export function loginMember(request: LoginRequest) {
@@ -39,6 +39,24 @@ export function changeMemberPassword(request: MemberPasswordChangeRequest) {
     return apiRequest<void>('/members/me/password', {
         method: 'PATCH',
         body: request,
+    })
+}
+
+export function getOAuthAccounts(signal?: AbortSignal) {
+    return apiRequest<OAuthAccount[]>('/members/me/oauth-accounts', { signal })
+}
+
+export function startOAuthAccountLink(provider: OAuthProvider) {
+    return apiRequest<OAuthLinkResponse>(`/members/me/oauth-accounts/${provider.toLowerCase()}/links`, {
+        method: 'POST',
+    })
+}
+
+export function completeOAuthSignup(request: OAuthSignupRequest) {
+    return apiRequest<TokenResponse>('/members/oauth2/signup', {
+        method: 'POST',
+        body: request,
+        auth: false,
     })
 }
 

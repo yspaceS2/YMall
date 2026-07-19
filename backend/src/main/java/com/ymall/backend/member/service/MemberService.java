@@ -52,7 +52,8 @@ public class MemberService {
     @Transactional
     public void changePassword(Long memberId, MemberPasswordChangeRequest request) {
         Member member = findMember(memberId);
-        if (!passwordEncoder.matches(request.currentPassword(), member.getPassword())) {
+        if (!member.hasPassword()
+            || !passwordEncoder.matches(request.currentPassword(), member.getPassword())) {
             throw new BusinessException(ErrorCode.CURRENT_PASSWORD_MISMATCH);
         }
         member.changePassword(passwordEncoder.encode(request.newPassword()));
@@ -92,7 +93,7 @@ public class MemberService {
     public TokenResponse login(MemberLoginRequest request) {
         Member member = memberRepository.findByEmailIgnoreCase(request.email())
             .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
-        if (!passwordEncoder.matches(request.password(), member.getPassword())) {
+        if (!member.hasPassword() || !passwordEncoder.matches(request.password(), member.getPassword())) {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
 
@@ -110,6 +111,7 @@ public class MemberService {
             member.getEmail(),
             member.getName(),
             member.getPhone(),
+            member.hasPassword(),
             member.getRole(),
             member.getCreatedAt()
         );

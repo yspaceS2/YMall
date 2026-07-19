@@ -24,6 +24,12 @@ export function clearAccessToken() {
     window.dispatchEvent(new Event(AUTH_CHANGED_EVENT))
 }
 
+export function clearAccessTokenIfMatches(token: string) {
+    if (localStorage.getItem(ACCESS_TOKEN_KEY) === token) {
+        clearAccessToken()
+    }
+}
+
 export function notifyUnauthorized() {
     window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT))
 }

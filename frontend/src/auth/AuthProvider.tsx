@@ -81,6 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(getTokenRole(response.accessToken))
     }, [])
 
+    const completeOAuthLogin = useCallback((accessToken: string) => {
+        setAccessToken(accessToken)
+        setIsAuthenticated(true)
+        setRole(getTokenRole(accessToken))
+    }, [])
+
     const logout = useCallback(() => {
         clearAccessToken()
         setIsAuthenticated(false)
@@ -89,8 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [navigate])
 
     const value = useMemo(
-        () => ({ isAuthenticated, role, login, logout }),
-        [isAuthenticated, role, login, logout],
+        () => ({ isAuthenticated, role, login, completeOAuthLogin, logout }),
+        [isAuthenticated, role, login, completeOAuthLogin, logout],
     )
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { changeMemberPassword, getMemberProfile, updateMemberProfile } from '../api/auth'
+import { changeMemberPassword, getMemberProfile, getOAuthAccounts, startOAuthAccountLink, updateMemberProfile } from '../api/auth'
 import { ApiError } from '../api/client'
-import type { MemberProfile } from '../types/auth'
+import type { MemberProfile, OAuthProvider } from '../types/auth'
 import { AddressManager } from '../components/AddressManager'
 
 export function MyPage() {
@@ -17,14 +17,17 @@ export function MyPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isSavingProfile, setIsSavingProfile] = useState(false)
     const [isChangingPassword, setIsChangingPassword] = useState(false)
+    const [linkedProviders, setLinkedProviders] = useState<OAuthProvider[]>([])
+    const [linkingProvider, setLinkingProvider] = useState<OAuthProvider | null>(null)
 
     useEffect(() => {
         const controller = new AbortController()
-        getMemberProfile(controller.signal)
-            .then((response) => {
-                setProfile(response)
-                setName(response.name)
-                setPhone(response.phone ?? '')
+        Promise.all([getMemberProfile(controller.signal), getOAuthAccounts(controller.signal)])
+            .then(([profileResponse, accountResponse]) => {
+                setProfile(profileResponse)
+                setName(profileResponse.name)
+                setPhone(profileResponse.phone ?? '')
+                setLinkedProviders(accountResponse.map((account) => account.provider))
             })
             .catch((error: unknown) => {
                 if (error instanceof Error && error.name === 'AbortError') return
@@ -33,6 +36,18 @@ export function MyPage() {
             .finally(() => setIsLoading(false))
         return () => controller.abort()
     }, [])
+
+    async function handleOAuthLink(provider: OAuthProvider) {
+        setErrorMessage('')
+        setLinkingProvider(provider)
+        try {
+            const response = await startOAuthAccountLink(provider)
+            window.location.assign(response.authorizationUrl)
+        } catch (error) {
+            setErrorMessage(error instanceof ApiError ? error.message : '소셜 계정 연결을 시작하지 못했습니다.')
+            setLinkingProvider(null)
+        }
+    }
 
     async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -120,7 +135,7 @@ export function MyPage() {
                     </button>
                 </form>
 
-                <form className="grid content-start gap-5 border border-line bg-white p-6 min-[601px]:p-8" onSubmit={handlePasswordSubmit}>
+                {profile.hasPassword ? <form className="grid content-start gap-5 border border-line bg-white p-6 min-[601px]:p-8" onSubmit={handlePasswordSubmit}>
                     <div>
                         <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">SECURITY</p>
                         <h2 className="mt-2 font-serif text-3xl">비밀번호 변경</h2>
@@ -142,7 +157,37 @@ export function MyPage() {
                     <button className="mt-2 h-12 border border-ink bg-ink font-extrabold text-white disabled:opacity-60" type="submit" disabled={isChangingPassword || !isPasswordMatched || currentPassword.length === 0}>
                         {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
                     </button>
-                </form>
+                </form> : <div className="grid content-start gap-5 border border-line bg-[#f7f7f2] p-6 min-[601px]:p-8">
+                    <div>
+                        <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">SECURITY</p>
+                        <h2 className="mt-2 font-serif text-3xl">소셜 로그인 계정</h2>
+                    </div>
+                    <p className="text-sm leading-7 text-muted">이 계정은 비밀번호 없이 연결된 소셜 계정으로 로그인합니다. 비밀번호 변경은 제공되지 않습니다.</p>
+                </div>}
+            </div>
+            <div className="mt-8 border border-line bg-white p-6 min-[601px]:p-8">
+                <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">SOCIAL LOGIN</p>
+                <h2 className="mt-2 font-serif text-3xl">연결된 소셜 계정</h2>
+                <p className="mt-3 text-sm text-muted">소셜 계정을 연결하면 해당 계정으로도 같은 YMall 회원에 로그인할 수 있습니다.</p>
+                <div className="mt-6 grid gap-3 min-[701px]:grid-cols-3">
+                    {(['GOOGLE', 'KAKAO', 'NAVER'] as OAuthProvider[]).map((provider) => {
+                        const isLinked = linkedProviders.includes(provider)
+                        return (
+                            <button
+                                className="flex h-13 items-center justify-between border border-line px-4 text-sm font-bold disabled:bg-[#f4f4ef] disabled:text-muted"
+                                type="button"
+                                key={provider}
+                                disabled={isLinked || linkingProvider !== null}
+                                onClick={() => handleOAuthLink(provider)}
+                            >
+                                <span>{provider === 'GOOGLE' ? 'Google' : provider === 'KAKAO' ? '카카오' : '네이버'}</span>
+                                <span className={isLinked ? 'text-[#657617]' : 'text-ink'}>
+                                    {isLinked ? '연결됨' : linkingProvider === provider ? '연결 중...' : '연결하기'}
+                                </span>
+                            </button>
+                        )
+                    })}
+                </div>
             </div>
             <AddressManager defaultRecipientName={profile.name} defaultRecipientPhone={profile.phone ?? ''} />
         </section>
