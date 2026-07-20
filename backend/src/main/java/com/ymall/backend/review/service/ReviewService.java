@@ -22,6 +22,7 @@ import com.ymall.backend.order.repository.OrderItemRepository;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.review.dto.ReviewCreateRequest;
 import com.ymall.backend.review.dto.ReviewResponse;
 import com.ymall.backend.review.dto.ReviewUpdateRequest;
@@ -39,6 +40,7 @@ public class ReviewService {
     private final OrderItemRepository orderItemRepository;
     private final MemberRepository memberRepository;
     private final ProductRepository productRepository;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
     public PageResponse<ReviewResponse> getProductReviews(Long productId, int page, int size) {
         if (!productRepository.existsByIdAndStatus(productId, ProductStatus.APPROVED)) {
@@ -81,6 +83,7 @@ public class ReviewService {
             request.content().trim()
         ));
         refreshProductRating(product);
+        productCacheInvalidator.evictDetail(product.getId());
         return ReviewResponse.from(review);
     }
 
@@ -91,6 +94,7 @@ public class ReviewService {
         review.update(request.rating(), request.content().trim());
         reviewRepository.flush();
         refreshProductRating(product);
+        productCacheInvalidator.evictDetail(product.getId());
         return ReviewResponse.from(review);
     }
 
@@ -101,6 +105,7 @@ public class ReviewService {
         reviewRepository.delete(review);
         reviewRepository.flush();
         refreshProductRating(product);
+        productCacheInvalidator.evictDetail(product.getId());
     }
 
     private Review getOwnedReview(Long memberId, Long reviewId) {

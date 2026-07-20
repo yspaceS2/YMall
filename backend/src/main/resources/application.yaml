@@ -42,3 +42,5 @@ ymall:
     image-url-prefix: /images
     thumbnail-width: 300
     thumbnail-height: 300
+  cache:
+    product-detail-ttl: ${PRODUCT_DETAIL_CACHE_TTL:10m}

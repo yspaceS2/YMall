@@ -15,17 +15,14 @@ import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
 public class RedisConfig {
 
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(
-            RedisConnectionFactory connectionFactory,
-            ObjectMapper objectMapper
-    ) {
-        StringRedisSerializer keySerializer = new StringRedisSerializer();
+    public GenericJacksonJsonRedisSerializer redisValueSerializer(ObjectMapper objectMapper) {
         PolymorphicTypeValidator typeValidator = BasicPolymorphicTypeValidator.builder()
                 .allowIfSubType("com.ymall.backend.")
                 .allowIfSubType("java.util.")
+                .allowIfSubType("java.math.")
                 .allowIfSubTypeIsArray()
                 .build();
-        GenericJacksonJsonRedisSerializer valueSerializer = GenericJacksonJsonRedisSerializer
+        return GenericJacksonJsonRedisSerializer
                 .builder(objectMapper::rebuild)
                 .customize(builder -> builder.activateDefaultTypingAsProperty(
                         typeValidator,
@@ -33,13 +30,21 @@ public class RedisConfig {
                         "@class"
                 ))
                 .build();
+    }
+
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate(
+            RedisConnectionFactory connectionFactory,
+            GenericJacksonJsonRedisSerializer redisValueSerializer
+    ) {
+        StringRedisSerializer keySerializer = new StringRedisSerializer();
 
         RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(connectionFactory);
         redisTemplate.setKeySerializer(keySerializer);
         redisTemplate.setHashKeySerializer(keySerializer);
-        redisTemplate.setValueSerializer(valueSerializer);
-        redisTemplate.setHashValueSerializer(valueSerializer);
+        redisTemplate.setValueSerializer(redisValueSerializer);
+        redisTemplate.setHashValueSerializer(redisValueSerializer);
         return redisTemplate;
     }
 }

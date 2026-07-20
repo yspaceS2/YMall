@@ -5,12 +5,14 @@ import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.global.config.ProductCacheNames;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.product.dto.CategoryResponse;
@@ -35,6 +37,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
     /**
      * 사용자에게 노출되는 상품 목록은 승인된 상품만 대상으로 한다.
@@ -53,6 +56,7 @@ public class ProductService {
      * 상품 상세 조회도 공개 목록과 동일하게 APPROVED 상태만 허용한다.
      * DELETED, DRAFT, PENDING 상품은 외부 사용자가 존재 여부를 알 수 없도록 404로 처리한다.
      */
+    @Cacheable(cacheNames = ProductCacheNames.DETAILS, key = "#productId", sync = true)
     public ProductDetailResponse getProduct(Long productId) {
         return productRepository.findWithCategoryAndImagesById(productId)
             .filter(product -> product.getStatus() == ProductStatus.APPROVED)
@@ -124,6 +128,8 @@ public class ProductService {
         );
         product.replaceImages(productMapper.toImageEntities(request));
 
+        productCacheInvalidator.evictDetail(productId);
+
         return productMapper.toProductDetailResponse(product);
     }
 
@@ -136,6 +142,7 @@ public class ProductService {
         Product product = getProductEntity(productId);
 
         product.delete();
+        productCacheInvalidator.evictDetail(productId);
     }
 
     /**

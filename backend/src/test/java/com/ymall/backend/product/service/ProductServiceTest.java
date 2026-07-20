@@ -44,6 +44,9 @@ class ProductServiceTest {
     @Mock
     private ProductMapper productMapper;
 
+    @Mock
+    private ProductCacheInvalidator productCacheInvalidator;
+
     @InjectMocks
     private ProductService productService;
 

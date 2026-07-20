@@ -22,6 +22,7 @@ import com.ymall.backend.order.repository.OrderRepository;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.seller.repository.SellerProfileRepository;
 
 @Service
@@ -36,6 +37,7 @@ public class AdminService {
     private final SellerProfileRepository sellerProfileRepository;
     private final OrderRepository orderRepository;
     private final AdminMapper adminMapper;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
     public PageResponse<AdminProductResponse> getProducts(
         ProductStatus status,
@@ -70,6 +72,7 @@ public class AdminService {
         } else {
             product.reject();
         }
+        productCacheInvalidator.evictDetail(productId);
 
         return adminMapper.toProductResponse(product);
     }

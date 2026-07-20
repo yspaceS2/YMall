@@ -90,3 +90,5 @@ ymall:
     frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:5173/oauth2/callback}
   mail:
     from: ${MAIL_FROM}
+  cache:
+    product-detail-ttl: ${PRODUCT_DETAIL_CACHE_TTL:10m}

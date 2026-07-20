@@ -1,0 +1,50 @@
+package com.ymall.backend.product.service;
+
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import com.ymall.backend.global.config.ProductCacheNames;
+
+@ExtendWith(MockitoExtension.class)
+class ProductCacheInvalidatorTest {
+
+    @Mock private CacheManager cacheManager;
+    @Mock private Cache cache;
+
+    @AfterEach
+    void tearDown() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+        TransactionSynchronizationManager.setActualTransactionActive(false);
+    }
+
+    @Test
+    void evictsProductDetailOnlyAfterTransactionCommit() {
+        when(cacheManager.getCache(ProductCacheNames.DETAILS)).thenReturn(cache);
+        ProductCacheInvalidator invalidator = new ProductCacheInvalidator(cacheManager);
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        TransactionSynchronizationManager.initSynchronization();
+
+        invalidator.evictDetail(1L);
+
+        verify(cache, never()).evictIfPresent(1L);
+        List<TransactionSynchronization> synchronizations =
+            TransactionSynchronizationManager.getSynchronizations();
+        synchronizations.forEach(TransactionSynchronization::afterCommit);
+        verify(cache).evictIfPresent(1L);
+    }
+}

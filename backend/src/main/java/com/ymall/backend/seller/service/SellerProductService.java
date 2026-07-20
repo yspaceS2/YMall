@@ -21,6 +21,7 @@ import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.mapper.ProductMapper;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.seller.entity.SellerProfile;
 
 @Service
@@ -34,6 +35,7 @@ public class SellerProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
     public PageResponse<ProductListResponse> getProducts(Long memberId, int page, int size) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
@@ -85,6 +87,7 @@ public class SellerProductService {
         );
         product.replaceImages(productMapper.toImageEntities(request));
         product.requestApproval();
+        productCacheInvalidator.evictDetail(productId);
         return productMapper.toProductDetailResponse(product);
     }
 
@@ -92,6 +95,7 @@ public class SellerProductService {
     public void deleteProduct(Long memberId, Long productId) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         getOwnedProduct(profile.getId(), productId).delete();
+        productCacheInvalidator.evictDetail(productId);
     }
 
     private Product getOwnedProduct(Long sellerProfileId, Long productId) {

@@ -1,6 +1,7 @@
 package com.ymall.backend.integration.review;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -19,6 +20,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,7 @@ import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.review.repository.ReviewRepository;
 
 @SpringBootTest
@@ -66,6 +69,9 @@ class ReviewApiIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @MockitoSpyBean
+    private ProductCacheInvalidator productCacheInvalidator;
 
     private Member buyer;
     private Member otherMember;
@@ -112,6 +118,8 @@ class ReviewApiIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.data.rating").value(5))
             .andExpect(jsonPath("$.data.authorName").value("구매자"));
+
+        verify(productCacheInvalidator).evictDetail(product.getId());
 
         mockMvc.perform(get("/api/products/{productId}/reviews", product.getId()))
             .andExpect(status().isOk())

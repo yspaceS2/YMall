@@ -45,3 +45,5 @@ ymall:
     thumbnail-height: 300
   mail:
     from: test@ymall.local
+  cache:
+    product-detail-ttl: 10m
