@@ -28,6 +28,13 @@ spring:
     baseline-on-migrate: true
     baseline-version: 0
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_TIMEOUT:2s}
+
   mail:
     host: ${MAIL_HOST}
     port: ${MAIL_PORT:587}
