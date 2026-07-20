@@ -9,6 +9,10 @@ export function loginMember(request: LoginRequest) {
     })
 }
 
+export function logoutMember() {
+    return apiRequest<void>('/members/logout', { method: 'POST', auth: false })
+}
+
 export function signupMember(request: SignupRequest) {
     return apiRequest<MemberResponse>('/members/signup', {
         method: 'POST',

@@ -22,9 +22,11 @@ class OAuth2AuthenticationSuccessHandlerTest {
 
     @Test
     void redirectsOidcPrincipalWithYmallAccessToken() throws Exception {
-        JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
+        RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
+        RefreshTokenCookieManager cookieManager = mock(RefreshTokenCookieManager.class);
         OAuth2AuthenticationSuccessHandler handler = new OAuth2AuthenticationSuccessHandler(
-            jwtTokenProvider,
+            refreshTokenService,
+            cookieManager,
             mock(OAuthFlowContext.class)
         );
         ReflectionTestUtils.setField(
@@ -44,8 +46,10 @@ class OAuth2AuthenticationSuccessHandlerTest {
         );
         Authentication authentication = mock(Authentication.class);
         given(authentication.getPrincipal()).willReturn(principal);
-        given(jwtTokenProvider.createAccessToken(member))
-            .willReturn(new TokenResponse("ymall-token", "Bearer", 1800L));
+        given(refreshTokenService.issue(member)).willReturn(new AuthenticationTokens(
+            new TokenResponse("ymall-token", "Bearer", 1800L),
+            "refresh-token"
+        ));
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         handler.onAuthenticationSuccess(

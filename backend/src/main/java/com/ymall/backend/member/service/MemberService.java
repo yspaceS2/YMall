@@ -11,7 +11,8 @@ import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
-import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.global.security.AuthenticationTokens;
+import com.ymall.backend.global.security.RefreshTokenService;
 import com.ymall.backend.member.dto.EmailAvailabilityResponse;
 import com.ymall.backend.member.dto.MemberLoginRequest;
 import com.ymall.backend.member.dto.MemberPasswordChangeRequest;
@@ -19,7 +20,6 @@ import com.ymall.backend.member.dto.MemberProfileResponse;
 import com.ymall.backend.member.dto.MemberProfileUpdateRequest;
 import com.ymall.backend.member.dto.MemberResponse;
 import com.ymall.backend.member.dto.MemberSignupRequest;
-import com.ymall.backend.member.dto.TokenResponse;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
@@ -31,7 +31,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
     public EmailAvailabilityResponse checkEmailAvailability(String requestedEmail) {
         String email = requestedEmail.trim().toLowerCase(Locale.ROOT);
@@ -90,14 +90,14 @@ public class MemberService {
         );
     }
 
-    public TokenResponse login(MemberLoginRequest request) {
+    public AuthenticationTokens login(MemberLoginRequest request) {
         Member member = memberRepository.findByEmailIgnoreCase(request.email())
             .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
         if (!member.hasPassword() || !passwordEncoder.matches(request.password(), member.getPassword())) {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
 
-        return jwtTokenProvider.createAccessToken(member);
+        return refreshTokenService.issue(member);
     }
 
     private Member findMember(Long memberId) {
