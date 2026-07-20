@@ -1,19 +1,49 @@
 package com.ymall.backend.product.service;
 
-import org.springframework.cache.annotation.CacheEvict;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.ymall.backend.global.config.ProductCacheNames;
 
 @Component
 public class ProductCacheInvalidator {
 
-    @CacheEvict(
-        cacheNames = ProductCacheNames.DETAILS,
-        key = "#productId",
-        beforeInvocation = true
-    )
+    private static final Logger log = LoggerFactory.getLogger(ProductCacheInvalidator.class);
+
+    private final CacheManager cacheManager;
+
+    public ProductCacheInvalidator(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
+
     public void evictDetail(Long productId) {
-        // Cache eviction is performed by Spring's cache interceptor.
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    evict(productId);
+                }
+            });
+            return;
+        }
+        evict(productId);
+    }
+
+    private void evict(Long productId) {
+        Cache cache = cacheManager.getCache(ProductCacheNames.DETAILS);
+        if (cache == null) {
+            return;
+        }
+        try {
+            cache.evictIfPresent(productId);
+        } catch (RuntimeException exception) {
+            log.warn("Product cache eviction failed. productId={}, reason={}",
+                productId, exception.getMessage());
+        }
     }
 }

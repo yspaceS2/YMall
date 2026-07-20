@@ -5,7 +5,6 @@ import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +37,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
     /**
      * 사용자에게 노출되는 상품 목록은 승인된 상품만 대상으로 한다.
@@ -112,7 +112,6 @@ public class ProductService {
      * 부분 수정 방식은 이미지 정렬과 삭제 처리가 복잡해지므로 MVP에서는 전체 교체 정책을 사용한다.
      */
     @Transactional
-    @CacheEvict(cacheNames = ProductCacheNames.DETAILS, key = "#productId", beforeInvocation = true)
     public ProductDetailResponse updateProduct(Long productId, ProductUpdateRequest request) {
         Product product = getProductEntity(productId);
         Category category = getCategory(request.categoryId());
@@ -129,6 +128,8 @@ public class ProductService {
         );
         product.replaceImages(productMapper.toImageEntities(request));
 
+        productCacheInvalidator.evictDetail(productId);
+
         return productMapper.toProductDetailResponse(product);
     }
 
@@ -137,11 +138,11 @@ public class ProductService {
      * 상태만 DELETED로 전환하고 공개 조회 쿼리에서 제외한다.
      */
     @Transactional
-    @CacheEvict(cacheNames = ProductCacheNames.DETAILS, key = "#productId", beforeInvocation = true)
     public void deleteProduct(Long productId) {
         Product product = getProductEntity(productId);
 
         product.delete();
+        productCacheInvalidator.evictDetail(productId);
     }
 
     /**

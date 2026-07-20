@@ -3,14 +3,12 @@ package com.ymall.backend.seller.service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.common.PageResponse;
-import com.ymall.backend.global.config.ProductCacheNames;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.product.dto.ProductCreateRequest;
@@ -23,6 +21,7 @@ import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.mapper.ProductMapper;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.seller.entity.SellerProfile;
 
 @Service
@@ -36,6 +35,7 @@ public class SellerProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
     public PageResponse<ProductListResponse> getProducts(Long memberId, int page, int size) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
@@ -68,7 +68,6 @@ public class SellerProductService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = ProductCacheNames.DETAILS, key = "#productId", beforeInvocation = true)
     public ProductDetailResponse updateProduct(
         Long memberId,
         Long productId,
@@ -88,14 +87,15 @@ public class SellerProductService {
         );
         product.replaceImages(productMapper.toImageEntities(request));
         product.requestApproval();
+        productCacheInvalidator.evictDetail(productId);
         return productMapper.toProductDetailResponse(product);
     }
 
     @Transactional
-    @CacheEvict(cacheNames = ProductCacheNames.DETAILS, key = "#productId", beforeInvocation = true)
     public void deleteProduct(Long memberId, Long productId) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         getOwnedProduct(profile.getId(), productId).delete();
+        productCacheInvalidator.evictDetail(productId);
     }
 
     private Product getOwnedProduct(Long sellerProfileId, Long productId) {
