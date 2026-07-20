@@ -20,7 +20,8 @@ import com.ymall.backend.member.dto.TokenResponse;
 @RequiredArgsConstructor
 public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
-    private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
+    private final RefreshTokenCookieManager refreshTokenCookieManager;
     private final OAuthFlowContext oAuthFlowContext;
 
     @Value("${ymall.oauth2.frontend-redirect-uri:http://localhost:5173/oauth2/callback}")
@@ -38,7 +39,10 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             response.sendRedirect(frontendRedirectUri + "#signupRequired=true");
             return;
         }
-        TokenResponse token = jwtTokenProvider.createAccessToken(principal.member());
+        refreshTokenService.revoke(refreshTokenCookieManager.read(request));
+        AuthenticationTokens tokens = refreshTokenService.issue(principal.member());
+        refreshTokenCookieManager.write(response, tokens.refreshToken());
+        TokenResponse token = tokens.accessToken();
         String encodedToken = URLEncoder.encode(token.accessToken(), StandardCharsets.UTF_8);
         response.sendRedirect(frontendRedirectUri + "#accessToken=" + encodedToken);
     }

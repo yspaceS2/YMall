@@ -78,6 +78,8 @@ public class SecurityConfig {
                     POST,
                     "/api/members/signup",
                     "/api/members/login",
+                    "/api/members/tokens/refresh",
+                    "/api/members/logout",
                     "/api/members/oauth2/signup",
                     "/api/members/oauth2/email-verifications",
                     "/api/members/oauth2/email-verifications/confirm"

@@ -36,6 +36,8 @@ ymall:
   jwt:
     secret: test-jwt-secret-key-for-ymall-that-is-at-least-32-bytes-long
     access-token-expiration: 30m
+    refresh-token-expiration: 14d
+    refresh-token-cookie-secure: false
   file:
     upload-dir: ./build/test-uploads
     image-url-prefix: /images

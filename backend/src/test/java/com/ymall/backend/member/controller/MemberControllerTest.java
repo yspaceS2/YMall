@@ -19,6 +19,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.security.AuthenticationTokens;
+import com.ymall.backend.global.security.RefreshTokenCookieManager;
+import com.ymall.backend.global.security.RefreshTokenService;
 import com.ymall.backend.member.dto.EmailAvailabilityResponse;
 import com.ymall.backend.member.dto.MemberResponse;
 import com.ymall.backend.member.dto.TokenResponse;
@@ -34,6 +37,12 @@ class MemberControllerTest {
 
     @MockitoBean
     private MemberService memberService;
+
+    @MockitoBean
+    private RefreshTokenService refreshTokenService;
+
+    @MockitoBean
+    private RefreshTokenCookieManager refreshTokenCookieManager;
 
     @Test
     void emailAvailabilityReturnsAvailableResult() throws Exception {
@@ -155,7 +164,10 @@ class MemberControllerTest {
     @Test
     void loginReturnsAccessToken() throws Exception {
         given(memberService.login(any()))
-            .willReturn(new TokenResponse("access-token", "Bearer", 1800));
+            .willReturn(new AuthenticationTokens(
+                new TokenResponse("access-token", "Bearer", 1800),
+                "refresh-token"
+            ));
 
         mockMvc.perform(post("/api/members/login")
                 .contentType(MediaType.APPLICATION_JSON)

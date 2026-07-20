@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { loginMember } from '../api/auth'
+import { loginMember, logoutMember, refreshMemberToken } from '../api/auth'
 import type { LoginRequest } from '../types/auth'
 import { AuthContext } from './AuthContext'
 import {
@@ -21,6 +21,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const navigate = useNavigate()
 
     useEffect(() => {
+        if (getAccessToken() !== null) {
+            return
+        }
+        refreshMemberToken()
+            .then((response) => {
+                setAccessToken(response.accessToken)
+                setIsAuthenticated(true)
+                setRole(getTokenRole(response.accessToken))
+            })
+            .catch(() => undefined)
+    }, [])
+
+    useEffect(() => {
         let expirationTimer: number | undefined
 
         const scheduleExpiration = (token: string | null) => {
@@ -38,10 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return
             }
 
-            expirationTimer = window.setTimeout(
-                clearAccessToken,
-                Math.max(expiration - Date.now(), 0),
-            )
+            expirationTimer = window.setTimeout(async () => {
+                try {
+                    const refreshed = await refreshMemberToken()
+                    setAccessToken(refreshed.accessToken)
+                } catch {
+                    clearAccessToken()
+                }
+            }, Math.max(expiration - Date.now() - 5_000, 0))
         }
         const syncAuthentication = () => {
             const token = getAccessToken()
@@ -88,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [])
 
     const logout = useCallback(() => {
+        void logoutMember()
         clearAccessToken()
         setIsAuthenticated(false)
         setRole(null)

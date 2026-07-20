@@ -1,7 +1,8 @@
-import { clearAccessTokenIfMatches, getAccessToken, notifyUnauthorized } from '../auth/tokenStorage'
+import { clearAccessTokenIfMatches, getAccessToken, notifyUnauthorized, setAccessToken } from '../auth/tokenStorage'
 import type { ApiResponse, ErrorResponse } from '../types/api'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
+let refreshPromise: Promise<string | null> | null = null
 
 interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
     body?: unknown
@@ -32,21 +33,39 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
         headers.set('Authorization', `Bearer ${token}`)
     }
 
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-        ...requestInit,
-        credentials: requestInit.credentials ?? 'include',
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-    })
+    const request = (accessToken: string | null) => {
+        const requestHeaders = new Headers(headers)
+        if (accessToken) {
+            requestHeaders.set('Authorization', `Bearer ${accessToken}`)
+        } else {
+            requestHeaders.delete('Authorization')
+        }
+        return fetch(`${API_BASE_URL}${path}`, {
+            ...requestInit,
+            credentials: requestInit.credentials ?? 'include',
+            headers: requestHeaders,
+            body: body === undefined ? undefined : JSON.stringify(body),
+        })
+    }
+
+    let response = await request(token)
+    if (response.status === 401 && auth && path !== '/members/tokens/refresh') {
+        const refreshedToken = await requestAccessTokenRefresh()
+        if (refreshedToken) {
+            setAccessToken(refreshedToken)
+            response = await request(refreshedToken)
+        }
+    }
 
     if (!response.ok) {
         const error = (await response.json().catch(() => null)) as ErrorResponse | null
         if (response.status === 401 && auth) {
-            if (token) {
-                clearAccessTokenIfMatches(token)
-                if (getAccessToken() === null) {
-                    notifyUnauthorized()
-                }
+            const currentToken = getAccessToken()
+            if (currentToken) {
+                clearAccessTokenIfMatches(currentToken)
+            }
+            if (getAccessToken() === null) {
+                notifyUnauthorized()
             }
         }
         throw new ApiError(
@@ -62,4 +81,22 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
     const result = (await response.json()) as ApiResponse<T>
     return result.data
+}
+
+async function requestAccessTokenRefresh() {
+    if (refreshPromise === null) {
+        refreshPromise = fetch(`${API_BASE_URL}/members/tokens/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+        }).then(async (response) => {
+            if (!response.ok) {
+                return null
+            }
+            const result = (await response.json()) as ApiResponse<{ accessToken: string }>
+            return result.data.accessToken
+        }).finally(() => {
+            refreshPromise = null
+        })
+    }
+    return refreshPromise
 }

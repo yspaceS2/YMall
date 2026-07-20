@@ -17,7 +17,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
-import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.global.security.AuthenticationTokens;
+import com.ymall.backend.global.security.RefreshTokenService;
 import com.ymall.backend.member.dto.EmailAvailabilityResponse;
 import com.ymall.backend.member.dto.MemberLoginRequest;
 import com.ymall.backend.member.dto.MemberResponse;
@@ -37,13 +38,13 @@ class MemberServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private JwtTokenProvider jwtTokenProvider;
+    private RefreshTokenService refreshTokenService;
 
     private MemberService memberService;
 
     @BeforeEach
     void setUp() {
-        memberService = new MemberService(memberRepository, passwordEncoder, jwtTokenProvider);
+        memberService = new MemberService(memberRepository, passwordEncoder, refreshTokenService);
     }
 
     @Test
@@ -131,9 +132,10 @@ class MemberServiceTest {
         TokenResponse tokenResponse = new TokenResponse("token", "Bearer", 1800);
         given(memberRepository.findByEmailIgnoreCase("user@example.com")).willReturn(java.util.Optional.of(member));
         given(passwordEncoder.matches("password123", "encoded-password")).willReturn(true);
-        given(jwtTokenProvider.createAccessToken(member)).willReturn(tokenResponse);
+        AuthenticationTokens tokens = new AuthenticationTokens(tokenResponse, "refresh-token");
+        given(refreshTokenService.issue(member)).willReturn(tokens);
 
-        assertThat(memberService.login(request)).isEqualTo(tokenResponse);
+        assertThat(memberService.login(request)).isEqualTo(tokens);
     }
 
     @Test
