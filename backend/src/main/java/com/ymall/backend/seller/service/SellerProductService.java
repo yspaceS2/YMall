@@ -3,12 +3,14 @@ package com.ymall.backend.seller.service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.global.config.ProductCacheNames;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.product.dto.ProductCreateRequest;
@@ -66,6 +68,7 @@ public class SellerProductService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = ProductCacheNames.DETAILS, key = "#productId", beforeInvocation = true)
     public ProductDetailResponse updateProduct(
         Long memberId,
         Long productId,
@@ -89,6 +92,7 @@ public class SellerProductService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = ProductCacheNames.DETAILS, key = "#productId", beforeInvocation = true)
     public void deleteProduct(Long memberId, Long productId) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         getOwnedProduct(profile.getId(), productId).delete();

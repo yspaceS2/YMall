@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -23,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.global.config.ProductCacheNames;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
@@ -35,6 +37,7 @@ import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductService;
 import com.ymall.backend.review.repository.ReviewRepository;
 
 @SpringBootTest
@@ -66,6 +69,12 @@ class ReviewApiIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private ProductService productService;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     private Member buyer;
     private Member otherMember;
@@ -108,10 +117,16 @@ class ReviewApiIntegrationTest {
 
     @Test
     void deliveredBuyerCreatesReviewAndProductReviewsArePublic() throws Exception {
+        productService.getProduct(product.getId());
+        String cacheKey = ProductCacheNames.DETAILS + "::" + product.getId();
+        assertThat(redisTemplate.hasKey(cacheKey)).isTrue();
+
         createReview(buyerToken, deliveredOrderItem.getId(), 5, "아주 만족합니다.")
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.data.rating").value(5))
             .andExpect(jsonPath("$.data.authorName").value("구매자"));
+
+        assertThat(redisTemplate.hasKey(cacheKey)).isFalse();
 
         mockMvc.perform(get("/api/products/{productId}/reviews", product.getId()))
             .andExpect(status().isOk())

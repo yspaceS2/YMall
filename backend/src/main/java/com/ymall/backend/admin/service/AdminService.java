@@ -3,6 +3,7 @@ package com.ymall.backend.admin.service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import com.ymall.backend.admin.dto.AdminProductStatusUpdateRequest;
 import com.ymall.backend.admin.dto.AdminSellerResponse;
 import com.ymall.backend.admin.mapper.AdminMapper;
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.global.config.ProductCacheNames;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.repository.MemberRepository;
@@ -49,6 +51,7 @@ public class AdminService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = ProductCacheNames.DETAILS, key = "#productId", beforeInvocation = true)
     public AdminProductResponse updateProductStatus(
         Long productId,
         AdminProductStatusUpdateRequest request
