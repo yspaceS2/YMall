@@ -34,9 +34,9 @@ export function Layout({ children }: { children: ReactNode }) {
         }
     }, [isAuthenticated])
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         setUnreadCount(0)
-        logout()
+        await logout()
     }
 
     return (

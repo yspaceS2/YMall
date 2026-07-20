@@ -6,7 +6,7 @@ export interface AuthContextValue {
     role: MemberRole | null
     login: (request: LoginRequest) => Promise<void>
     completeOAuthLogin: (accessToken: string) => void
-    logout: () => void
+    logout: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

@@ -50,7 +50,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
     let response = await request(token)
     if (response.status === 401 && auth && path !== '/members/tokens/refresh') {
-        const refreshedToken = await requestAccessTokenRefresh()
+        const refreshedToken = await refreshAccessToken()
         if (refreshedToken) {
             setAccessToken(refreshedToken)
             response = await request(refreshedToken)
@@ -83,7 +83,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     return result.data
 }
 
-async function requestAccessTokenRefresh() {
+export async function refreshAccessToken() {
     if (refreshPromise === null) {
         refreshPromise = fetch(`${API_BASE_URL}/members/tokens/refresh`, {
             method: 'POST',

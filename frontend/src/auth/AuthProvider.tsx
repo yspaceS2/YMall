@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { loginMember, logoutMember, refreshMemberToken } from '../api/auth'
+import { loginMember, logoutMember } from '../api/auth'
+import { refreshAccessToken } from '../api/client'
 import type { LoginRequest } from '../types/auth'
 import { AuthContext } from './AuthContext'
 import {
@@ -24,11 +25,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (getAccessToken() !== null) {
             return
         }
-        refreshMemberToken()
-            .then((response) => {
-                setAccessToken(response.accessToken)
+        refreshAccessToken()
+            .then((accessToken) => {
+                if (!accessToken) {
+                    return
+                }
+                setAccessToken(accessToken)
                 setIsAuthenticated(true)
-                setRole(getTokenRole(response.accessToken))
+                setRole(getTokenRole(accessToken))
             })
             .catch(() => undefined)
     }, [])
@@ -53,8 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             expirationTimer = window.setTimeout(async () => {
                 try {
-                    const refreshed = await refreshMemberToken()
-                    setAccessToken(refreshed.accessToken)
+                    const refreshedToken = await refreshAccessToken()
+                    if (refreshedToken) {
+                        setAccessToken(refreshedToken)
+                    } else {
+                        clearAccessToken()
+                    }
                 } catch {
                     clearAccessToken()
                 }
@@ -104,12 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(getTokenRole(accessToken))
     }, [])
 
-    const logout = useCallback(() => {
-        void logoutMember()
-        clearAccessToken()
-        setIsAuthenticated(false)
-        setRole(null)
-        navigate('/', { replace: true })
+    const logout = useCallback(async () => {
+        try {
+            await logoutMember()
+        } finally {
+            clearAccessToken()
+            setIsAuthenticated(false)
+            setRole(null)
+            navigate('/', { replace: true })
+        }
     }, [navigate])
 
     const value = useMemo(
