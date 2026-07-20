@@ -6,7 +6,10 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import tools.jackson.databind.DefaultTyping;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
 
 @Configuration
 public class RedisConfig {
@@ -17,7 +20,19 @@ public class RedisConfig {
             ObjectMapper objectMapper
     ) {
         StringRedisSerializer keySerializer = new StringRedisSerializer();
-        GenericJacksonJsonRedisSerializer valueSerializer = new GenericJacksonJsonRedisSerializer(objectMapper);
+        PolymorphicTypeValidator typeValidator = BasicPolymorphicTypeValidator.builder()
+                .allowIfSubType("com.ymall.backend.")
+                .allowIfSubType("java.util.")
+                .allowIfSubTypeIsArray()
+                .build();
+        GenericJacksonJsonRedisSerializer valueSerializer = GenericJacksonJsonRedisSerializer
+                .builder(objectMapper::rebuild)
+                .customize(builder -> builder.activateDefaultTypingAsProperty(
+                        typeValidator,
+                        DefaultTyping.NON_FINAL_AND_RECORDS,
+                        "@class"
+                ))
+                .build();
 
         RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(connectionFactory);

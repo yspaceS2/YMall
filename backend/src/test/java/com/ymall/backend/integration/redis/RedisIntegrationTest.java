@@ -28,11 +28,16 @@ class RedisIntegrationTest {
 
     @Test
     void storesAndReadsJsonValueWithConfiguredSerializers() {
-        redisTemplate.opsForValue().set(TEST_KEY, "connected", Duration.ofMinutes(1));
+        RedisSample expected = new RedisSample("connected", 1);
 
-        assertThat(redisTemplate.opsForValue().get(TEST_KEY)).isEqualTo("connected");
+        redisTemplate.opsForValue().set(TEST_KEY, expected, Duration.ofMinutes(1));
+
+        assertThat(redisTemplate.opsForValue().get(TEST_KEY)).isEqualTo(expected);
         assertThat(redisTemplate.getKeySerializer()).isInstanceOf(StringRedisSerializer.class);
         assertThat(redisTemplate.getValueSerializer()).isInstanceOf(GenericJacksonJsonRedisSerializer.class);
         assertThat(redisTemplate.getExpire(TEST_KEY)).isPositive();
+    }
+
+    private record RedisSample(String status, int attempt) {
     }
 }
