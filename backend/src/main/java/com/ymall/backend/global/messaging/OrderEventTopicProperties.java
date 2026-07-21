@@ -20,4 +20,8 @@ public record OrderEventTopicProperties(
             throw new IllegalArgumentException("Order event topic settings are invalid.");
         }
     }
+
+    public String dltName() {
+        return name + ".DLT";
+    }
 }
