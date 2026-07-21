@@ -35,6 +35,23 @@ spring:
       connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
       timeout: ${REDIS_TIMEOUT:2s}
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:ymall-local}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.ymall.backend.global.messaging
+        spring.json.value.default.type: com.ymall.backend.global.messaging.OrderEventEnvelope
+
   mail:
     host: ${MAIL_HOST}
     port: ${MAIL_PORT:587}
@@ -92,3 +109,10 @@ ymall:
     from: ${MAIL_FROM}
   cache:
     product-detail-ttl: ${PRODUCT_DETAIL_CACHE_TTL:10m}
+  kafka:
+    enabled: ${KAFKA_ENABLED:true}
+    order-events:
+      name: ${KAFKA_ORDER_EVENTS_TOPIC:ymall.order.events.v1}
+      partitions: ${KAFKA_ORDER_EVENTS_PARTITIONS:3}
+      replication-factor: ${KAFKA_ORDER_EVENTS_REPLICATION_FACTOR:1}
+      retention: ${KAFKA_ORDER_EVENTS_RETENTION:7d}
