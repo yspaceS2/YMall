@@ -1,0 +1,52 @@
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    server_tokens off;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location = /health {
+        access_log off;
+        default_type text/plain;
+        return 200 "healthy\n";
+    }
+
+    location ^~ /api/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        include /etc/nginx/proxy_params;
+    }
+
+    location ^~ /images/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        include /etc/nginx/proxy_params;
+    }
+
+    location ^~ /oauth2/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        include /etc/nginx/proxy_params;
+    }
+
+    location ^~ /login/oauth2/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        include /etc/nginx/proxy_params;
+    }
+
+    location = /index.html {
+        expires -1;
+    }
+
+    location ~* \.(?:css|js|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2)$ {
+        expires 1y;
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
