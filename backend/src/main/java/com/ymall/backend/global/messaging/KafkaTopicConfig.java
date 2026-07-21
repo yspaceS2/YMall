@@ -9,7 +9,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
 
 @Configuration
-@EnableConfigurationProperties(OrderEventTopicProperties.class)
+@EnableConfigurationProperties({
+    OrderEventTopicProperties.class,
+    KafkaConsumerRetryProperties.class
+})
 @ConditionalOnProperty(name = "ymall.kafka.enabled", havingValue = "true", matchIfMissing = true)
 public class KafkaTopicConfig {
 
@@ -19,6 +22,21 @@ public class KafkaTopicConfig {
             .partitions(properties.partitions())
             .replicas(properties.replicationFactor())
             .config(TopicConfig.RETENTION_MS_CONFIG, String.valueOf(properties.retention().toMillis()))
+            .build();
+    }
+
+    @Bean
+    public NewTopic orderEventsDltTopic(
+        OrderEventTopicProperties topicProperties,
+        KafkaConsumerRetryProperties retryProperties
+    ) {
+        return TopicBuilder.name(topicProperties.dltName())
+            .partitions(topicProperties.partitions())
+            .replicas(topicProperties.replicationFactor())
+            .config(
+                TopicConfig.RETENTION_MS_CONFIG,
+                String.valueOf(retryProperties.dltRetention().toMillis())
+            )
             .build();
     }
 }

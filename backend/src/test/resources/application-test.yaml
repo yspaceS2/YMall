@@ -66,3 +66,7 @@ ymall:
     notification-consumer:
       enabled: false
       group-id: ymall-notification-test
+    consumer-retry:
+      max-retries: 2
+      retry-delay: 10ms
+      dlt-retention: 1d

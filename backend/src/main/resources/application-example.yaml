@@ -128,3 +128,7 @@ ymall:
     notification-consumer:
       enabled: ${KAFKA_NOTIFICATION_CONSUMER_ENABLED:true}
       group-id: ${KAFKA_NOTIFICATION_CONSUMER_GROUP:ymall-notification}
+    consumer-retry:
+      max-retries: ${KAFKA_CONSUMER_MAX_RETRIES:3}
+      retry-delay: ${KAFKA_CONSUMER_RETRY_DELAY:1s}
+      dlt-retention: ${KAFKA_DLT_RETENTION:30d}
