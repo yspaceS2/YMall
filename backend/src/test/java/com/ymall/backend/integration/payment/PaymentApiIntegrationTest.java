@@ -83,7 +83,7 @@ class PaymentApiIntegrationTest {
             MemberRole.ROLE_USER
         ));
         addressId = memberAddressRepository.save(new MemberAddress(
-            member, "Home", "Recipient", "01012345678", "12159", "186 Biryong-ro", "101", true
+            member, "Home", "Recipient", "01012345678", "00000", "123 Test-ro", "101", true
         )).getId();
         Category category = categoryRepository.save(new Category("결제 상품", "payment-products"));
         product = productRepository.save(new Product(

@@ -68,3 +68,12 @@ ymall:
       partitions: ${KAFKA_ORDER_EVENTS_PARTITIONS:3}
       replication-factor: ${KAFKA_ORDER_EVENTS_REPLICATION_FACTOR:1}
       retention: ${KAFKA_ORDER_EVENTS_RETENTION:7d}
+    outbox:
+      enabled: ${KAFKA_OUTBOX_ENABLED:true}
+      batch-size: ${KAFKA_OUTBOX_BATCH_SIZE:100}
+      max-attempts: ${KAFKA_OUTBOX_MAX_ATTEMPTS:10}
+      retry-delay: ${KAFKA_OUTBOX_RETRY_DELAY:5s}
+      send-timeout: ${KAFKA_OUTBOX_SEND_TIMEOUT:10s}
+      poll-interval: ${KAFKA_OUTBOX_POLL_INTERVAL:1s}
+      cleanup-interval: ${KAFKA_OUTBOX_CLEANUP_INTERVAL:1h}
+      published-retention: ${KAFKA_OUTBOX_PUBLISHED_RETENTION:7d}

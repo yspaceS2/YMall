@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.notification.event.NotificationEventPublisher;
@@ -43,6 +44,9 @@ class PaymentServiceTest {
 
     @Mock
     private NotificationEventPublisher notificationEventPublisher;
+
+    @Mock
+    private OrderOutboxService orderOutboxService;
 
     @InjectMocks
     private PaymentService paymentService;

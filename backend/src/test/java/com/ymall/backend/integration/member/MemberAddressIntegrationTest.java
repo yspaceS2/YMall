@@ -62,7 +62,7 @@ class MemberAddressIntegrationTest {
     void cannotUpdateOrDeleteAnotherMembersAddress() throws Exception {
         Member other = memberRepository.save(new Member("other@example.com", "password", "다른 사용자", MemberRole.ROLE_USER));
         MemberAddress address = addressRepository.save(new MemberAddress(other, "집", "수령인", "01012345678",
-            "12159", "비룡로 186", "101동", true));
+            "00000", "테스트로 123", "101동", true));
 
         mockMvc.perform(put("/api/members/me/addresses/{addressId}", address.getId())
                 .header(HttpHeaders.AUTHORIZATION, authorization)
@@ -77,9 +77,9 @@ class MemberAddressIntegrationTest {
     @Test
     void deletingDefaultPromotesRemainingAddress() throws Exception {
         MemberAddress first = addressRepository.save(new MemberAddress(member, "집", "수령인", "01012345678",
-            "12159", "비룡로 186", "101동", true));
+            "00000", "테스트로 123", "101동", true));
         MemberAddress second = addressRepository.save(new MemberAddress(member, "회사", "수령인", "01012345678",
-            "12159", "비룡로 186", "202호", false));
+            "00000", "테스트로 123", "202호", false));
 
         mockMvc.perform(delete("/api/members/me/addresses/{addressId}", first.getId())
                 .header(HttpHeaders.AUTHORIZATION, authorization))
@@ -102,7 +102,7 @@ class MemberAddressIntegrationTest {
     private String addressJson(String name, boolean isDefault) {
         return """
             {"addressName":"%s","recipientName":"수령인","recipientPhone":"010-1234-5678",
-             "postalCode":"12159","roadAddress":"비룡로 186","detailAddress":"101동","isDefault":%s}
+             "postalCode":"00000","roadAddress":"테스트로 123","detailAddress":"101동","isDefault":%s}
             """.formatted(name, isDefault);
     }
 }

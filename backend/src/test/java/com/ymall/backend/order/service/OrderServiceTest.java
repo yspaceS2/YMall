@@ -22,6 +22,7 @@ import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.member.entity.MemberRole;
@@ -62,6 +63,9 @@ class OrderServiceTest {
 
     @Mock
     private NotificationEventPublisher notificationEventPublisher;
+
+    @Mock
+    private OrderOutboxService orderOutboxService;
 
     @InjectMocks
     private OrderService orderService;
@@ -163,8 +167,8 @@ class OrderServiceTest {
             "Home",
             "Recipient",
             "01012345678",
-            "12159",
-            "186 Biryong-ro",
+            "00000",
+            "123 Test-ro",
             "101",
             true
         );

@@ -3,6 +3,7 @@ package com.ymall.backend.seller.service;
 import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.messaging.OrderEventType;
+import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderStatus;
@@ -42,6 +45,7 @@ public class SellerOrderService {
     private final OrderRepository orderRepository;
     private final SellerProfileService sellerProfileService;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final OrderOutboxService orderOutboxService;
 
     public PageResponse<SellerOrderResponse> getOrders(Long memberId, int page, int size) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
@@ -82,6 +86,15 @@ public class SellerOrderService {
         }
         order.refreshFulfillmentStatus();
         if (order.getStatus() != previousOrderStatus) {
+            orderOutboxService.save(
+                toOrderEventType(order.getStatus()),
+                order.getId(),
+                order.getMember().getId(),
+                Map.of(
+                    "status", order.getStatus().name(),
+                    "fulfillmentStatus", request.fulfillmentStatus().name()
+                )
+            );
             notificationEventPublisher.publish(NotificationEvent.fulfillmentChanged(
                 order.getMember().getId(),
                 order.getId(),
@@ -89,6 +102,15 @@ public class SellerOrderService {
             ));
         }
         return toResponse(order, profile.getId());
+    }
+
+    private OrderEventType toOrderEventType(OrderStatus status) {
+        return switch (status) {
+            case PREPARING -> OrderEventType.ORDER_PREPARING;
+            case SHIPPED -> OrderEventType.ORDER_SHIPPED;
+            case DELIVERED -> OrderEventType.ORDER_DELIVERED;
+            default -> throw new IllegalStateException("Unsupported fulfillment order status: " + status);
+        };
     }
 
     private SellerOrderResponse toResponse(Order order, Long sellerProfileId) {

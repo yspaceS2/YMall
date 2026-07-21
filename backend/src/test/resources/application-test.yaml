@@ -54,3 +54,12 @@ ymall:
       partitions: 3
       replication-factor: 1
       retention: 7d
+    outbox:
+      enabled: false
+      batch-size: 10
+      max-attempts: 3
+      retry-delay: 1ms
+      send-timeout: 1s
+      poll-interval: 1h
+      cleanup-interval: 1h
+      published-retention: 7d
