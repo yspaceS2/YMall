@@ -47,3 +47,10 @@ ymall:
     from: test@ymall.local
   cache:
     product-detail-ttl: 10m
+  kafka:
+    enabled: false
+    order-events:
+      name: ymall.order.events.v1
+      partitions: 3
+      replication-factor: 1
+      retention: 7d
