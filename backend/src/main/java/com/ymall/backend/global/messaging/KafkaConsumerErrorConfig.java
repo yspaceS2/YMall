@@ -23,11 +23,14 @@ public class KafkaConsumerErrorConfig {
     @Bean
     public DefaultErrorHandler orderEventErrorHandler(
         KafkaTemplate<String, OrderEventEnvelope> kafkaTemplate,
+        DeadLetterByteKafkaOperations deadLetterByteKafkaOperations,
         OrderEventTopicProperties topicProperties,
         KafkaConsumerRetryProperties retryProperties
     ) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
-            kafkaTemplate,
+            producerRecord -> producerRecord.value() instanceof byte[]
+                ? deadLetterByteKafkaOperations.kafkaTemplate()
+                : kafkaTemplate,
             (record, exception) -> new TopicPartition(
                 topicProperties.dltName(), record.partition()
             )
