@@ -20,6 +20,8 @@ import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.global.messaging.OrderEventType;
+import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.member.repository.MemberAddressRepository;
@@ -53,6 +55,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final OrderMapper orderMapper;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final OrderOutboxService orderOutboxService;
 
     @Transactional
     public OrderResponse createOrder(Long memberId, OrderCreateRequest request) {
@@ -106,6 +109,12 @@ public class OrderService {
             product.increaseStock(item.getQuantity());
         }
         order.cancel();
+        orderOutboxService.save(
+            OrderEventType.ORDER_CANCELED,
+            orderId,
+            memberId,
+            Map.of("status", OrderStatus.CANCELED.name())
+        );
         notificationEventPublisher.publish(NotificationEvent.orderCanceled(memberId, orderId));
         return orderMapper.toOrderResponse(order);
     }
@@ -144,6 +153,15 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         cartItemRepository.deleteAll(cartItems);
+        orderOutboxService.save(
+            OrderEventType.ORDER_CREATED,
+            savedOrder.getId(),
+            member.getId(),
+            Map.of(
+                "status", savedOrder.getStatus().name(),
+                "totalAmount", savedOrder.getTotalAmount()
+            )
+        );
         notificationEventPublisher.publish(
             NotificationEvent.orderCreated(member.getId(), savedOrder.getId())
         );

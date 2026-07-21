@@ -91,7 +91,7 @@ class OrderConcurrencyIntegrationTest {
         ));
         cartItemRepository.save(new CartItem(member, product, 2));
         MemberAddress address = memberAddressRepository.save(new MemberAddress(
-            member, "Home", "Recipient", "01012345678", "12159", "186 Biryong-ro", "101", true
+            member, "Home", "Recipient", "01012345678", "00000", "123 Test-ro", "101", true
         ));
 
         CountDownLatch ready = new CountDownLatch(2);

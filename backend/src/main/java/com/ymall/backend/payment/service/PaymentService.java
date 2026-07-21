@@ -1,5 +1,7 @@
 package com.ymall.backend.payment.service;
 
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -7,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.messaging.OrderEventType;
+import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
@@ -30,6 +34,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final OrderOutboxService orderOutboxService;
 
     @Transactional
     public PaymentResponse processPayment(
@@ -65,6 +70,18 @@ public class PaymentService {
             request.result(),
             failureMessage
         ));
+        OrderEventType eventType = request.result() == PaymentResult.SUCCESS
+            ? OrderEventType.PAYMENT_COMPLETED
+            : OrderEventType.PAYMENT_FAILED;
+        orderOutboxService.save(
+            eventType,
+            order.getId(),
+            order.getMember().getId(),
+            Map.of(
+                "status", order.getStatus().name(),
+                "paymentResult", request.result().name()
+            )
+        );
         notificationEventPublisher.publish(NotificationEvent.paymentProcessed(
             order.getMember().getId(),
             order.getId(),

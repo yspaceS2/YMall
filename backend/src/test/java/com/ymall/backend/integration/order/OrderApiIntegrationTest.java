@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.global.messaging.OrderEventType;
+import com.ymall.backend.global.messaging.outbox.OrderOutboxEventRepository;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.entity.MemberAddress;
@@ -61,6 +63,9 @@ class OrderApiIntegrationTest {
     private OrderRepository orderRepository;
 
     @Autowired
+    private OrderOutboxEventRepository outboxEventRepository;
+
+    @Autowired
     private MemberAddressRepository memberAddressRepository;
 
     @Autowired
@@ -80,7 +85,7 @@ class OrderApiIntegrationTest {
             MemberRole.ROLE_USER
         ));
         deliveryAddress = memberAddressRepository.save(new MemberAddress(
-            member, "Home", "Recipient", "01012345678", "12159", "186 Biryong-ro", "101", true
+            member, "Home", "Recipient", "01012345678", "00000", "123 Test-ro", "101", true
         ));
         Category category = categoryRepository.save(new Category("전자기기", "electronics"));
         product = productRepository.save(new Product(
@@ -117,12 +122,19 @@ class OrderApiIntegrationTest {
         assertThat(orderItem.getUnitPrice()).isEqualByComparingTo("9000.00");
         assertThat(product.getStock()).isEqualTo(8);
         assertThat(cartItemRepository.findAll()).isEmpty();
+        assertThat(outboxEventRepository.findAll())
+            .singleElement()
+            .satisfies(event -> {
+                assertThat(event.getEventType()).isEqualTo(OrderEventType.ORDER_CREATED);
+                assertThat(event.getOrderId()).isEqualTo(order.getId());
+                assertThat(event.getMemberId()).isEqualTo(member.getId());
+            });
     }
 
     @Test
     void keepsDeliveryAddressSnapshotAfterMemberAddressChanges() throws Exception {
         MemberAddress address = memberAddressRepository.save(new MemberAddress(member, "집", "수령인",
-            "01012345678", "12159", "비룡로 186", "101동", true));
+            "01012345678", "00000", "테스트로 123", "101동", true));
         cartItemRepository.save(new CartItem(member, product, 1));
 
         mockMvc.perform(post("/api/orders")
@@ -132,14 +144,14 @@ class OrderApiIntegrationTest {
                     {"idempotencyKey":"address-snapshot","addressId":%d}
                     """.formatted(address.getId())))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.data.deliveryAddress.roadAddress").value("비룡로 186"))
+            .andExpect(jsonPath("$.data.deliveryAddress.roadAddress").value("테스트로 123"))
             .andExpect(jsonPath("$.data.deliveryAddress.detailAddress").value("101동"));
 
-        address.update("집", "수령인", "01012345678", "12159", "변경된 주소", "202호");
+        address.update("집", "수령인", "01012345678", "00000", "변경된 주소", "202호");
         memberAddressRepository.flush();
 
         Order order = orderRepository.findAll().get(0);
-        assertThat(order.getDeliveryAddress().getRoadAddress()).isEqualTo("비룡로 186");
+        assertThat(order.getDeliveryAddress().getRoadAddress()).isEqualTo("테스트로 123");
         assertThat(order.getDeliveryAddress().getDetailAddress()).isEqualTo("101동");
     }
 
@@ -199,6 +211,7 @@ class OrderApiIntegrationTest {
             .andExpect(jsonPath("$.error.code").value("INSUFFICIENT_STOCK"));
 
         assertThat(orderRepository.findAll()).isEmpty();
+        assertThat(outboxEventRepository.findAll()).isEmpty();
         assertThat(product.getStock()).isEqualTo(1);
         assertThat(cartItemRepository.findAll()).hasSize(1);
     }

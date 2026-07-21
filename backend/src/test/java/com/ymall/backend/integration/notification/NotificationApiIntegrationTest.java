@@ -84,7 +84,7 @@ class NotificationApiIntegrationTest {
     void setUp() {
         Member buyer = saveMember("notification-buyer@example.com", MemberRole.ROLE_USER);
         buyerAddressId = memberAddressRepository.save(new MemberAddress(
-            buyer, "Home", "Recipient", "01012345678", "12159", "186 Biryong-ro", "101", true
+            buyer, "Home", "Recipient", "01012345678", "00000", "123 Test-ro", "101", true
         )).getId();
         Member other = saveMember("notification-other@example.com", MemberRole.ROLE_USER);
         Member seller = saveMember("notification-seller@example.com", MemberRole.ROLE_SELLER);
