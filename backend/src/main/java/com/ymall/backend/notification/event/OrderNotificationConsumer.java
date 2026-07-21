@@ -6,7 +6,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 import com.ymall.backend.global.messaging.OrderEventEnvelope;
-import com.ymall.backend.notification.service.NotificationService;
+import com.ymall.backend.notification.service.OrderNotificationEventProcessor;
 
 @Component
 @RequiredArgsConstructor
@@ -16,14 +16,13 @@ import com.ymall.backend.notification.service.NotificationService;
 )
 public class OrderNotificationConsumer {
 
-    private final OrderNotificationEventMapper eventMapper;
-    private final NotificationService notificationService;
+    private final OrderNotificationEventProcessor eventProcessor;
 
     @KafkaListener(
         topics = "${ymall.kafka.order-events.name}",
         groupId = "${ymall.kafka.notification-consumer.group-id}"
     )
     public void consume(OrderEventEnvelope event) {
-        notificationService.create(eventMapper.map(event));
+        eventProcessor.process(event);
     }
 }

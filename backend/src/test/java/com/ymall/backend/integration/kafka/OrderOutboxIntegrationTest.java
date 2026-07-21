@@ -114,6 +114,31 @@ class OrderOutboxIntegrationTest {
         verify(producer, times(2)).send(any(OrderEventEnvelope.class));
     }
 
+    @Test
+    void stopsCurrentBatchAfterFailureToPreserveEventOrder() throws Exception {
+        OrderOutboxEvent first = savePendingEvent();
+        Thread.sleep(5);
+        OrderOutboxEvent second = transactionTemplate.execute(status -> outboxService.save(
+            OrderEventType.PAYMENT_COMPLETED,
+            100L,
+            20L,
+            Map.of("status", "PAID")
+        ));
+        OrderEventProducer producer = mock(OrderEventProducer.class);
+        when(producer.send(any(OrderEventEnvelope.class)))
+            .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("Kafka unavailable")));
+        OrderOutboxRelay relay = relay(producer, 3);
+
+        int processedCount = executeRelay(relay);
+
+        OrderOutboxEvent failedFirst = outboxEventRepository.findById(first.getEventId()).orElseThrow();
+        OrderOutboxEvent untouchedSecond = outboxEventRepository.findById(second.getEventId()).orElseThrow();
+        assertThat(processedCount).isEqualTo(1);
+        assertThat(failedFirst.getAttemptCount()).isEqualTo(1);
+        assertThat(untouchedSecond.getAttemptCount()).isZero();
+        verify(producer, times(1)).send(any(OrderEventEnvelope.class));
+    }
+
     private OrderOutboxEvent savePendingEvent() {
         return transactionTemplate.execute(status -> outboxService.save(
             OrderEventType.ORDER_CREATED,
