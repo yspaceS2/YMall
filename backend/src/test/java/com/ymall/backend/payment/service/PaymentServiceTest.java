@@ -19,7 +19,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
-import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
@@ -41,9 +40,6 @@ class PaymentServiceTest {
 
     @Mock
     private PaymentMapper paymentMapper;
-
-    @Mock
-    private NotificationEventPublisher notificationEventPublisher;
 
     @Mock
     private OrderOutboxService orderOutboxService;

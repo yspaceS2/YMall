@@ -1,6 +1,7 @@
 package com.ymall.backend.notification.entity;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -34,6 +35,9 @@ public class Notification {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    @Column(name = "source_event_id", unique = true)
+    private UUID sourceEventId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private NotificationType type;
@@ -54,12 +58,14 @@ public class Notification {
 
     public Notification(
         Member member,
+        UUID sourceEventId,
         NotificationType type,
         String title,
         String message,
         String targetUrl
     ) {
         this.member = member;
+        this.sourceEventId = sourceEventId;
         this.type = type;
         this.title = title;
         this.message = message;

@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.global.messaging.outbox.OrderOutboxEventRepository;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.member.entity.MemberRole;
@@ -29,6 +30,8 @@ import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.notification.entity.NotificationType;
 import com.ymall.backend.notification.repository.NotificationRepository;
+import com.ymall.backend.notification.event.OrderNotificationEventMapper;
+import com.ymall.backend.notification.service.NotificationService;
 import com.ymall.backend.order.repository.OrderRepository;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
@@ -37,6 +40,7 @@ import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
 import com.ymall.backend.seller.entity.SellerProfile;
 import com.ymall.backend.seller.repository.SellerProfileRepository;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -72,6 +76,18 @@ class NotificationApiIntegrationTest {
     private NotificationRepository notificationRepository;
 
     @Autowired
+    private OrderOutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private OrderNotificationEventMapper notificationEventMapper;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
     private String buyerToken;
@@ -79,10 +95,12 @@ class NotificationApiIntegrationTest {
     private String sellerToken;
     private String secondSellerToken;
     private Long buyerAddressId;
+    private Long buyerId;
 
     @BeforeEach
     void setUp() {
         Member buyer = saveMember("notification-buyer@example.com", MemberRole.ROLE_USER);
+        buyerId = buyer.getId();
         buyerAddressId = memberAddressRepository.save(new MemberAddress(
             buyer, "Home", "Recipient", "01012345678", "00000", "123 Test-ro", "101", true
         )).getId();
@@ -160,6 +178,8 @@ class NotificationApiIntegrationTest {
                 .content("{\"fulfillmentStatus\":\"PREPARING\"}"))
             .andExpect(status().isOk());
 
+        consumeOutboxEvents();
+
         mockMvc.perform(get("/api/notifications")
                 .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
             .andExpect(status().isOk())
@@ -174,6 +194,7 @@ class NotificationApiIntegrationTest {
             .andExpect(jsonPath("$.data.content.length()").value(0));
 
         Long notificationId = notificationRepository.findAll().stream()
+            .filter(notification -> notification.getMember().getId().equals(buyerId))
             .filter(notification -> notification.getType() == NotificationType.ORDER_CREATED)
             .findFirst()
             .orElseThrow()
@@ -225,6 +246,8 @@ class NotificationApiIntegrationTest {
         updateFulfillment(orderId, secondSellerToken, "SHIPPED");
         updateFulfillment(orderId, secondSellerToken, "DELIVERED");
 
+        consumeOutboxEvents();
+
         mockMvc.perform(get("/api/notifications")
                 .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
             .andExpect(status().isOk())
@@ -253,6 +276,12 @@ class NotificationApiIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fulfillmentStatus\":\"%s\"}".formatted(fulfillmentStatus)))
             .andExpect(status().isOk());
+    }
+
+    private void consumeOutboxEvents() {
+        outboxEventRepository.findAll().forEach(outboxEvent -> notificationService.create(
+            notificationEventMapper.map(outboxEvent.toEnvelope(objectMapper))
+        ));
     }
 
     private Member saveMember(String email, MemberRole role) {

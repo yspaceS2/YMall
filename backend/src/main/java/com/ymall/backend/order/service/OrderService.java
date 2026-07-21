@@ -26,8 +26,6 @@ import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.entity.MemberAddress;
-import com.ymall.backend.notification.event.NotificationEvent;
-import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.order.dto.OrderCreateRequest;
 import com.ymall.backend.order.dto.OrderResponse;
 import com.ymall.backend.order.entity.Order;
@@ -54,7 +52,6 @@ public class OrderService {
     private final MemberAddressRepository memberAddressRepository;
     private final ProductRepository productRepository;
     private final OrderMapper orderMapper;
-    private final NotificationEventPublisher notificationEventPublisher;
     private final OrderOutboxService orderOutboxService;
 
     @Transactional
@@ -115,7 +112,6 @@ public class OrderService {
             memberId,
             Map.of("status", OrderStatus.CANCELED.name())
         );
-        notificationEventPublisher.publish(NotificationEvent.orderCanceled(memberId, orderId));
         return orderMapper.toOrderResponse(order);
     }
 
@@ -161,9 +157,6 @@ public class OrderService {
                 "status", savedOrder.getStatus().name(),
                 "totalAmount", savedOrder.getTotalAmount()
             )
-        );
-        notificationEventPublisher.publish(
-            NotificationEvent.orderCreated(member.getId(), savedOrder.getId())
         );
         return orderMapper.toOrderResponse(savedOrder);
     }
