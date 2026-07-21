@@ -72,7 +72,7 @@ public class OrderOutboxRelay {
         } catch (Exception exception) {
             event.markFailed(exception.getMessage(), now.plus(properties.retryDelay()), properties.maxAttempts());
             logFailure(event, exception);
-            return true;
+            return false;
         }
     }
 

@@ -30,8 +30,7 @@ import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.notification.entity.NotificationType;
 import com.ymall.backend.notification.repository.NotificationRepository;
-import com.ymall.backend.notification.event.OrderNotificationEventMapper;
-import com.ymall.backend.notification.service.NotificationService;
+import com.ymall.backend.notification.service.OrderNotificationEventProcessor;
 import com.ymall.backend.order.repository.OrderRepository;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
@@ -79,10 +78,7 @@ class NotificationApiIntegrationTest {
     private OrderOutboxEventRepository outboxEventRepository;
 
     @Autowired
-    private OrderNotificationEventMapper notificationEventMapper;
-
-    @Autowired
-    private NotificationService notificationService;
+    private OrderNotificationEventProcessor notificationEventProcessor;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -279,9 +275,16 @@ class NotificationApiIntegrationTest {
     }
 
     private void consumeOutboxEvents() {
-        outboxEventRepository.findAll().forEach(outboxEvent -> notificationService.create(
-            notificationEventMapper.map(outboxEvent.toEnvelope(objectMapper))
-        ));
+        outboxEventRepository.findAll().stream()
+            .sorted((left, right) -> {
+                int createdAtComparison = left.getCreatedAt().compareTo(right.getCreatedAt());
+                return createdAtComparison != 0
+                    ? createdAtComparison
+                    : left.getEventId().compareTo(right.getEventId());
+            })
+            .forEach(outboxEvent -> notificationEventProcessor.process(
+                outboxEvent.toEnvelope(objectMapper)
+            ));
     }
 
     private Member saveMember(String email, MemberRole role) {
