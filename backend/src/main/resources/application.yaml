@@ -77,3 +77,6 @@ ymall:
       poll-interval: ${KAFKA_OUTBOX_POLL_INTERVAL:1s}
       cleanup-interval: ${KAFKA_OUTBOX_CLEANUP_INTERVAL:1h}
       published-retention: ${KAFKA_OUTBOX_PUBLISHED_RETENTION:7d}
+    notification-consumer:
+      enabled: ${KAFKA_NOTIFICATION_CONSUMER_ENABLED:true}
+      group-id: ${KAFKA_NOTIFICATION_CONSUMER_GROUP:ymall-notification}

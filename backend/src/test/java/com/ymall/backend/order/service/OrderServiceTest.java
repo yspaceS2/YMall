@@ -28,7 +28,6 @@ import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
-import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.order.dto.OrderCreateRequest;
 import com.ymall.backend.order.dto.OrderResponse;
 import com.ymall.backend.order.entity.Order;
@@ -60,9 +59,6 @@ class OrderServiceTest {
 
     @Mock
     private OrderMapper orderMapper;
-
-    @Mock
-    private NotificationEventPublisher notificationEventPublisher;
 
     @Mock
     private OrderOutboxService orderOutboxService;

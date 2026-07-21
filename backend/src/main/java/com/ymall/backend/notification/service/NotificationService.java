@@ -66,10 +66,14 @@ public class NotificationService {
 
     @Transactional
     public void create(NotificationEvent event) {
+        if (notificationRepository.existsBySourceEventId(event.sourceEventId())) {
+            return;
+        }
         Member member = memberRepository.findById(event.memberId())
             .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
         notificationRepository.save(new Notification(
             member,
+            event.sourceEventId(),
             event.type(),
             event.title(),
             event.message(),

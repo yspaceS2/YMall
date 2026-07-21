@@ -1,10 +1,13 @@
 package com.ymall.backend.notification.event;
 
+import java.util.UUID;
+
 import com.ymall.backend.notification.entity.NotificationType;
 import com.ymall.backend.order.entity.OrderItemFulfillmentStatus;
 import com.ymall.backend.payment.entity.PaymentResult;
 
 public record NotificationEvent(
+    UUID sourceEventId,
     Long memberId,
     NotificationType type,
     String title,
@@ -12,8 +15,9 @@ public record NotificationEvent(
     String targetUrl
 ) {
 
-    public static NotificationEvent orderCreated(Long memberId, Long orderId) {
+    public static NotificationEvent orderCreated(UUID eventId, Long memberId, Long orderId) {
         return orderEvent(
+            eventId,
             memberId,
             orderId,
             NotificationType.ORDER_CREATED,
@@ -23,12 +27,14 @@ public record NotificationEvent(
     }
 
     public static NotificationEvent paymentProcessed(
+        UUID eventId,
         Long memberId,
         Long orderId,
         PaymentResult result
     ) {
         if (result == PaymentResult.SUCCESS) {
             return orderEvent(
+                eventId,
                 memberId,
                 orderId,
                 NotificationType.PAYMENT_COMPLETED,
@@ -37,6 +43,7 @@ public record NotificationEvent(
             );
         }
         return orderEvent(
+            eventId,
             memberId,
             orderId,
             NotificationType.PAYMENT_FAILED,
@@ -45,8 +52,9 @@ public record NotificationEvent(
         );
     }
 
-    public static NotificationEvent orderCanceled(Long memberId, Long orderId) {
+    public static NotificationEvent orderCanceled(UUID eventId, Long memberId, Long orderId) {
         return orderEvent(
+            eventId,
             memberId,
             orderId,
             NotificationType.ORDER_CANCELED,
@@ -56,12 +64,14 @@ public record NotificationEvent(
     }
 
     public static NotificationEvent fulfillmentChanged(
+        UUID eventId,
         Long memberId,
         Long orderId,
         OrderItemFulfillmentStatus status
     ) {
         return switch (status) {
             case PREPARING -> orderEvent(
+                eventId,
                 memberId,
                 orderId,
                 NotificationType.ORDER_PREPARING,
@@ -69,6 +79,7 @@ public record NotificationEvent(
                 "주문 #%d의 상품을 준비하고 있습니다.".formatted(orderId)
             );
             case SHIPPED -> orderEvent(
+                eventId,
                 memberId,
                 orderId,
                 NotificationType.ORDER_SHIPPED,
@@ -76,6 +87,7 @@ public record NotificationEvent(
                 "주문 #%d의 상품이 배송 중입니다.".formatted(orderId)
             );
             case DELIVERED -> orderEvent(
+                eventId,
                 memberId,
                 orderId,
                 NotificationType.ORDER_DELIVERED,
@@ -87,6 +99,7 @@ public record NotificationEvent(
     }
 
     private static NotificationEvent orderEvent(
+        UUID eventId,
         Long memberId,
         Long orderId,
         NotificationType type,
@@ -94,6 +107,7 @@ public record NotificationEvent(
         String message
     ) {
         return new NotificationEvent(
+            eventId,
             memberId,
             type,
             title,

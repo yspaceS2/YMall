@@ -63,3 +63,6 @@ ymall:
       poll-interval: 1h
       cleanup-interval: 1h
       published-retention: 7d
+    notification-consumer:
+      enabled: false
+      group-id: ymall-notification-test

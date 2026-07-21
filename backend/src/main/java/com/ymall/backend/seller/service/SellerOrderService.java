@@ -21,8 +21,6 @@ import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
-import com.ymall.backend.notification.event.NotificationEvent;
-import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.seller.dto.SellerOrderItemResponse;
 import com.ymall.backend.seller.dto.SellerOrderResponse;
 import com.ymall.backend.seller.dto.SellerOrderStatusUpdateRequest;
@@ -44,7 +42,6 @@ public class SellerOrderService {
 
     private final OrderRepository orderRepository;
     private final SellerProfileService sellerProfileService;
-    private final NotificationEventPublisher notificationEventPublisher;
     private final OrderOutboxService orderOutboxService;
 
     public PageResponse<SellerOrderResponse> getOrders(Long memberId, int page, int size) {
@@ -95,11 +92,6 @@ public class SellerOrderService {
                     "fulfillmentStatus", request.fulfillmentStatus().name()
                 )
             );
-            notificationEventPublisher.publish(NotificationEvent.fulfillmentChanged(
-                order.getMember().getId(),
-                order.getId(),
-                request.fulfillmentStatus()
-            ));
         }
         return toResponse(order, profile.getId());
     }
