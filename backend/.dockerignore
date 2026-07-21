@@ -1,0 +1,12 @@
+.gradle
+build
+out
+bin
+.settings
+*.iml
+*.log
+uploads
+src/test
+src/main/resources/application-local.yaml
+src/main/resources/application-local.yml
+src/main/resources/application-local.properties

@@ -84,6 +84,7 @@ public class SecurityConfig {
                     "/api/members/oauth2/email-verifications",
                     "/api/members/oauth2/email-verifications/confirm"
                 ).permitAll()
+                .requestMatchers(GET, "/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers(GET, "/api/members/email-availability").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers(GET, "/api/products/**", "/api/categories/**", "/images/**").permitAll()
