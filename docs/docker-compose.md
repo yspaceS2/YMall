@@ -51,3 +51,172 @@ docker compose up -d
 ```bash
 docker compose down --volumes
 ```
+
+삭제되는 대상은 `postgres-data`, `redis-data`, `kafka-data`, `backend-uploads` 볼륨이다. 백업이 없다면
+PostgreSQL 데이터와 업로드 파일은 복구할 수 없다. Redis 캐시와 Kafka 이벤트는 PostgreSQL 원장을
+대체하지 않으므로 운영 데이터의 기준으로 사용하지 않는다.
+
+## PostgreSQL 백업과 복원
+
+백업 디렉터리는 Git에서 제외된다. PowerShell에서는 먼저 디렉터리를 만든다.
+
+```powershell
+New-Item -ItemType Directory -Force backups
+```
+
+PostgreSQL 컨테이너 안에서 custom format 백업을 만들고 호스트로 복사한다.
+
+```bash
+docker compose exec -T postgres pg_dump \
+  -U ymall_user \
+  -d ymall \
+  --format=custom \
+  --file=/tmp/ymall.dump
+docker compose cp postgres:/tmp/ymall.dump ./backups/ymall.dump
+docker compose exec -T postgres rm /tmp/ymall.dump
+```
+
+`.env`에서 `POSTGRES_USER`나 `POSTGRES_DB`를 변경했다면 명령의 사용자와 DB 이름도 같은 값으로
+변경한다.
+
+복원 중에는 애플리케이션의 DB 접근을 막는다. 아래 명령은 현재 DB 객체를 백업 내용으로 교체한다.
+
+```bash
+docker compose stop frontend backend
+docker compose cp ./backups/ymall.dump postgres:/tmp/ymall.dump
+docker compose exec -T postgres pg_restore \
+  -U ymall_user \
+  -d ymall \
+  --clean \
+  --if-exists \
+  /tmp/ymall.dump
+docker compose exec -T postgres rm /tmp/ymall.dump
+docker compose up -d backend frontend
+```
+
+복원 전에 현재 데이터가 필요하면 반드시 별도 백업을 만든다. 백업 파일이 없으면 볼륨 삭제 전 상태로
+되돌릴 수 없다.
+
+## 업로드 파일 백업과 복원
+
+상품 이미지 등 업로드 파일은 `backend-uploads` 볼륨에 저장된다. PostgreSQL 백업에는 파일 본문이
+포함되지 않으므로 함께 백업한다.
+
+```bash
+docker run --rm \
+  -v ymall_backend-uploads:/source:ro \
+  -v "${PWD}/backups:/backup" \
+  alpine:3.22 tar czf /backup/backend-uploads.tar.gz -C /source .
+```
+
+PowerShell에서 `${PWD}` 마운트가 정상 해석되지 않으면 절대 경로를 사용한다. 복원은 대상 볼륨의 기존
+파일을 교체하므로 Backend를 먼저 중지한다.
+
+```bash
+docker compose stop backend frontend
+docker run --rm \
+  -v ymall_backend-uploads:/target \
+  -v "${PWD}/backups:/backup:ro" \
+  alpine:3.22 sh -c "find /target -mindepth 1 -delete && tar xzf /backup/backend-uploads.tar.gz -C /target"
+docker compose up -d backend frontend
+```
+
+## 자주 발생하는 문제
+
+### Docker API 또는 named pipe에 연결할 수 없음
+
+`dockerDesktopLinuxEngine` 또는 `docker_engine` named pipe 오류는 보통 Docker Desktop이 종료된
+상태라는 의미다. Docker Desktop을 실행하고 엔진 준비가 끝난 뒤 확인한다.
+
+```powershell
+docker version
+docker compose version
+```
+
+### `5173` 포트가 이미 사용 중
+
+실행 중인 개발 서버를 종료하거나 `.env`의 `FRONTEND_PORT`를 다른 값으로 변경한다.
+
+```powershell
+Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue
+```
+
+```env
+FRONTEND_PORT=5174
+```
+
+포트를 변경하면 OAuth 공급자에 등록한 Callback URL과 Redirect URI도 같은 포트로 수정해야 한다.
+
+### Backend가 `unhealthy` 상태
+
+의존 서비스와 Backend 로그를 순서대로 확인한다.
+
+```bash
+docker compose ps
+docker compose logs --tail=200 postgres redis kafka backend
+```
+
+`.env`를 만들었다면 빈 값, DB 이름과 사용자 불일치, 너무 짧은 JWT Secret을 먼저 확인한다. 설정을
+변경한 뒤에는 Backend를 다시 생성한다.
+
+```bash
+docker compose up -d --force-recreate backend frontend
+```
+
+### OAuth2 로그인이 공급자 화면에서 실패
+
+로컬 Callback URL은 다음과 같다.
+
+- Google: `http://localhost:5173/login/oauth2/code/google`
+- Naver: `http://localhost:5173/login/oauth2/code/naver`
+- Kakao: `http://localhost:5173/login/oauth2/code/kakao`
+
+공급자 콘솔의 URI, `.env`의 Client ID·Secret, 현재 `FRONTEND_PORT`가 서로 일치해야 한다. OAuth2를
+사용하지 않는 로컬 흐름에는 공급자 키가 필요하지 않다.
+
+### 컨테이너에서 호스트 서비스에 연결할 수 없음
+
+컨테이너 안의 `localhost`는 호스트 PC가 아니라 해당 컨테이너 자신이다. Docker Desktop에서 호스트의
+SMTP 같은 서비스에 접근할 때는 `host.docker.internal`을 사용한다. PostgreSQL, Redis, Kafka는 각각
+Compose 서비스 이름 `postgres`, `redis`, `kafka`로 접근한다.
+
+### Kafka 재기동 직후 `NOT_COORDINATOR` 메시지
+
+단일 Broker가 재기동되며 소비자 그룹 Coordinator를 다시 선택하는 동안 일시적으로 나타날 수 있다.
+서비스가 `healthy`가 된 뒤에도 계속 반복되는 경우 Kafka와 Backend 로그, 소비자 그룹을 확인한다.
+
+```bash
+docker compose exec -T kafka /opt/kafka/bin/kafka-consumer-groups.sh \
+  --bootstrap-server kafka:9092 \
+  --list
+```
+
+### `vmmemWSL` 메모리 사용량이 큼
+
+Docker Desktop의 Linux 컨테이너는 WSL 2 VM 안에서 실행되므로 `vmmemWSL`에 메모리가 표시된다.
+먼저 사용하지 않는 컨테이너를 종료한다.
+
+```bash
+docker compose down
+```
+
+모든 WSL 작업을 종료해도 될 때만 PowerShell에서 `wsl --shutdown`을 사용한다. 지속적으로 제한이
+필요하면 사용자 홈의 `.wslconfig`에 메모리와 Swap 상한을 설정하고 WSL을 재시작한다.
+
+```ini
+[wsl2]
+memory=6GB
+swap=2GB
+```
+
+메모리 값은 PC 전체 RAM과 동시에 실행할 IDE·브라우저를 고려해 조정한다.
+
+## 전체 초기화 체크리스트
+
+1. 필요한 PostgreSQL과 업로드 파일 백업을 생성한다.
+2. 백업 파일이 호스트의 `backups` 디렉터리에 있는지 확인한다.
+3. `docker compose down --volumes`로 컨테이너·네트워크·볼륨을 삭제한다.
+4. `docker compose up -d --build`로 새 환경을 만든다.
+5. `docker compose ps`와 `/health` 응답을 확인한다.
+
+볼륨 삭제 명령은 마지막 확인 후 사용하며, 삭제된 로컬 데이터는 백업 없이는 복구할 수 없다.
