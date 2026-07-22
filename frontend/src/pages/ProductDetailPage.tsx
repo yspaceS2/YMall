@@ -6,6 +6,8 @@ import { ApiError } from '../api/client'
 import { getProduct } from '../api/products'
 import { getProductReviews } from '../api/reviews'
 import { useAuth } from '../auth/useAuth'
+import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { PageState } from '../components/ui/PageState'
 import type { ProductDetail } from '../types/product'
 import type { Review } from '../types/review'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
@@ -29,6 +31,7 @@ export function ProductDetailPage() {
     const [hasMoreReviews, setHasMoreReviews] = useState(false)
     const [isLoadingReviews, setIsLoadingReviews] = useState(false)
     const [reviewError, setReviewError] = useState('')
+    const [retryKey, setRetryKey] = useState(0)
     const reviewLoadMoreControllerRef = useRef<AbortController | null>(null)
 
     useEffect(() => {
@@ -70,7 +73,7 @@ export function ProductDetailPage() {
             reviewLoadMoreControllerRef.current?.abort()
             reviewLoadMoreControllerRef.current = null
         }
-    }, [id, invalidProductId])
+    }, [id, invalidProductId, retryKey])
 
     const discountedPrice = useMemo(() => product ? getDiscountedPrice(product.price, product.discountPercentage) : 0, [product])
 
@@ -126,8 +129,9 @@ export function ProductDetailPage() {
         }
     }
 
-    if (invalidProductId || error) return <div className="grid min-h-80 place-content-center gap-2 text-center text-muted"><strong className="text-ink">상품을 찾을 수 없습니다.</strong><p className="m-0">{invalidProductId ? '잘못된 상품 주소입니다.' : error}</p><Link className="mt-3 underline" to="/">상품 목록으로 돌아가기</Link></div>
-    if (!product) return <div className="grid min-h-80 place-content-center gap-2 text-center text-muted"><strong className="text-ink">상품 정보를 불러오는 중입니다.</strong></div>
+    if (invalidProductId) return <PageState variant="error" title="상품을 찾을 수 없습니다" description="잘못된 상품 주소입니다." action={<Link className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" to="/">상품 목록으로</Link>} />
+    if (error) return <PageState variant="error" title="상품을 불러오지 못했습니다" description={error} action={<button className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" type="button" onClick={() => { setError(''); setProduct(null); setRetryKey((value) => value + 1) }}>다시 시도</button>} />
+    if (!product) return <PageState variant="loading" title="상품 정보를 불러오는 중입니다" description="잠시만 기다려 주세요." />
 
     return (
         <section className="mx-auto max-w-360 px-4 pt-12 pb-20 min-[601px]:px-[clamp(20px,5vw,72px)] min-[601px]:pt-18 min-[601px]:pb-27.5">
@@ -146,7 +150,7 @@ export function ProductDetailPage() {
                     <p className="border-b border-line pb-7 text-sm leading-7 text-[#676761]">{product.description}</p>
                     <dl className="m-0 border-b border-line py-4.5 text-[13px]"><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">배송</dt><dd className="m-0">무료배송 · 평균 2–3일 소요</dd></div><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">재고</dt><dd className="m-0">{product.stock > 0 ? `${product.stock}개 남음` : '품절'}</dd></div></dl>
                     <div className="flex items-center justify-between py-6 text-[13px]"><span>수량</span><div className="flex items-center border border-line"><button className="grid h-9 w-9.5 place-items-center border-0 bg-transparent" onClick={() => setQuantity((value) => Math.max(1, value - 1))} type="button"><Minus className="size-3.5" /></button><b className="min-w-8.5 text-center">{quantity}</b><button className="grid h-9 w-9.5 place-items-center border-0 bg-transparent disabled:opacity-35" onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))} disabled={product.stock === 0} type="button"><Plus className="size-3.5" /></button></div></div>
-                    {cartError && <p className="mb-4.5 text-xs text-[#b23b2f]" role="alert">{cartError}</p>}
+                    {cartError && <FeedbackMessage className="mb-4.5" tone="error">{cartError}</FeedbackMessage>}
                     <div className="grid grid-cols-1 gap-2 min-[601px]:grid-cols-[120px_1fr]"><button className="h-13.5 border border-ink bg-transparent font-extrabold" type="button"><Heart className="inline size-4" /> 찜하기</button><button className="h-13.5 border border-ink bg-ink font-extrabold text-white disabled:border-[#ddd] disabled:bg-[#ddd] disabled:text-[#888]" disabled={isAddingToCart || product.stock === 0 || product.status !== 'APPROVED'} onClick={handleAddToCart} type="button">{product.stock === 0 || product.status === 'SOLD_OUT' ? '품절된 상품입니다' : product.status !== 'APPROVED' ? '구매할 수 없는 상품입니다' : isAddingToCart ? '장바구니에 담는 중...' : `${formatPrice(discountedPrice * quantity)} · 장바구니 담기`}</button></div>
                     <div className="mt-5.5 flex gap-6.5 text-[11px] text-muted"><span className="flex items-center gap-1.5"><Truck className="size-4" /> 무료 배송</span><span className="flex items-center gap-1.5"><ShieldCheck className="size-4" /> 안전 결제</span></div>
                 </div>
@@ -159,11 +163,11 @@ export function ProductDetailPage() {
                     </div>
                     <p className="text-sm text-muted">총 {reviewCount}개의 리뷰</p>
                 </div>
-                {reviewError && <p className="mb-5 text-sm text-[#b23b2f]" role="alert">{reviewError}</p>}
+                {reviewError && reviews.length > 0 && <FeedbackMessage className="mb-5" tone="error">{reviewError}</FeedbackMessage>}
                 {reviews.length === 0 ? (
-                    <div className="grid min-h-40 place-content-center border-y border-line text-sm text-muted">
-                        아직 작성된 리뷰가 없습니다.
-                    </div>
+                    reviewError
+                        ? <PageState variant="error" title="리뷰를 불러오지 못했습니다" description={reviewError} action={<button className="border border-ink bg-white px-4 py-2 text-xs font-bold" type="button" onClick={() => { setReviewError(''); setRetryKey((value) => value + 1) }}>다시 시도</button>} compact />
+                        : <PageState variant="empty" title="아직 작성된 리뷰가 없습니다" description="구매한 고객의 첫 리뷰를 기다리고 있습니다." compact />
                 ) : (
                     <div className="border-t border-line">
                         {reviews.map((review) => (
