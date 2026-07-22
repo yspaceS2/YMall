@@ -3,6 +3,9 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { checkEmailAvailability, signupMember } from '../api/auth'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
+import { AuthField } from '../components/auth/AuthField'
+import { AuthMessage } from '../components/auth/AuthMessage'
+import { AuthPageLayout } from '../components/auth/AuthPageLayout'
 
 interface SignupForm {
     email: string
@@ -50,6 +53,9 @@ export function SignupPage() {
     const isEmailFormatValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
     const currentEmailCheckStatus = emailCheck.email === normalizedEmail ? emailCheck.status : 'idle'
     const isEmailAvailable = currentEmailCheckStatus === 'available'
+    const hasEmailCheckMessage = currentEmailCheckStatus === 'available'
+        || currentEmailCheckStatus === 'unavailable'
+        || currentEmailCheckStatus === 'error'
     const hasPasswordConfirmation = form.passwordConfirmation.length > 0
     const isPasswordMatched = hasPasswordConfirmation && form.password === form.passwordConfirmation
     const canSubmit = isEmailAvailable && isPasswordMatched && !isSubmitting
@@ -119,36 +125,19 @@ export function SignupPage() {
     ]
 
     return (
-        <section className="grid min-h-[calc(100vh-76px)] grid-cols-1 min-[901px]:grid-cols-[minmax(0,1.1fr)_minmax(420px,.9fr)]">
-            <div className="mx-auto w-[calc(100%-40px)] max-w-125 py-14 min-[601px]:w-[calc(100%-48px)] min-[601px]:py-20">
-                <p className="mb-4.5 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">JOIN YMALL</p>
-                <h1 className="m-0 font-serif text-[clamp(38px,5vw,62px)] leading-none font-medium tracking-[-.05em]">취향의 시작을 함께해요.</h1>
-                <p className="mt-5 mb-10.5 text-sm leading-7 text-muted">기본 정보를 입력하고 YMall 회원이 되어보세요.</p>
-
+        <AuthPageLayout eyebrow="JOIN YMALL" title="취향의 시작을 함께해요." description="기본 정보를 입력하고 YMall 회원이 되어보세요." asideEyebrow="YMALL MEMBERS" asideTitle={<>FIND YOUR<br />OWN TASTE.</>} asideClassName="bg-[radial-gradient(circle_at_25%_24%,rgba(217,255,67,.95),transparent_22%),linear-gradient(145deg,#d9ddc8,#f1f0e8_58%,#c8cfab)]">
                 <form className="grid gap-5" onSubmit={handleSubmit}>
-                    <div className="grid gap-2 text-xs font-bold text-muted">
-                        <label htmlFor="signup-email">이메일</label>
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
-                            <input
-                                id="signup-email"
-                                className="w-full border-0 border-b border-line bg-transparent px-0.5 py-3.5 text-ink outline-0 focus:border-ink"
-                                type="email"
-                                value={form.email}
-                                onChange={(event) => updateField('email', event.target.value)}
-                                autoComplete="email"
-                                placeholder="you@example.com"
-                                maxLength={255}
-                                required
-                            />
-                            <button
+                    <AuthField id="signup-email" label="이메일" type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} autoComplete="email" placeholder="you@example.com" maxLength={255} required
+                        aria-invalid={currentEmailCheckStatus === 'unavailable' || currentEmailCheckStatus === 'error'} messageId="signup-email-message"
+                        action={<button
                                 className="h-10.5 border border-ink px-4 font-bold text-ink disabled:cursor-default disabled:border-line disabled:text-muted"
                                 type="button"
                                 onClick={handleEmailAvailabilityCheck}
                                 disabled={!isEmailFormatValid || currentEmailCheckStatus === 'checking'}
                             >
                                 {currentEmailCheckStatus === 'checking' ? '확인 중...' : '중복 확인'}
-                            </button>
-                        </div>
+                            </button>}
+                        message={hasEmailCheckMessage ? <>
                         {currentEmailCheckStatus === 'available' && (
                             <span className="font-medium text-[#657617]" role="status">사용 가능한 이메일입니다.</span>
                         )}
@@ -158,12 +147,13 @@ export function SignupPage() {
                         {currentEmailCheckStatus === 'error' && (
                             <span className="font-medium text-[#b23b2f]" role="alert">이메일 확인에 실패했습니다. 다시 시도해 주세요.</span>
                         )}
-                    </div>
+                        </> : undefined}
+                    />
                     {fields.map((field) => (
-                        <label className="grid gap-2 text-xs font-bold text-muted" key={field.key}>
-                            <span>{field.label}</span>
-                            <input
-                                className="w-full border-0 border-b border-line bg-transparent px-0.5 py-3.5 text-ink outline-0 focus:border-ink"
+                        <AuthField
+                                key={field.key}
+                                id={`signup-${field.key}`}
+                                label={field.label}
                                 type={field.type}
                                 value={form[field.key]}
                                 onChange={(event) => updateField(field.key, event.target.value)}
@@ -173,18 +163,19 @@ export function SignupPage() {
                                 maxLength={field.key === 'email' ? 255 : field.key === 'name' ? 50 : field.key === 'phone' ? 13 : 64}
                                 pattern={field.key === 'phone' ? '01[016789]-?[0-9]{3,4}-?[0-9]{4}' : undefined}
                                 required
-                            />
-                            {field.key === 'passwordConfirmation' && hasPasswordConfirmation && (
+                                aria-invalid={field.key === 'passwordConfirmation' && hasPasswordConfirmation && !isPasswordMatched}
+                                messageId={field.key === 'passwordConfirmation' ? 'signup-password-confirmation-message' : undefined}
+                                message={field.key === 'passwordConfirmation' && hasPasswordConfirmation ? (
                                 <span
                                     className={`font-medium ${isPasswordMatched ? 'text-[#657617]' : 'text-[#b23b2f]'}`}
                                     role={isPasswordMatched ? 'status' : 'alert'}
                                 >
                                     {isPasswordMatched ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.'}
                                 </span>
-                            )}
-                        </label>
+                            ) : undefined}
+                        />
                     ))}
-                    {errorMessage && <p className="text-xs text-[#b23b2f]" role="alert">{errorMessage}</p>}
+                    {errorMessage && <AuthMessage tone="error">{errorMessage}</AuthMessage>}
                     <button className="mt-2 h-13.5 border border-ink bg-ink font-extrabold text-white disabled:cursor-default disabled:opacity-60" type="submit" disabled={!canSubmit}>
                         {isSubmitting ? '가입 중...' : '회원가입'}
                     </button>
@@ -195,11 +186,6 @@ export function SignupPage() {
                         로그인
                     </Link>
                 </p>
-            </div>
-            <aside className="flex min-h-75 flex-col justify-end bg-[radial-gradient(circle_at_25%_24%,rgba(217,255,67,.95),transparent_22%),linear-gradient(145deg,#d9ddc8,#f1f0e8_58%,#c8cfab)] p-5 text-ink min-[601px]:min-h-95 min-[601px]:p-[clamp(40px,7vw,100px)]" aria-hidden="true">
-                <span className="mb-4.5 text-[11px] font-extrabold tracking-[.2em]">YMALL MEMBERS</span>
-                <strong className="font-serif text-[clamp(48px,6vw,90px)] leading-[.88] font-medium tracking-[-.06em]">FIND YOUR<br />OWN TASTE.</strong>
-            </aside>
-        </section>
+        </AuthPageLayout>
     )
 }
