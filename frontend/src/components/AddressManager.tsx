@@ -101,7 +101,7 @@ export function AddressManager({ defaultRecipientName, defaultRecipientPhone }: 
     )
 
     return (
-        <div className="mt-8 border border-line bg-white p-6 min-[601px]:p-8">
+        <div className="mt-8 scroll-mt-24 border border-line bg-white p-6 min-[601px]:p-8" id="addresses">
             <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">DELIVERY ADDRESS</p>
             <h2 className="mt-2 font-serif text-3xl">배송지 관리</h2>
             {error && <p className="mt-4 text-sm text-[#b23b2f]" role="alert">{error}</p>}
