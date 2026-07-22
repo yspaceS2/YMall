@@ -2,6 +2,7 @@ import { Search, SlidersHorizontal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getCategories, getProducts } from '../api/products'
 import { ProductCard } from '../components/ProductCard'
+import { PageState } from '../components/ui/PageState'
 import type { Category, PageResponse, ProductSummary } from '../types/product'
 
 const PAGE_SIZE = 12
@@ -12,7 +13,8 @@ export function ProductListPage() {
     const [keyword, setKeyword] = useState('')
     const [query, setQuery] = useState('')
     const [page, setPage] = useState(1)
-    const requestKey = `${page}:${categoryId ?? 'all'}:${query}`
+    const [retryKey, setRetryKey] = useState(0)
+    const requestKey = `${page}:${categoryId ?? 'all'}:${query}:${retryKey}`
     const [result, setResult] = useState<{
         key: string
         products: PageResponse<ProductSummary> | null
@@ -75,9 +77,16 @@ export function ProductListPage() {
                     <span className="hidden items-center gap-2 text-xs min-[601px]:flex"><SlidersHorizontal className="size-4" /> 추천순</span>
                 </div>
 
-                {loading && <StatusPanel title="상품을 불러오는 중입니다" />}
-                {!loading && error && <StatusPanel title="상품을 불러오지 못했습니다" description={error} />}
-                {!loading && !error && products?.content.length === 0 && <StatusPanel title="조건에 맞는 상품이 없습니다" description="검색어나 카테고리를 변경해 보세요." />}
+                {loading && <PageState variant="loading" title="상품을 불러오는 중입니다" description="잠시만 기다려 주세요." />}
+                {!loading && error && (
+                    <PageState
+                        variant="error"
+                        title="상품을 불러오지 못했습니다"
+                        description={error}
+                        action={<button className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" type="button" onClick={() => setRetryKey((value) => value + 1)}>다시 시도</button>}
+                    />
+                )}
+                {!loading && !error && products?.content.length === 0 && <PageState variant="empty" title="조건에 맞는 상품이 없습니다" description="검색어나 카테고리를 변경해 보세요." />}
                 {!loading && !error && products && products.content.length > 0 && (
                     <div className="grid grid-cols-2 gap-x-2.5 gap-y-8.5 min-[601px]:gap-x-5 min-[601px]:gap-y-11 min-[901px]:grid-cols-4">{products.content.map((product) => <ProductCard product={product} key={product.productId} />)}</div>
                 )}
@@ -94,8 +103,4 @@ export function ProductListPage() {
             </section>
         </>
     )
-}
-
-function StatusPanel({ title, description }: { title: string; description?: string }) {
-    return <div className="grid min-h-80 place-content-center gap-2 text-center text-muted"><strong className="text-ink">{title}</strong>{description && <p className="m-0">{description}</p>}</div>
 }

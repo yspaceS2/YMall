@@ -1,8 +1,10 @@
-import { ChevronLeft, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react'
+import { ChevronLeft, Minus, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteCartItem, getCart, updateCartItemQuantity } from '../api/cart'
 import { ApiError } from '../api/client'
+import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { PageState } from '../components/ui/PageState'
 import type { CartItem } from '../types/cart'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
 
@@ -116,17 +118,11 @@ export function CartPage() {
     }
 
     if (isLoading) {
-        return <div className="grid min-h-80 place-content-center gap-2 text-center text-muted"><strong className="text-ink">장바구니를 불러오는 중입니다.</strong></div>
+        return <PageState variant="loading" title="장바구니를 불러오는 중입니다" description="잠시만 기다려 주세요." />
     }
 
     if (errorMessage && items.length === 0) {
-        return (
-            <div className="grid min-h-80 place-content-center gap-2 text-center text-muted">
-                <strong className="text-ink">장바구니를 불러오지 못했습니다.</strong>
-                <p className="m-0">{errorMessage}</p>
-                <button className="justify-self-center border border-ink bg-transparent px-4 py-2" type="button" onClick={retryCart}>다시 시도</button>
-            </div>
-        )
+        return <PageState variant="error" title="장바구니를 불러오지 못했습니다" description={errorMessage} action={<button className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" type="button" onClick={retryCart}>다시 시도</button>} />
     }
 
     return (
@@ -139,15 +135,10 @@ export function CartPage() {
                 <span className="text-[13px] text-muted">{totalQuantity}개 상품</span>
             </div>
 
-            {errorMessage && <p className="mb-4.5 text-xs text-[#b23b2f]" role="alert">{errorMessage}</p>}
+            {errorMessage && <FeedbackMessage className="mb-4.5" tone="error">{errorMessage}</FeedbackMessage>}
 
             {items.length === 0 ? (
-                <div className="flex min-h-95 flex-col items-center justify-center text-center text-muted">
-                    <ShoppingBag className="mb-5.5 size-9.5" aria-hidden="true" />
-                    <strong className="text-ink">장바구니가 비어 있습니다.</strong>
-                    <p className="mt-2 mb-5.5">마음에 드는 상품을 담아보세요.</p>
-                    <Link className="flex items-center gap-1 text-xs underline" to="/"><ChevronLeft className="size-4" /> 상품 둘러보기</Link>
-                </div>
+                <PageState variant="empty" title="장바구니가 비어 있습니다" description="마음에 드는 상품을 담아보세요." action={<Link className="flex items-center gap-1 border border-ink bg-white px-5 py-2.5 text-xs font-bold" to="/"><ChevronLeft className="size-4" /> 상품 둘러보기</Link>} />
             ) : (
                 <div className="grid grid-cols-1 items-start gap-10 min-[1050px]:grid-cols-[minmax(0,1fr)_340px] min-[1050px]:gap-[clamp(40px,6vw,90px)]">
                     <div className="border-t border-line">

@@ -2,6 +2,8 @@ import { LoaderCircle, PackageCheck, Pencil, Store, Trash2, Truck } from 'lucide
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { ApiError } from '../api/client'
 import { getCategories } from '../api/products'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import {
     createSellerProduct,
     createSellerProfile,
@@ -66,6 +68,7 @@ export function SellerManagementPage() {
     const [hasMoreOrders, setHasMoreOrders] = useState(false)
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
+    const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null)
 
     useEffect(() => {
         const controller = new AbortController()
@@ -183,16 +186,20 @@ export function SellerManagementPage() {
     }
 
     async function removeProduct(productId: number) {
-        if (!window.confirm('이 상품을 삭제하시겠습니까?')) return
+        setIsSaving(true)
+        setErrorMessage('')
         try {
             await deleteSellerProduct(productId)
             const response = await getSellerProducts()
             setProducts(response.content)
             setHasMoreProducts(response.hasNext)
             setNextProductPage(2)
+            setProductToDelete(null)
             setMessage('상품이 삭제되었습니다.')
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '상품을 삭제하지 못했습니다.')
+        } finally {
+            setIsSaving(false)
         }
     }
 
@@ -249,8 +256,8 @@ export function SellerManagementPage() {
         <section className="mx-auto max-w-300 px-4 py-12 min-[601px]:px-8 min-[601px]:py-18">
             <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">SELLER CENTER</p>
             <h1 className="mb-8 font-serif text-[clamp(40px,6vw,64px)] leading-none tracking-tighter">판매자 관리</h1>
-            {message && <p className="mb-5 border border-[#cad39b] bg-[#f4f6e8] p-3 text-sm">{message}</p>}
-            {errorMessage && <p className="mb-5 border border-[#e2b9b4] bg-[#fff5f3] p-3 text-sm text-[#a22e24]" role="alert">{errorMessage}</p>}
+            {message && <FeedbackMessage className="mb-5" tone="success">{message}</FeedbackMessage>}
+            {errorMessage && <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>}
 
             <div className="grid gap-8">
                 <Panel icon={<Store />} title="판매자 정보">
@@ -278,7 +285,7 @@ export function SellerManagementPage() {
                                 {editingProductId && <button className="h-11 border border-line px-5 text-xs font-bold" type="button" onClick={() => { setEditingProductId(null); setProductForm({ ...emptyProduct, categoryId: categories[0]?.categoryId ?? 0 }) }}>취소</button>}
                             </div>
                         </form>
-                        <div className="grid gap-3">{products.length === 0 ? <p className="text-sm text-muted">등록한 상품이 없습니다.</p> : products.map((product) => <div className="flex flex-wrap items-center justify-between gap-3 border border-line p-4" key={product.productId}><div><strong>{product.name}</strong><p className="mt-1 text-xs text-muted">{formatPrice(product.price)} · 재고 {product.stock} · {product.status}</p></div><div className="flex gap-2"><button className="p-2" type="button" aria-label="상품 수정" onClick={() => startEditing(product.productId)}><Pencil className="size-4" /></button><button className="p-2 text-[#a22e24]" type="button" aria-label="상품 삭제" onClick={() => removeProduct(product.productId)}><Trash2 className="size-4" /></button></div></div>)}</div>
+                        <div className="grid gap-3">{products.length === 0 ? <p className="text-sm text-muted">등록한 상품이 없습니다.</p> : products.map((product) => <div className="flex flex-wrap items-center justify-between gap-3 border border-line p-4" key={product.productId}><div><strong>{product.name}</strong><p className="mt-1 text-xs text-muted">{formatPrice(product.price)} · 재고 {product.stock} · {product.status}</p></div><div className="flex gap-2"><button className="p-2" type="button" aria-label="상품 수정" onClick={() => startEditing(product.productId)}><Pencil className="size-4" /></button><button className="p-2 text-[#a22e24]" type="button" aria-label="상품 삭제" onClick={() => setProductToDelete(product)}><Trash2 className="size-4" /></button></div></div>)}</div>
                         {hasMoreProducts && <button className="mx-auto mt-5 grid h-10 min-w-32 place-items-center border border-ink px-5 text-xs font-bold disabled:opacity-50" type="button" disabled={isLoadingMoreProducts} onClick={loadMoreProducts}>{isLoadingMoreProducts ? <LoaderCircle className="size-4 animate-spin" /> : '상품 더 보기'}</button>}
                     </Panel>
 
@@ -288,6 +295,17 @@ export function SellerManagementPage() {
                     </Panel>
                 </>}
             </div>
+            <ConfirmDialog
+                open={productToDelete !== null}
+                title="상품을 삭제할까요?"
+                description={`삭제한 상품은 복구할 수 없습니다.${productToDelete ? ` '${productToDelete.name}' 상품을 삭제합니다.` : ''}`}
+                confirmLabel="상품 삭제"
+                isPending={isSaving}
+                onCancel={() => setProductToDelete(null)}
+                onConfirm={() => {
+                    if (productToDelete) void removeProduct(productToDelete.productId)
+                }}
+            />
         </section>
     )
 }

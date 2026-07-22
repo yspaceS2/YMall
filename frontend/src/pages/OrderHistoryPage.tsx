@@ -1,10 +1,13 @@
-import { LoaderCircle, ReceiptText, Star, Trash2, X } from 'lucide-react'
+import { LoaderCircle, Star, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { getOrders } from '../api/orders'
 import { createReview, deleteReview, getAllMyReviews, updateReview } from '../api/reviews'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { PageState } from '../components/ui/PageState'
 import type { Order, OrderItem } from '../types/order'
 import type { Review } from '../types/review'
 import { formatOrderDate, getOrderStatusLabel } from '../utils/order'
@@ -27,6 +30,9 @@ export function OrderHistoryPage() {
     const [nextPage, setNextPage] = useState(2)
     const [hasNext, setHasNext] = useState(false)
     const [errorMessage, setErrorMessage] = useState('')
+    const [successMessage, setSuccessMessage] = useState('')
+    const [reviewToDelete, setReviewToDelete] = useState<Review | null>(null)
+    const [retryKey, setRetryKey] = useState(0)
     const loadMoreControllerRef = useRef<AbortController | null>(null)
     const reviewsByOrderItemId = useMemo(
         () => new Map(reviews.map((review) => [review.orderItemId, review])),
@@ -55,7 +61,7 @@ export function OrderHistoryPage() {
             controller.abort()
             loadMoreControllerRef.current?.abort()
         }
-    }, [])
+    }, [retryKey])
 
     async function loadMore() {
         if (!hasNext || isLoadingMore) return
@@ -78,6 +84,7 @@ export function OrderHistoryPage() {
 
     function openReviewEditor(item: OrderItem, review?: Review) {
         setErrorMessage('')
+        setSuccessMessage('')
         setEditor({
             orderItemId: item.orderItemId,
             reviewId: review?.reviewId,
@@ -90,6 +97,7 @@ export function OrderHistoryPage() {
         event.preventDefault()
         if (!editor || !editor.content.trim()) return
         setErrorMessage('')
+        setSuccessMessage('')
         setIsSavingReview(true)
         try {
             const savedReview = editor.reviewId
@@ -105,6 +113,7 @@ export function OrderHistoryPage() {
             setReviews((current) => editor.reviewId
                 ? current.map((review) => review.reviewId === savedReview.reviewId ? savedReview : review)
                 : [savedReview, ...current])
+            setSuccessMessage(editor.reviewId ? '리뷰가 수정되었습니다.' : '리뷰가 등록되었습니다.')
             setEditor(null)
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '리뷰를 저장하지 못했습니다.')
@@ -114,13 +123,15 @@ export function OrderHistoryPage() {
     }
 
     async function removeReview(review: Review) {
-        if (!window.confirm('이 리뷰를 삭제하시겠습니까?')) return
         setErrorMessage('')
+        setSuccessMessage('')
         setIsSavingReview(true)
         try {
             await deleteReview(review.reviewId)
             setReviews((current) => current.filter((item) => item.reviewId !== review.reviewId))
             if (editor?.reviewId === review.reviewId) setEditor(null)
+            setReviewToDelete(null)
+            setSuccessMessage('리뷰가 삭제되었습니다.')
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '리뷰를 삭제하지 못했습니다.')
         } finally {
@@ -129,7 +140,11 @@ export function OrderHistoryPage() {
     }
 
     if (isLoading) {
-        return <div className="grid min-h-100 place-content-center text-sm text-muted">주문 내역을 불러오고 있습니다.</div>
+        return <PageState variant="loading" title="주문 내역을 불러오는 중입니다" description="잠시만 기다려 주세요." />
+    }
+
+    if (errorMessage && orders.length === 0) {
+        return <PageState variant="error" title="주문 내역을 불러오지 못했습니다" description={errorMessage} action={<button className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" type="button" onClick={() => { setErrorMessage(''); setIsLoading(true); setRetryKey((value) => value + 1) }}>다시 시도</button>} />
     }
 
     return (
@@ -137,14 +152,11 @@ export function OrderHistoryPage() {
             <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">MY ORDERS</p>
             <h1 className="mb-10 font-serif text-[clamp(42px,6vw,68px)] leading-none tracking-tighter">주문 내역</h1>
 
-            {errorMessage && <p className="mb-5 text-sm text-[#b23b2f]" role="alert">{errorMessage}</p>}
+            {errorMessage && <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>}
+            {successMessage && <FeedbackMessage className="mb-5" tone="success">{successMessage}</FeedbackMessage>}
 
             {orders.length === 0 ? (
-                <div className="grid min-h-80 place-content-center justify-items-center border-y border-line text-center">
-                    <ReceiptText className="mb-4 size-9 text-muted" />
-                    <strong>아직 주문 내역이 없습니다.</strong>
-                    <Link className="mt-4 text-xs underline" to="/">상품 둘러보기</Link>
-                </div>
+                <PageState variant="empty" title="아직 주문 내역이 없습니다" description="마음에 드는 상품을 찾아 첫 주문을 시작해 보세요." action={<Link className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" to="/">상품 둘러보기</Link>} />
             ) : (
                 <div className="border-t border-ink">
                     {orders.map((order) => (
@@ -192,7 +204,7 @@ export function OrderHistoryPage() {
                                                                 className="grid size-8.5 place-items-center border border-line bg-white text-[#b23b2f] disabled:opacity-50"
                                                                 type="button"
                                                                 disabled={isSavingReview}
-                                                                onClick={() => removeReview(review)}
+                                                                onClick={() => setReviewToDelete(review)}
                                                                 aria-label="리뷰 삭제"
                                                             >
                                                                 <Trash2 className="size-3.5" />
@@ -266,6 +278,17 @@ export function OrderHistoryPage() {
                     )}
                 </div>
             )}
+            <ConfirmDialog
+                open={reviewToDelete !== null}
+                title="리뷰를 삭제할까요?"
+                description="삭제한 리뷰는 복구할 수 없습니다. 상품을 다시 구매하지 않으면 새 리뷰를 작성할 수 없을 수 있습니다."
+                confirmLabel="리뷰 삭제"
+                isPending={isSavingReview}
+                onCancel={() => setReviewToDelete(null)}
+                onConfirm={() => {
+                    if (reviewToDelete) void removeReview(reviewToDelete)
+                }}
+            />
         </section>
     )
 }

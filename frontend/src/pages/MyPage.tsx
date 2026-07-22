@@ -5,6 +5,8 @@ import { changeMemberPassword, getMemberProfile, getOAuthAccounts, getOAuthAutho
 import { ApiError } from '../api/client'
 import type { MemberProfile, OAuthProvider } from '../types/auth'
 import { AddressManager } from '../components/AddressManager'
+import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { PageState } from '../components/ui/PageState'
 
 export function MyPage() {
     const [profile, setProfile] = useState<MemberProfile | null>(null)
@@ -21,6 +23,7 @@ export function MyPage() {
     const [isChangingPassword, setIsChangingPassword] = useState(false)
     const [linkedProviders, setLinkedProviders] = useState<OAuthProvider[]>([])
     const [linkingProvider, setLinkingProvider] = useState<OAuthProvider | null>(null)
+    const [retryKey, setRetryKey] = useState(0)
 
     useEffect(() => {
         const controller = new AbortController()
@@ -37,7 +40,7 @@ export function MyPage() {
             })
             .finally(() => setIsLoading(false))
         return () => controller.abort()
-    }, [])
+    }, [retryKey])
 
     async function handleOAuthLink(provider: OAuthProvider) {
         setErrorMessage('')
@@ -95,11 +98,11 @@ export function MyPage() {
     }
 
     if (isLoading) {
-        return <section className="mx-auto w-[calc(100%-40px)] max-w-240 py-16 text-sm text-muted">회원 정보를 불러오고 있습니다.</section>
+        return <PageState variant="loading" title="회원 정보를 불러오는 중입니다" description="잠시만 기다려 주세요." />
     }
 
     if (!profile) {
-        return <section className="mx-auto w-[calc(100%-40px)] max-w-240 py-16 text-sm text-[#b23b2f]">{errorMessage || '회원 정보를 불러오지 못했습니다.'}</section>
+        return <PageState variant="error" title="회원 정보를 불러오지 못했습니다" description={errorMessage || '잠시 후 다시 시도해 주세요.'} action={<button className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" type="button" onClick={() => { setErrorMessage(''); setIsLoading(true); setRetryKey((value) => value + 1) }}>다시 시도</button>} />
     }
 
     const passwordConfirmationVisible = newPasswordConfirmation.length > 0
@@ -134,7 +137,7 @@ export function MyPage() {
                 })}
             </nav>
 
-            {errorMessage && <p className="mt-8 border border-[#d9aaa4] bg-[#f9ecea] px-4 py-3 text-sm text-[#b23b2f]" role="alert">{errorMessage}</p>}
+            {errorMessage && <FeedbackMessage className="mt-8" tone="error">{errorMessage}</FeedbackMessage>}
 
             <div className="mt-8 grid scroll-mt-24 gap-8 min-[901px]:grid-cols-2" id="profile">
                 <form className="grid content-start gap-5 border border-line bg-white p-6 min-[601px]:p-8" onSubmit={handleProfileSubmit}>
@@ -154,7 +157,7 @@ export function MyPage() {
                         <span>휴대전화 번호</span>
                         <input className="border-0 border-b border-line bg-transparent px-0.5 py-3.5 text-ink outline-0 focus:border-ink" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} pattern="01[016789]-?[0-9]{3,4}-?[0-9]{4}" maxLength={13} required />
                     </label>
-                    {profileMessage && <p className="text-xs text-[#657617]" role="status">{profileMessage}</p>}
+                    {profileMessage && <FeedbackMessage tone="success">{profileMessage}</FeedbackMessage>}
                     <button className="mt-2 h-12 border border-ink bg-ink font-extrabold text-white disabled:opacity-60" type="submit" disabled={isSavingProfile}>
                         {isSavingProfile ? '저장 중...' : '회원 정보 저장'}
                     </button>
@@ -178,7 +181,7 @@ export function MyPage() {
                         <input className="border-0 border-b border-line bg-transparent px-0.5 py-3.5 text-ink outline-0 focus:border-ink" type="password" value={newPasswordConfirmation} onChange={(event) => setNewPasswordConfirmation(event.target.value)} autoComplete="new-password" minLength={8} maxLength={64} required />
                         {passwordConfirmationVisible && <span className={isPasswordMatched ? 'text-[#657617]' : 'text-[#b23b2f]'}>{isPasswordMatched ? '새 비밀번호가 일치합니다.' : '새 비밀번호가 일치하지 않습니다.'}</span>}
                     </label>
-                    {passwordMessage && <p className="text-xs text-[#657617]" role="status">{passwordMessage}</p>}
+                    {passwordMessage && <FeedbackMessage tone="success">{passwordMessage}</FeedbackMessage>}
                     <button className="mt-2 h-12 border border-ink bg-ink font-extrabold text-white disabled:opacity-60" type="submit" disabled={isChangingPassword || !isPasswordMatched || currentPassword.length === 0}>
                         {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
                     </button>

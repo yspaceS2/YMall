@@ -1,7 +1,9 @@
-import { Bell, CheckCheck, LoaderCircle } from 'lucide-react'
+import { CheckCheck, LoaderCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/client'
+import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { PageState } from '../components/ui/PageState'
 import {
     getNotifications,
     markAllNotificationsAsRead,
@@ -18,6 +20,8 @@ export function NotificationPage() {
     const [nextPage, setNextPage] = useState(2)
     const [hasNext, setHasNext] = useState(false)
     const [errorMessage, setErrorMessage] = useState('')
+    const [successMessage, setSuccessMessage] = useState('')
+    const [retryKey, setRetryKey] = useState(0)
     const loadMoreControllerRef = useRef<AbortController | null>(null)
     const navigate = useNavigate()
     const hasUnread = notifications.some((notification) => notification.readAt === null)
@@ -40,13 +44,14 @@ export function NotificationPage() {
             controller.abort()
             loadMoreControllerRef.current?.abort()
         }
-    }, [])
+    }, [retryKey])
 
     async function loadMore() {
         if (!hasNext || isLoadingMore) return
         const controller = new AbortController()
         loadMoreControllerRef.current = controller
         setErrorMessage('')
+        setSuccessMessage('')
         setIsLoadingMore(true)
         try {
             const response = await getNotifications(nextPage, 20, controller.signal)
@@ -63,6 +68,7 @@ export function NotificationPage() {
 
     async function openNotification(notification: Notification) {
         setErrorMessage('')
+        setSuccessMessage('')
         try {
             if (notification.readAt === null) {
                 const updated = await markNotificationAsRead(notification.notificationId)
@@ -89,6 +95,7 @@ export function NotificationPage() {
                 readAt: notification.readAt ?? readAt,
             })))
             notifyNotificationsChanged()
+            setSuccessMessage('모든 알림을 읽음 처리했습니다.')
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '알림을 처리하지 못했습니다.')
         } finally {
@@ -97,7 +104,11 @@ export function NotificationPage() {
     }
 
     if (isLoading) {
-        return <div className="grid min-h-100 place-content-center text-sm text-muted">알림을 불러오고 있습니다.</div>
+        return <PageState variant="loading" title="알림을 불러오는 중입니다" description="잠시만 기다려 주세요." />
+    }
+
+    if (errorMessage && notifications.length === 0) {
+        return <PageState variant="error" title="알림을 불러오지 못했습니다" description={errorMessage} action={<button className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" type="button" onClick={() => { setErrorMessage(''); setIsLoading(true); setRetryKey((value) => value + 1) }}>다시 시도</button>} />
     }
 
     return (
@@ -120,14 +131,11 @@ export function NotificationPage() {
                 )}
             </div>
 
-            {errorMessage && <p className="mb-5 text-sm text-[#b23b2f]" role="alert">{errorMessage}</p>}
+            {errorMessage && <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>}
+            {successMessage && <FeedbackMessage className="mb-5" tone="success">{successMessage}</FeedbackMessage>}
 
             {notifications.length === 0 ? (
-                <div className="grid min-h-80 place-content-center justify-items-center border-y border-line text-center">
-                    <Bell className="mb-4 size-9 text-muted" />
-                    <strong>새로운 알림이 없습니다.</strong>
-                    <p className="mt-2 text-xs text-muted">주문과 배송 상태가 바뀌면 이곳에서 알려드립니다.</p>
-                </div>
+                <PageState variant="empty" title="새로운 알림이 없습니다" description="주문과 배송 상태가 바뀌면 이곳에서 알려드립니다." />
             ) : (
                 <div className="border-t border-ink">
                     {notifications.map((notification) => (
