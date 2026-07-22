@@ -17,6 +17,7 @@ import { SignupPage } from './pages/SignupPage'
 import { OAuth2CallbackPage } from './pages/OAuth2CallbackPage'
 import { OAuthSignupPage } from './pages/OAuthSignupPage'
 import { AdminManagementPage } from './pages/AdminManagementPage'
+import { AccessDeniedPage } from './pages/AccessDeniedPage'
 
 function App() {
     return (
@@ -36,6 +37,7 @@ function App() {
                 <Route path="/orders" element={<RequireAuth><OrderHistoryPage /></RequireAuth>} />
                 <Route path="/notifications" element={<RequireAuth><NotificationPage /></RequireAuth>} />
                 <Route path="/mypage" element={<RequireAuth><MyPage /></RequireAuth>} />
+                <Route path="/forbidden" element={<RequireAuth><AccessDeniedPage /></RequireAuth>} />
                 <Route path="/orders/:orderId/payment" element={<RequireAuth><PaymentPage /></RequireAuth>} />
                 <Route path="/orders/:orderId/result" element={<RequireAuth><OrderResultPage /></RequireAuth>} />
                 <Route path="/seller" element={<RequireRole roles={['ROLE_SELLER', 'ROLE_ADMIN']}><SellerManagementPage /></RequireRole>} />
