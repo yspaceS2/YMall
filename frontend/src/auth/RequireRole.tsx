@@ -8,10 +8,10 @@ export function RequireRole({ children, roles }: { children: ReactNode; roles: M
     const location = useLocation()
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" replace state={{ from: location.pathname }} />
+        return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
     }
     if (!role || !roles.includes(role)) {
-        return <Navigate to="/" replace />
+        return <Navigate to="/forbidden" replace state={{ from: location.pathname }} />
     }
     return children
 }

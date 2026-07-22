@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Bell, Heart, LogOut, ReceiptText, Search, ShieldCheck, ShoppingBag, Store, UserRound } from 'lucide-react'
+import { Bell, Heart, LogOut, Menu, ReceiptText, Search, ShieldCheck, ShoppingBag, Store, UserRound, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getUnreadNotificationCount, NOTIFICATIONS_CHANGED_EVENT } from '../api/notifications'
@@ -8,6 +8,7 @@ import { useAuth } from '../auth/useAuth'
 export function Layout({ children }: { children: ReactNode }) {
     const { isAuthenticated, role, logout } = useAuth()
     const [unreadCount, setUnreadCount] = useState(0)
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -60,19 +61,19 @@ export function Layout({ children }: { children: ReactNode }) {
                     {isAuthenticated ? (
                         <>
                             {(role === 'ROLE_SELLER' || role === 'ROLE_ADMIN') && (
-                                <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/seller" aria-label="판매자 관리">
+                                <Link className="hidden size-5 place-items-center bg-transparent p-0 min-[601px]:inline-grid" to="/seller" aria-label="판매자 관리">
                                     <Store className="size-5" aria-hidden="true" />
                                 </Link>
                             )}
                             {role === 'ROLE_ADMIN' && (
-                                <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/admin" aria-label="관리자 운영">
+                                <Link className="hidden size-5 place-items-center bg-transparent p-0 min-[601px]:inline-grid" to="/admin" aria-label="관리자 운영">
                                     <ShieldCheck className="size-5" aria-hidden="true" />
                                 </Link>
                             )}
-                            <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/orders" aria-label="주문 내역">
+                            <Link className="hidden size-5 place-items-center bg-transparent p-0 min-[601px]:inline-grid" to="/orders" aria-label="주문 내역">
                                 <ReceiptText className="size-5" aria-hidden="true" />
                             </Link>
-                            <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/mypage" aria-label="내 정보 관리">
+                            <Link className="hidden size-5 place-items-center bg-transparent p-0 min-[601px]:inline-grid" to="/mypage" aria-label="내 정보 관리">
                                 <UserRound className="size-5" aria-hidden="true" />
                             </Link>
                             <Link className="relative inline-grid size-5 place-items-center bg-transparent p-0" to="/notifications" aria-label={`알림 ${unreadCount}개`}>
@@ -83,8 +84,11 @@ export function Layout({ children }: { children: ReactNode }) {
                                     </span>
                                 )}
                             </Link>
-                            <button className="inline-grid size-5 place-items-center border-0 bg-transparent p-0" type="button" onClick={handleLogout} aria-label="로그아웃">
+                            <button className="hidden size-5 place-items-center border-0 bg-transparent p-0 min-[601px]:inline-grid" type="button" onClick={handleLogout} aria-label="로그아웃">
                                 <LogOut className="size-5" aria-hidden="true" />
+                            </button>
+                            <button className="inline-grid size-6 place-items-center border-0 bg-transparent p-0 min-[601px]:hidden" type="button" onClick={() => setIsMobileMenuOpen((open) => !open)} aria-label={isMobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'} aria-expanded={isMobileMenuOpen} aria-controls="mobile-user-menu">
+                                {isMobileMenuOpen ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
                             </button>
                         </>
                     ) : (
@@ -93,6 +97,15 @@ export function Layout({ children }: { children: ReactNode }) {
                         </Link>
                     )}
                 </div>
+                {isAuthenticated && isMobileMenuOpen && (
+                    <nav className="absolute top-full right-0 left-0 grid gap-px border-b border-line bg-line p-px shadow-lg min-[601px]:hidden" id="mobile-user-menu" aria-label="모바일 사용자 메뉴">
+                        <Link className="bg-paper px-5 py-4 text-sm font-bold" to="/orders" onClick={() => setIsMobileMenuOpen(false)}>주문 내역</Link>
+                        <Link className="bg-paper px-5 py-4 text-sm font-bold" to="/mypage" onClick={() => setIsMobileMenuOpen(false)}>내 정보 관리</Link>
+                        {(role === 'ROLE_SELLER' || role === 'ROLE_ADMIN') && <Link className="bg-paper px-5 py-4 text-sm font-bold" to="/seller" onClick={() => setIsMobileMenuOpen(false)}>판매자 관리</Link>}
+                        {role === 'ROLE_ADMIN' && <Link className="bg-paper px-5 py-4 text-sm font-bold" to="/admin" onClick={() => setIsMobileMenuOpen(false)}>관리자 운영</Link>}
+                        <button className="bg-paper px-5 py-4 text-left text-sm font-bold" type="button" onClick={handleLogout}>로그아웃</button>
+                    </nav>
+                )}
             </header>
             <main className="flex-1">{children}</main>
             <footer className="flex flex-col items-start gap-6 bg-[#1d1d1b] px-5 py-10 text-xs text-[#bcbcb5] min-[601px]:px-[clamp(24px,5vw,80px)] min-[601px]:py-12 min-[901px]:flex-row min-[901px]:items-end min-[901px]:justify-between">
