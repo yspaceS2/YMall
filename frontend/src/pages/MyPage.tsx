@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
+import { Bell, ClipboardList, MapPin, MessageSquareText, UserRound } from 'lucide-react'
 import { changeMemberPassword, getMemberProfile, getOAuthAccounts, getOAuthAuthorizationUrl, startOAuthAccountLink, updateMemberProfile } from '../api/auth'
 import { ApiError } from '../api/client'
 import type { MemberProfile, OAuthProvider } from '../types/auth'
@@ -102,16 +104,39 @@ export function MyPage() {
 
     const passwordConfirmationVisible = newPasswordConfirmation.length > 0
     const isPasswordMatched = passwordConfirmationVisible && newPassword === newPasswordConfirmation
+    const quickLinks = [
+        { label: '프로필', description: '회원 정보와 보안 설정', href: '#profile', icon: UserRound },
+        { label: '배송지', description: '받는 주소 추가·수정', href: '#addresses', icon: MapPin },
+        { label: '주문', description: '주문 및 배송 현황', href: '/orders', icon: ClipboardList },
+        { label: '리뷰', description: '구매 상품 리뷰 관리', href: '/orders', icon: MessageSquareText },
+        { label: '알림', description: '주문 상태 알림 확인', href: '/notifications', icon: Bell },
+    ]
 
     return (
         <section className="mx-auto w-[calc(100%-40px)] max-w-240 py-14 min-[601px]:w-[calc(100%-48px)] min-[601px]:py-20">
             <p className="mb-4 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">MY YMALL</p>
             <h1 className="font-serif text-[clamp(38px,5vw,62px)] leading-none font-medium tracking-[-.05em]">내 정보 관리</h1>
-            <p className="mt-5 text-sm text-muted">회원 정보와 비밀번호를 안전하게 관리하세요.</p>
+            <p className="mt-5 text-sm leading-7 text-muted">회원 정보부터 배송지, 주문과 알림까지 한곳에서 관리하세요.</p>
+
+            <nav className="mt-10 grid grid-cols-2 gap-3 min-[701px]:grid-cols-5" aria-label="마이페이지 바로가기">
+                {quickLinks.map(({ label, description, href, icon: Icon }) => {
+                    const className = 'group flex min-h-28 flex-col justify-between border border-line bg-white p-4 text-left transition-colors hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+                    const content = <>
+                        <Icon className="size-5 text-[#71801e]" aria-hidden="true" />
+                        <span>
+                            <strong className="block text-sm">{label}</strong>
+                            <span className="mt-1 block text-[11px] leading-4 text-muted">{description}</span>
+                        </span>
+                    </>
+                    return href.startsWith('#')
+                        ? <a className={className} href={href} key={label}>{content}</a>
+                        : <Link className={className} to={href} key={label}>{content}</Link>
+                })}
+            </nav>
 
             {errorMessage && <p className="mt-8 border border-[#d9aaa4] bg-[#f9ecea] px-4 py-3 text-sm text-[#b23b2f]" role="alert">{errorMessage}</p>}
 
-            <div className="mt-12 grid gap-8 min-[901px]:grid-cols-2">
+            <div className="mt-8 grid scroll-mt-24 gap-8 min-[901px]:grid-cols-2" id="profile">
                 <form className="grid content-start gap-5 border border-line bg-white p-6 min-[601px]:p-8" onSubmit={handleProfileSubmit}>
                     <div>
                         <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">PROFILE</p>
@@ -165,7 +190,7 @@ export function MyPage() {
                     <p className="text-sm leading-7 text-muted">이 계정은 비밀번호 없이 연결된 소셜 계정으로 로그인합니다. 비밀번호 변경은 제공되지 않습니다.</p>
                 </div>}
             </div>
-            <div className="mt-8 border border-line bg-white p-6 min-[601px]:p-8">
+            <div className="mt-8 scroll-mt-24 border border-line bg-white p-6 min-[601px]:p-8" id="social-accounts">
                 <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">SOCIAL LOGIN</p>
                 <h2 className="mt-2 font-serif text-3xl">연결된 소셜 계정</h2>
                 <p className="mt-3 text-sm text-muted">소셜 계정을 연결하면 해당 계정으로도 같은 YMall 회원에 로그인할 수 있습니다.</p>
@@ -189,7 +214,11 @@ export function MyPage() {
                     })}
                 </div>
             </div>
-            <AddressManager defaultRecipientName={profile.name} defaultRecipientPhone={profile.phone ?? ''} />
+            <AddressManager
+                key={`${profile.name}:${profile.phone ?? ''}`}
+                defaultRecipientName={profile.name}
+                defaultRecipientPhone={profile.phone ?? ''}
+            />
         </section>
     )
 }
