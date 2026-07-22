@@ -113,11 +113,19 @@ public class TossPaymentAdapter implements PaymentGateway {
         org.springframework.http.HttpRequest request,
         ClientHttpResponse response
     ) throws IOException {
-        TossPaymentErrorResponse errorResponse = objectMapper.readValue(
-            response.getBody(),
-            TossPaymentErrorResponse.class
-        );
+        TossPaymentErrorResponse errorResponse = readErrorResponse(response);
         throw exceptionMapper.map(response.getStatusCode(), errorResponse);
+    }
+
+    private TossPaymentErrorResponse readErrorResponse(ClientHttpResponse response) {
+        try {
+            return objectMapper.readValue(
+                response.getBody(),
+                TossPaymentErrorResponse.class
+            );
+        } catch (Exception exception) {
+            return null;
+        }
     }
 
     private long toTossAmount(BigDecimal amount) {

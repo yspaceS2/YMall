@@ -7,6 +7,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
 import java.math.BigDecimal;
@@ -14,6 +15,7 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -102,6 +104,23 @@ class TossPaymentAdapterTest {
                 assertThat(exception.getErrorCode())
                     .isEqualTo(ErrorCode.PAYMENT_GATEWAY_CONFIGURATION_ERROR);
                 assertThat(exception.getProviderCode()).isEqualTo("INVALID_API_KEY");
+            });
+        server.verify();
+    }
+
+    @Test
+    void convertsMalformedProviderErrorBodyToPaymentException() {
+        server.expect(requestTo("https://api.tosspayments.com/v1/payments/payment-key"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(withStatus(HttpStatus.BAD_GATEWAY)
+                .body("<html>temporary gateway error</html>")
+                .contentType(MediaType.TEXT_HTML));
+
+        assertThatThrownBy(() -> adapter.findByPaymentKey("payment-key"))
+            .isInstanceOfSatisfying(PaymentException.class, exception -> {
+                assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.PAYMENT_GATEWAY_UNAVAILABLE);
+                assertThat(exception.getProviderCode()).isNull();
             });
         server.verify();
     }
