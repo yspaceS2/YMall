@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { AuthMessage } from '../components/auth/AuthMessage'
+import { AuthPageLayout } from '../components/auth/AuthPageLayout'
 
 export function OAuth2CallbackPage() {
     const navigate = useNavigate()
@@ -22,18 +24,17 @@ export function OAuth2CallbackPage() {
     }, [accessToken, completeOAuthLogin, navigate, signupRequired])
 
     return (
-        <section className="mx-auto grid min-h-[calc(100vh-76px)] max-w-xl place-content-center px-5 text-center">
+        <AuthPageLayout eyebrow="SOCIAL LOGIN" title={!accessToken && !signupRequired ? '로그인에 실패했습니다.' : '로그인을 완료하고 있습니다.'} description={!accessToken && !signupRequired ? '소셜 로그인 과정에서 문제가 발생했습니다.' : '잠시만 기다려 주세요.'} asideEyebrow="YMALL MEMBERS" asideTitle={<>YOUR TASTE,<br />CONNECTED.</>} contentClassName="max-w-xl self-center">
             {!accessToken && !signupRequired ? (
-                <>
-                    <h1 className="font-serif text-4xl">로그인에 실패했습니다</h1>
-                    <p className="mt-4 text-sm text-[#b23b2f]" role="alert">{errorMessage ?? '소셜 로그인 결과를 확인할 수 없습니다.'}</p>
+                <div>
+                    <AuthMessage tone="error">{errorMessage ?? '소셜 로그인 결과를 확인할 수 없습니다.'}</AuthMessage>
                     <button className="mt-8 h-12 border border-ink bg-ink px-8 font-bold text-white" onClick={() => navigate('/login', { replace: true })}>
                         로그인으로 돌아가기
                     </button>
-                </>
+                </div>
             ) : (
-                <p className="text-sm text-muted" role="status">소셜 로그인을 완료하고 있습니다...</p>
+                <AuthMessage>소셜 로그인을 완료하고 있습니다...</AuthMessage>
             )}
-        </section>
+        </AuthPageLayout>
     )
 }
