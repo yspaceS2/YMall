@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -103,7 +104,7 @@ public class PaymentService {
             validateGatewayResult(request, gatewayResult);
             order.completePayment();
 
-            Payment payment = paymentRepository.save(Payment.success(
+            Payment payment = saveConfirmedPayment(Payment.success(
                 order,
                 request.idempotencyKey(),
                 gatewayResult.paymentKey(),
@@ -119,7 +120,7 @@ public class PaymentService {
             order.failPayment();
             releaseInventory(order);
 
-            Payment payment = paymentRepository.save(Payment.failure(
+            Payment payment = saveConfirmedPayment(Payment.failure(
                 order,
                 request.idempotencyKey(),
                 request.paymentKey(),
@@ -130,6 +131,14 @@ public class PaymentService {
             ));
             savePaymentEvent(order, PaymentResult.FAILURE, payment.getFailureCode());
             throw exception;
+        }
+    }
+
+    private Payment saveConfirmedPayment(Payment payment) {
+        try {
+            return paymentRepository.saveAndFlush(payment);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(ErrorCode.PAYMENT_KEY_CONFLICT, exception);
         }
     }
 

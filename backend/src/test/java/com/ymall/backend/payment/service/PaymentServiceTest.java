@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ymall.backend.global.exception.BusinessException;
@@ -127,7 +128,7 @@ class PaymentServiceTest {
         given(paymentRepository.findByPaymentKey("payment-key-1"))
             .willReturn(Optional.empty());
         given(paymentGateway.confirm(any())).willReturn(gatewayResult);
-        given(paymentRepository.save(any(Payment.class)))
+        given(paymentRepository.saveAndFlush(any(Payment.class)))
             .willAnswer(invocation -> invocation.getArgument(0));
         given(paymentMapper.toPaymentResponse(any(Payment.class))).willReturn(response);
 
@@ -136,6 +137,31 @@ class PaymentServiceTest {
         assertThat(result).isSameAs(response);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
         then(paymentGateway).should(times(1)).confirm(any());
+    }
+
+    @Test
+    void translatesConcurrentPaymentKeyConstraintViolationToConflict() {
+        Order order = orderWithItem();
+        PaymentConfirmRequest request = confirmationRequest(
+            order,
+            "payment-key-1",
+            BigDecimal.valueOf(10000)
+        );
+
+        given(orderRepository.findByIdAndMemberIdForUpdate(10L, 1L))
+            .willReturn(Optional.of(order));
+        given(paymentRepository.findByOrderIdAndIdempotencyKey(10L, "confirmation-1"))
+            .willReturn(Optional.empty());
+        given(paymentRepository.findByPaymentKey("payment-key-1"))
+            .willReturn(Optional.empty());
+        given(paymentGateway.confirm(any())).willReturn(gatewayResult(request));
+        given(paymentRepository.saveAndFlush(any(Payment.class)))
+            .willThrow(new DataIntegrityViolationException("duplicate payment key"));
+
+        assertThatThrownBy(() -> paymentService.confirmPayment(1L, 10L, request))
+            .isInstanceOfSatisfying(BusinessException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PAYMENT_KEY_CONFLICT)
+            );
     }
 
     @Test
@@ -217,7 +243,7 @@ class PaymentServiceTest {
         given(paymentGateway.confirm(any())).willThrow(gatewayException);
         given(productRepository.findAllByIdForUpdate(List.of(100L)))
             .willReturn(List.of(product));
-        given(paymentRepository.save(any(Payment.class)))
+        given(paymentRepository.saveAndFlush(any(Payment.class)))
             .willAnswer(invocation -> invocation.getArgument(0));
 
         assertThatThrownBy(() -> paymentService.confirmPayment(1L, 10L, request))
@@ -226,7 +252,7 @@ class PaymentServiceTest {
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAYMENT_FAILED);
         assertThat(order.isInventoryReserved()).isFalse();
         assertThat(product.getStock()).isEqualTo(10);
-        then(paymentRepository).should().save(any(Payment.class));
+        then(paymentRepository).should().saveAndFlush(any(Payment.class));
     }
 
     private Order order() {
