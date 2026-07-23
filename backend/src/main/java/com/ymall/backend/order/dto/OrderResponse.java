@@ -8,6 +8,7 @@ import com.ymall.backend.order.entity.OrderStatus;
 
 public record OrderResponse(
     Long orderId,
+    String paymentOrderId,
     OrderStatus status,
     BigDecimal totalAmount,
     List<OrderItemResponse> items,
@@ -16,6 +17,6 @@ public record OrderResponse(
 ) {
     public OrderResponse(Long orderId, OrderStatus status, BigDecimal totalAmount,
         List<OrderItemResponse> items, LocalDateTime createdAt) {
-        this(orderId, status, totalAmount, items, null, createdAt);
+        this(orderId, null, status, totalAmount, items, null, createdAt);
     }
 }

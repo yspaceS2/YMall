@@ -11,4 +11,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     @EntityGraph(attributePaths = "order")
     Optional<Payment> findByOrderIdAndIdempotencyKey(Long orderId, String idempotencyKey);
+
+    @EntityGraph(attributePaths = "order")
+    Optional<Payment> findByPaymentKey(String paymentKey);
 }
