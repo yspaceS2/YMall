@@ -7,8 +7,6 @@ export type OrderStatus =
     | 'SHIPPED'
     | 'DELIVERED'
 
-export type PaymentResult = 'SUCCESS' | 'FAILURE'
-
 export type OrderItemFulfillmentStatus = 'PENDING' | 'PREPARING' | 'SHIPPED' | 'DELIVERED'
 
 export interface OrderItem {
@@ -44,16 +42,25 @@ export interface OrderCreateRequest {
     addressId?: number
 }
 
-export interface MockPaymentRequest {
+export interface PaymentConfirmRequest {
+    paymentKey: string
+    paymentOrderId: string
+    amount: number
     idempotencyKey: string
-    result: PaymentResult
 }
 
 export interface PaymentResponse {
     paymentId: number
     orderId: number
-    result: PaymentResult
+    paymentKey: string | null
+    paymentOrderId: string
+    requestedAmount: number
+    approvedAmount: number | null
+    method: string | null
+    approvedAt: string | null
+    result: 'SUCCESS' | 'FAILURE'
     orderStatus: OrderStatus
+    failureCode: string | null
     failureMessage: string | null
     processedAt: string
 }

@@ -1,8 +1,8 @@
 import type { PageResponse } from '../types/api'
 import type {
-    MockPaymentRequest,
     Order,
     OrderCreateRequest,
+    PaymentConfirmRequest,
     PaymentResponse,
 } from '../types/order'
 import { apiRequest } from './client'
@@ -22,8 +22,8 @@ export function getOrders(page = 1, size = 20, signal?: AbortSignal) {
     return apiRequest<PageResponse<Order>>(`/orders?page=${page}&size=${size}`, { signal })
 }
 
-export function processMockPayment(orderId: number, request: MockPaymentRequest) {
-    return apiRequest<PaymentResponse>(`/orders/${orderId}/payments`, {
+export function confirmPayment(orderId: number, request: PaymentConfirmRequest) {
+    return apiRequest<PaymentResponse>(`/orders/${orderId}/payments/confirmations`, {
         method: 'POST',
         body: request,
     })

@@ -47,7 +47,13 @@ export function getTokenRole(token: string | null): MemberRole | null {
         : null
 }
 
-function getTokenPayload(token: string): { exp?: number; role?: unknown } | null {
+export function getTokenSubject(token: string | null) {
+    if (!token) return null
+    const subject = getTokenPayload(token)?.sub
+    return typeof subject === 'string' && subject.length > 0 ? subject : null
+}
+
+function getTokenPayload(token: string): { exp?: number; role?: unknown; sub?: unknown } | null {
     try {
         const payloadPart = token.split('.')[1]
         if (!payloadPart) {
@@ -56,7 +62,7 @@ function getTokenPayload(token: string): { exp?: number; role?: unknown } | null
 
         const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
         const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
-        return JSON.parse(atob(padded)) as { exp?: number; role?: unknown }
+        return JSON.parse(atob(padded)) as { exp?: number; role?: unknown; sub?: unknown }
     } catch {
         return null
     }
