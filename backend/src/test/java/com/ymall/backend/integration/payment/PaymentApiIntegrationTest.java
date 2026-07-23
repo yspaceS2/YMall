@@ -1,12 +1,15 @@
 package com.ymall.backend.integration.payment;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +34,12 @@ import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.payment.exception.PaymentException;
+import com.ymall.backend.payment.gateway.PaymentGateway;
+import com.ymall.backend.payment.gateway.PaymentGatewayResult;
+import com.ymall.backend.payment.gateway.PaymentGatewayStatus;
 import com.ymall.backend.payment.repository.PaymentRepository;
+import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
@@ -69,6 +78,9 @@ class PaymentApiIntegrationTest {
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private PaymentGateway paymentGateway;
 
     private Product product;
     private Long addressId;
@@ -170,6 +182,100 @@ class PaymentApiIntegrationTest {
         assertThat(product.getStock()).isEqualTo(10);
     }
 
+    @Test
+    void confirmsTossPaymentWithServerOrderAmount() throws Exception {
+        Long orderId = createOrder();
+        Order order = orderRepository.findById(orderId).orElseThrow();
+        given(paymentGateway.confirm(any())).willReturn(new PaymentGatewayResult(
+            "toss-payment-key",
+            order.getPaymentOrderId(),
+            PaymentGatewayStatus.DONE,
+            order.getTotalAmount(),
+            BigDecimal.ZERO,
+            "CARD",
+            OffsetDateTime.now()
+        ));
+
+        confirmPayment(order, "toss-payment-key", "confirmation-request")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.data.paymentKey").value("toss-payment-key"))
+            .andExpect(jsonPath("$.data.paymentOrderId").value(order.getPaymentOrderId()))
+            .andExpect(jsonPath("$.data.requestedAmount").value(20000))
+            .andExpect(jsonPath("$.data.approvedAmount").value(20000))
+            .andExpect(jsonPath("$.data.result").value("SUCCESS"))
+            .andExpect(jsonPath("$.data.orderStatus").value("PAID"));
+
+        assertThat(orderRepository.findById(orderId).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.PAID);
+        assertThat(paymentRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void rejectsChangedAmountBeforeCallingGateway() throws Exception {
+        Long orderId = createOrder();
+        Order order = orderRepository.findById(orderId).orElseThrow();
+
+        mockMvc.perform(post("/api/orders/{orderId}/payments/confirmations", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "paymentKey":"toss-payment-key",
+                      "paymentOrderId":"%s",
+                      "amount":1,
+                      "idempotencyKey":"confirmation-request"
+                    }
+                    """.formatted(order.getPaymentOrderId())))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("PAYMENT_AMOUNT_MISMATCH"));
+
+        assertThat(paymentRepository.findAll()).isEmpty();
+        assertThat(orderRepository.findById(orderId).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.PENDING_PAYMENT);
+    }
+
+    @Test
+    void restoresStockAfterGatewayFailureAndReservesItAgainOnRetry() throws Exception {
+        Long orderId = createOrder();
+        Order order = orderRepository.findById(orderId).orElseThrow();
+        given(paymentGateway.confirm(any()))
+            .willThrow(new PaymentException(
+                ErrorCode.PAYMENT_GATEWAY_ERROR,
+                "REJECT_CARD_PAYMENT",
+                "Card payment was rejected."
+            ))
+            .willReturn(new PaymentGatewayResult(
+                "retry-payment-key",
+                order.getPaymentOrderId(),
+                PaymentGatewayStatus.DONE,
+                order.getTotalAmount(),
+                BigDecimal.ZERO,
+                "CARD",
+                OffsetDateTime.now()
+            ));
+
+        confirmPayment(order, "failed-payment-key", "failed-confirmation")
+            .andExpect(status().isBadGateway())
+            .andExpect(jsonPath("$.error.code").value("PAYMENT_GATEWAY_ERROR"));
+
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getStock())
+            .isEqualTo(10);
+        Order failedOrder = orderRepository.findById(orderId).orElseThrow();
+        assertThat(failedOrder.getStatus()).isEqualTo(OrderStatus.PAYMENT_FAILED);
+        assertThat(failedOrder.isInventoryReserved()).isFalse();
+
+        confirmPayment(order, "retry-payment-key", "retry-confirmation")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.data.result").value("SUCCESS"));
+
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getStock())
+            .isEqualTo(8);
+        Order paidOrder = orderRepository.findById(orderId).orElseThrow();
+        assertThat(paidOrder.getStatus()).isEqualTo(OrderStatus.PAID);
+        assertThat(paidOrder.isInventoryReserved()).isTrue();
+        assertThat(paymentRepository.findAll()).hasSize(2);
+    }
+
     private Long createOrder() throws Exception {
         mockMvc.perform(post("/api/orders")
                 .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
@@ -192,6 +298,32 @@ class PaymentApiIntegrationTest {
             .content("""
                 {"idempotencyKey":"%s","result":"%s"}
                 """.formatted(idempotencyKey, result)));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions confirmPayment(
+        Order order,
+        String paymentKey,
+        String idempotencyKey
+    ) throws Exception {
+        return mockMvc.perform(post(
+                "/api/orders/{orderId}/payments/confirmations",
+                order.getId()
+            )
+            .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "paymentKey":"%s",
+                  "paymentOrderId":"%s",
+                  "amount":%s,
+                  "idempotencyKey":"%s"
+                }
+                """.formatted(
+                    paymentKey,
+                    order.getPaymentOrderId(),
+                    order.getTotalAmount().toPlainString(),
+                    idempotencyKey
+                )));
     }
 
     private String bearer(String token) {

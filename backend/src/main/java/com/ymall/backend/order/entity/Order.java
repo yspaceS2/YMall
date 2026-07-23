@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -52,6 +53,9 @@ public class Order {
     @Column(name = "idempotency_key", nullable = false, length = 100)
     private String idempotencyKey;
 
+    @Column(name = "payment_order_id", nullable = false, unique = true, updatable = false, length = 64)
+    private String paymentOrderId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private OrderStatus status;
@@ -61,6 +65,9 @@ public class Order {
 
     @Embedded
     private DeliveryAddressSnapshot deliveryAddress;
+
+    @Column(name = "inventory_reserved", nullable = false)
+    private boolean inventoryReserved;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 100)
@@ -79,9 +86,11 @@ public class Order {
     public Order(Member member, String idempotencyKey, DeliveryAddressSnapshot deliveryAddress) {
         this.member = member;
         this.idempotencyKey = idempotencyKey;
+        this.paymentOrderId = "YMALL-" + UUID.randomUUID().toString().replace("-", "");
         this.status = OrderStatus.PENDING_PAYMENT;
         this.totalAmount = BigDecimal.ZERO.setScale(2);
         this.deliveryAddress = deliveryAddress;
+        this.inventoryReserved = true;
     }
 
     public void addItem(OrderItem item) {
@@ -100,6 +109,14 @@ public class Order {
 
     public void cancel() {
         this.status = OrderStatus.CANCELED;
+    }
+
+    public void reserveInventory() {
+        this.inventoryReserved = true;
+    }
+
+    public void releaseInventory() {
+        this.inventoryReserved = false;
     }
 
     public void refreshFulfillmentStatus() {

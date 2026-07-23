@@ -1,4 +1,4 @@
-CREATE TABLE processed_order_events (
+CREATE TABLE IF NOT EXISTS processed_order_events (
     id BIGSERIAL PRIMARY KEY,
     event_id UUID NOT NULL UNIQUE,
     order_id BIGINT NOT NULL,
@@ -8,5 +8,5 @@ CREATE TABLE processed_order_events (
     processed_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
-CREATE INDEX idx_processed_order_events_order_result_id
+CREATE INDEX IF NOT EXISTS idx_processed_order_events_order_result_id
     ON processed_order_events (order_id, result, id DESC);

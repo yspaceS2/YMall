@@ -91,19 +91,22 @@ public class OrderService {
             throw new BusinessException(ErrorCode.ORDER_CANCELLATION_NOT_ALLOWED);
         }
 
-        List<Long> productIds = order.getItems().stream()
-            .map(item -> item.getProduct().getId())
-            .sorted()
-            .toList();
-        Map<Long, Product> products = productRepository.findAllByIdForUpdate(productIds)
-            .stream()
-            .collect(Collectors.toMap(Product::getId, Function.identity()));
-        for (OrderItem item : order.getItems()) {
-            Product product = products.get(item.getProduct().getId());
-            if (product == null) {
-                throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
+        if (order.isInventoryReserved()) {
+            List<Long> productIds = order.getItems().stream()
+                .map(item -> item.getProduct().getId())
+                .sorted()
+                .toList();
+            Map<Long, Product> products = productRepository.findAllByIdForUpdate(productIds)
+                .stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+            for (OrderItem item : order.getItems()) {
+                Product product = products.get(item.getProduct().getId());
+                if (product == null) {
+                    throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
+                }
+                product.increaseStock(item.getQuantity());
             }
-            product.increaseStock(item.getQuantity());
+            order.releaseInventory();
         }
         order.cancel();
         orderOutboxService.save(

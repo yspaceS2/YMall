@@ -23,6 +23,7 @@ export interface OrderItem {
 
 export interface Order {
     orderId: number
+    paymentOrderId: string
     status: OrderStatus
     totalAmount: number
     items: OrderItem[]
