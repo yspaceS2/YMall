@@ -111,6 +111,7 @@ services:
       args:
         VITE_API_BASE_URL: /api
         VITE_OAUTH2_BASE_URL: ""
+        VITE_TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:-}
     restart: unless-stopped
     environment:
       BACKEND_HOST: backend

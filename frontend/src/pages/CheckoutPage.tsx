@@ -129,7 +129,7 @@ export function CheckoutPage() {
                         >
                             {isSubmitting ? <LoaderCircle className="size-5 animate-spin" /> : '주문 생성 후 결제하기'}
                         </button>
-                        <p className="mt-3 text-[11px] leading-5 text-muted">현재 결제 단계는 포트폴리오 검증을 위한 모의 결제입니다.</p>
+                        <p className="mt-3 text-[11px] leading-5 text-muted">주문 생성 후 Toss Payments 테스트 결제창으로 이동합니다.</p>
                     </aside>
                 </div>
             )}

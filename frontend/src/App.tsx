@@ -14,6 +14,8 @@ import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ProductListPage } from './pages/ProductListPage'
 import { SellerManagementPage } from './pages/SellerManagementPage'
 import { SignupPage } from './pages/SignupPage'
+import { TossPaymentFailPage } from './pages/TossPaymentFailPage'
+import { TossPaymentSuccessPage } from './pages/TossPaymentSuccessPage'
 import { OAuth2CallbackPage } from './pages/OAuth2CallbackPage'
 import { OAuthSignupPage } from './pages/OAuthSignupPage'
 import { AdminManagementPage } from './pages/AdminManagementPage'
@@ -39,6 +41,8 @@ function App() {
                 <Route path="/mypage" element={<RequireAuth><MyPage /></RequireAuth>} />
                 <Route path="/forbidden" element={<RequireAuth><AccessDeniedPage /></RequireAuth>} />
                 <Route path="/orders/:orderId/payment" element={<RequireAuth><PaymentPage /></RequireAuth>} />
+                <Route path="/orders/:orderId/payment/success" element={<RequireAuth><TossPaymentSuccessPage /></RequireAuth>} />
+                <Route path="/orders/:orderId/payment/fail" element={<RequireAuth><TossPaymentFailPage /></RequireAuth>} />
                 <Route path="/orders/:orderId/result" element={<RequireAuth><OrderResultPage /></RequireAuth>} />
                 <Route path="/seller" element={<RequireRole roles={['ROLE_SELLER', 'ROLE_ADMIN']}><SellerManagementPage /></RequireRole>} />
                 <Route path="/admin" element={<RequireRole roles={['ROLE_ADMIN']}><AdminManagementPage /></RequireRole>} />
