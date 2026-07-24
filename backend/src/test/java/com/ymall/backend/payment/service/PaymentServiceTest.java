@@ -10,7 +10,6 @@ import static org.mockito.Mockito.times;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -44,7 +43,6 @@ import com.ymall.backend.payment.gateway.PaymentGateway;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
-import com.ymall.backend.product.repository.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
@@ -62,7 +60,7 @@ class PaymentServiceTest {
     private OrderOutboxService orderOutboxService;
 
     @Mock
-    private ProductRepository productRepository;
+    private PaymentInventoryService paymentInventoryService;
 
     @Mock
     private PaymentGateway paymentGateway;
@@ -241,8 +239,6 @@ class PaymentServiceTest {
         given(paymentRepository.findByPaymentKey("payment-key-1"))
             .willReturn(Optional.empty());
         given(paymentGateway.confirm(any())).willThrow(gatewayException);
-        given(productRepository.findAllByIdForUpdate(List.of(100L)))
-            .willReturn(List.of(product));
         given(paymentRepository.saveAndFlush(any(Payment.class)))
             .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -250,8 +246,7 @@ class PaymentServiceTest {
             .isSameAs(gatewayException);
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAYMENT_FAILED);
-        assertThat(order.isInventoryReserved()).isFalse();
-        assertThat(product.getStock()).isEqualTo(10);
+        then(paymentInventoryService).should().releaseIfReserved(order);
         then(paymentRepository).should().saveAndFlush(any(Payment.class));
     }
 

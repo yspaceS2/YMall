@@ -86,6 +86,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers(GET, "/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers(GET, "/api/members/email-availability").permitAll()
+                .requestMatchers(POST, "/api/payments/webhooks/toss").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers(GET, "/api/products/**", "/api/categories/**", "/images/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

@@ -23,6 +23,8 @@ import lombok.NoArgsConstructor;
 
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderStatus;
+import com.ymall.backend.payment.gateway.PaymentGatewayResult;
+import com.ymall.backend.payment.gateway.PaymentGatewayStatus;
 
 @Getter
 @Entity
@@ -79,6 +81,10 @@ public class Payment {
     @Column(name = "failure_code", length = 100)
     private String failureCode;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "provider_status", length = 30)
+    private PaymentGatewayStatus providerStatus;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime processedAt;
 
@@ -120,6 +126,9 @@ public class Payment {
         this.orderStatus = order.getStatus();
         this.failureCode = failureCode;
         this.failureMessage = failureMessage;
+        this.providerStatus = result == PaymentResult.SUCCESS
+            ? PaymentGatewayStatus.DONE
+            : null;
     }
 
     public static Payment success(
@@ -169,6 +178,39 @@ public class Payment {
             failureCode,
             failureMessage
         );
+    }
+
+    public void synchronizeSuccess(PaymentGatewayResult gatewayResult) {
+        this.paymentKey = gatewayResult.paymentKey();
+        this.paymentOrderId = gatewayResult.orderId();
+        this.requestedAmount = gatewayResult.totalAmount();
+        this.approvedAmount = gatewayResult.totalAmount();
+        this.method = gatewayResult.method();
+        this.approvedAt = gatewayResult.approvedAt();
+        this.result = PaymentResult.SUCCESS;
+        this.orderStatus = order.getStatus();
+        this.failureCode = null;
+        this.failureMessage = null;
+        this.providerStatus = gatewayResult.status();
+    }
+
+    public void synchronizeFailure(PaymentGatewayResult gatewayResult) {
+        this.paymentKey = gatewayResult.paymentKey();
+        this.paymentOrderId = gatewayResult.orderId();
+        this.requestedAmount = gatewayResult.totalAmount();
+        this.approvedAmount = null;
+        this.method = gatewayResult.method();
+        this.approvedAt = gatewayResult.approvedAt();
+        this.result = PaymentResult.FAILURE;
+        this.orderStatus = order.getStatus();
+        this.failureCode = gatewayResult.status().name();
+        this.failureMessage = "Payment status was synchronized by a verified webhook.";
+        this.providerStatus = gatewayResult.status();
+    }
+
+    public void synchronizeProviderStatus(PaymentGatewayStatus providerStatus) {
+        this.providerStatus = providerStatus;
+        this.orderStatus = order.getStatus();
     }
 
     @PrePersist

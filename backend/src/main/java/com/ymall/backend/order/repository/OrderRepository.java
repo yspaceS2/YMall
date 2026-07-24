@@ -33,6 +33,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Param("memberId") Long memberId
     );
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"items", "items.product"})
+    @Query("select orders from Order orders where orders.paymentOrderId = :paymentOrderId")
+    Optional<Order> findByPaymentOrderIdForUpdate(
+        @Param("paymentOrderId") String paymentOrderId
+    );
+
     @Query(
         value = """
             select orders from Order orders
