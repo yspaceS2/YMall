@@ -14,6 +14,7 @@ from prepare_dataset import (  # noqa: E402
     choose_split,
     prepare_dataset,
     prepare_sample,
+    read_jsonl,
 )
 
 
@@ -118,6 +119,20 @@ class PrepareSampleTest(unittest.TestCase):
         with self.assertRaises(DatasetError):
             prepare_sample(record, approved_sources())
 
+    def test_rejects_missing_annotation_version(self):
+        record = sample()
+        del record["annotation"]["version"]
+
+        with self.assertRaises(DatasetError):
+            prepare_sample(record, approved_sources())
+
+    def test_rejects_missing_reference_summary_field(self):
+        record = sample()
+        del record["referenceSummary"]["commonOpinions"]
+
+        with self.assertRaises(DatasetError):
+            prepare_sample(record, approved_sources())
+
     def test_split_is_deterministic_and_product_based(self):
         first = choose_split("product-group-1", "fixed-seed")
         second = choose_split("product-group-1", "fixed-seed")
@@ -141,6 +156,14 @@ class PrepareSampleTest(unittest.TestCase):
 
 
 class PrepareDatasetTest(unittest.TestCase):
+
+    def test_rejects_non_object_jsonl_with_line_number(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "input.jsonl"
+            input_path.write_text("[]\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(DatasetError, r"input\.jsonl:1"):
+                read_jsonl(input_path)
 
     def test_writes_reproducible_split_and_report(self):
         with tempfile.TemporaryDirectory() as temp_dir:

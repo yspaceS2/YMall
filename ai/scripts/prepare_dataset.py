@@ -91,9 +91,12 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
         if not line.strip():
             continue
         try:
-            records.append(json.loads(line))
+            record = json.loads(line)
         except json.JSONDecodeError as error:
             raise DatasetError(f"{path}:{line_number} JSON 형식이 올바르지 않습니다.") from error
+        if not isinstance(record, dict):
+            raise DatasetError(f"{path}:{line_number} JSON 객체여야 합니다.")
+        records.append(record)
     return records
 
 
@@ -122,8 +125,26 @@ def validate_required_fields(sample: dict[str, Any]) -> None:
         raise DatasetError("referenceSummary는 객체여야 합니다.")
     if not isinstance(sample["annotation"], dict):
         raise DatasetError("annotation은 객체여야 합니다.")
+    annotation_version = sample["annotation"].get("version")
+    if not isinstance(annotation_version, str) or not annotation_version.strip():
+        raise DatasetError("annotation.version은 비어 있지 않은 문자열이어야 합니다.")
     if sample["annotation"].get("status") not in {"draft", "reviewed", "approved"}:
         raise DatasetError("annotation.status가 올바르지 않습니다.")
+    required_summary_fields = (
+        "pros",
+        "cons",
+        "commonOpinions",
+        "evidenceReviewIds",
+    )
+    missing_summary_fields = [
+        field for field in required_summary_fields
+        if field not in sample["referenceSummary"]
+    ]
+    if missing_summary_fields:
+        raise DatasetError(
+            "referenceSummary 필수 필드가 없습니다: "
+            + ", ".join(missing_summary_fields)
+        )
 
 
 def prepare_sample(
