@@ -10,7 +10,7 @@ import statistics
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -79,8 +79,27 @@ def normalize_text(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
-def parse_summary(raw_output: str) -> tuple[dict[str, list[str]], bool]:
-    cleaned = raw_output.strip()
+@dataclass(frozen=True)
+class SummaryParseResult:
+    summary: dict[str, list[str]]
+    strict_json_object: bool
+    recoverable_json_object: bool
+    schema_valid: bool
+
+
+def parse_json_object(value: str) -> dict[str, Any] | None:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def parse_summary(raw_output: str) -> SummaryParseResult:
+    raw_value = raw_output.strip()
+    parsed = parse_json_object(raw_value)
+    strict_json_object = parsed is not None
+    cleaned = raw_value
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
         cleaned = re.sub(r"\s*```$", "", cleaned)
@@ -88,23 +107,32 @@ def parse_summary(raw_output: str) -> tuple[dict[str, list[str]], bool]:
     last_brace = cleaned.rfind("}")
     if first_brace >= 0 and last_brace > first_brace:
         cleaned = cleaned[first_brace:last_brace + 1]
-    try:
-        parsed = json.loads(cleaned)
-    except json.JSONDecodeError:
-        return {field: [] for field in SUMMARY_FIELDS}, False
-    if not isinstance(parsed, dict):
-        return {field: [] for field in SUMMARY_FIELDS}, False
+    if parsed is None:
+        parsed = parse_json_object(cleaned)
+    recoverable_json_object = parsed is not None
+    if parsed is None:
+        return SummaryParseResult(
+            summary={field: [] for field in SUMMARY_FIELDS},
+            strict_json_object=False,
+            recoverable_json_object=False,
+            schema_valid=False,
+        )
 
     summary: dict[str, list[str]] = {}
-    valid = True
+    schema_valid = True
     for field in SUMMARY_FIELDS:
         values = parsed.get(field)
         if not isinstance(values, list) or not all(isinstance(value, str) for value in values):
             summary[field] = []
-            valid = False
+            schema_valid = False
             continue
         summary[field] = [normalize_text(value) for value in values if normalize_text(value)]
-    return summary, valid
+    return SummaryParseResult(
+        summary=summary,
+        strict_json_object=strict_json_object,
+        recoverable_json_object=recoverable_json_object,
+        schema_valid=schema_valid,
+    )
 
 
 def flatten_summary(summary: dict[str, list[str]]) -> str:
@@ -161,9 +189,9 @@ def memory_used_mib() -> float:
 
 @dataclass
 class Mt5Summarizer:
-    model_id: str = DEFAULT_MT5_MODEL
-    model_family: str = "seq2seq"
-    license_id: str = "Apache-2.0"
+    model_id: str = field(init=False, default=DEFAULT_MT5_MODEL)
+    model_family: str = field(init=False, default="seq2seq")
+    license_id: str = field(init=False, default="Apache-2.0")
 
     def __post_init__(self) -> None:
         self._tokenizer: Any = None
@@ -221,10 +249,10 @@ class Mt5Summarizer:
 
 @dataclass
 class QwenSummarizer:
-    model_id: str = DEFAULT_QWEN_MODEL
     endpoint: str = DEFAULT_QWEN_ENDPOINT
-    model_family: str = "decoder-llm"
-    license_id: str = "Apache-2.0"
+    model_id: str = field(init=False, default=DEFAULT_QWEN_MODEL)
+    model_family: str = field(init=False, default="decoder-llm")
+    license_id: str = field(init=False, default="Apache-2.0")
 
     def load(self) -> dict[str, Any]:
         started_at = time.perf_counter()
@@ -316,29 +344,31 @@ def evaluate_model(
             started_at = time.perf_counter()
             raw_output, usage = summarizer.summarize(sample)
             latency = time.perf_counter() - started_at
-            parsed_summary, format_valid = parse_summary(raw_output)
+            parse_result = parse_summary(raw_output)
             reference_summary = {
                 field: sample["referenceSummary"].get(field, [])
                 for field in SUMMARY_FIELDS
             }
             completed_sections = sum(
-                1 for field in SUMMARY_FIELDS if parsed_summary.get(field)
+                1 for field in SUMMARY_FIELDS if parse_result.summary.get(field)
             )
             sample_results.append({
                 "sampleId": sample["sampleId"],
                 "latencySeconds": round(latency, 4),
-                "formatValid": format_valid,
+                "strictJsonObject": parse_result.strict_json_object,
+                "recoverableJsonObject": parse_result.recoverable_json_object,
+                "schemaValid": parse_result.schema_valid,
                 "sectionCompleteness": round(completed_sections / len(SUMMARY_FIELDS), 4),
                 "rougeL": round(
                     rouge_l_f1(
                         flatten_summary(reference_summary),
-                        flatten_summary(parsed_summary),
+                        flatten_summary(parse_result.summary),
                     ),
                     4,
                 ),
                 "usage": usage,
                 "output": raw_output,
-                "parsedSummary": parsed_summary,
+                "parsedSummary": parse_result.summary,
             })
     finally:
         summarizer.close()
@@ -357,8 +387,18 @@ def evaluate_model(
             "sampleCount": len(sample_results),
             "latencyMedianSeconds": round(statistics.median(latencies), 4),
             "latencyP95Seconds": round(percentile(latencies, 0.95), 4),
-            "formatValidRate": round(
-                sum(result["formatValid"] for result in sample_results)
+            "strictJsonObjectRate": round(
+                sum(result["strictJsonObject"] for result in sample_results)
+                / len(sample_results),
+                4,
+            ),
+            "recoverableJsonObjectRate": round(
+                sum(result["recoverableJsonObject"] for result in sample_results)
+                / len(sample_results),
+                4,
+            ),
+            "schemaValidRate": round(
+                sum(result["schemaValid"] for result in sample_results)
                 / len(sample_results),
                 4,
             ),
@@ -398,8 +438,6 @@ def parse_args() -> argparse.Namespace:
         default=("mt5", "qwen"),
     )
     parser.add_argument("--max-samples", type=int)
-    parser.add_argument("--mt5-model", default=DEFAULT_MT5_MODEL)
-    parser.add_argument("--qwen-model", default=DEFAULT_QWEN_MODEL)
     parser.add_argument("--qwen-endpoint", default=DEFAULT_QWEN_ENDPOINT)
     return parser.parse_args()
 
@@ -413,9 +451,8 @@ def main() -> None:
         samples = samples[:args.max_samples]
 
     candidates: dict[str, Summarizer] = {
-        "mt5": Mt5Summarizer(model_id=args.mt5_model),
+        "mt5": Mt5Summarizer(),
         "qwen": QwenSummarizer(
-            model_id=args.qwen_model,
             endpoint=args.qwen_endpoint,
         ),
     }

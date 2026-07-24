@@ -6,7 +6,7 @@
     "python": "3.12.13",
     "processor": "Intel64 Family 6 Model 158 Stepping 13, GenuineIntel",
     "logicalCpuCount": 8,
-    "systemMemoryUsedGiB": 12.13
+    "systemMemoryUsedGiB": 11.25
   },
   "models": [
     {
@@ -14,25 +14,29 @@
       "modelFamily": "seq2seq",
       "license": "Apache-2.0",
       "load": {
-        "loadSeconds": 1.5101,
+        "loadSeconds": 1.3442,
         "parameterCount": 300176768,
         "modelMemoryMiB": 1145.08,
         "runtime": "Transformers + PyTorch CPU"
       },
-      "systemMemoryDeltaAfterLoadMiB": 851.44,
+      "systemMemoryDeltaAfterLoadMiB": 800.0,
       "aggregate": {
         "sampleCount": 6,
-        "latencyMedianSeconds": 0.4579,
-        "latencyP95Seconds": 0.6945,
-        "formatValidRate": 0.0,
+        "latencyMedianSeconds": 0.4173,
+        "latencyP95Seconds": 0.6193,
+        "strictJsonObjectRate": 0.0,
+        "recoverableJsonObjectRate": 0.0,
+        "schemaValidRate": 0.0,
         "sectionCompletenessAverage": 0.0,
         "rougeLAverage": 0.0
       },
       "samples": [
         {
           "sampleId": "synthetic-keyboard-001",
-          "latencySeconds": 0.6945,
-          "formatValid": false,
+          "latencySeconds": 0.6193,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
           "sectionCompleteness": 0.0,
           "rougeL": 0.0,
           "usage": {
@@ -48,8 +52,10 @@
         },
         {
           "sampleId": "synthetic-tumbler-001",
-          "latencySeconds": 0.5024,
-          "formatValid": false,
+          "latencySeconds": 0.4098,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
           "sectionCompleteness": 0.0,
           "rougeL": 0.0,
           "usage": {
@@ -65,8 +71,10 @@
         },
         {
           "sampleId": "synthetic-cushion-001",
-          "latencySeconds": 0.4596,
-          "formatValid": false,
+          "latencySeconds": 0.3826,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
           "sectionCompleteness": 0.0,
           "rougeL": 0.0,
           "usage": {
@@ -82,8 +90,10 @@
         },
         {
           "sampleId": "synthetic-pan-001",
-          "latencySeconds": 0.4562,
-          "formatValid": false,
+          "latencySeconds": 0.3829,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
           "sectionCompleteness": 0.0,
           "rougeL": 0.0,
           "usage": {
@@ -99,8 +109,10 @@
         },
         {
           "sampleId": "synthetic-lamp-001",
-          "latencySeconds": 0.3768,
-          "formatValid": false,
+          "latencySeconds": 0.457,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
           "sectionCompleteness": 0.0,
           "rougeL": 0.0,
           "usage": {
@@ -116,8 +128,10 @@
         },
         {
           "sampleId": "synthetic-bag-001",
-          "latencySeconds": 0.4532,
-          "formatValid": false,
+          "latencySeconds": 0.4248,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
           "sectionCompleteness": 0.0,
           "rougeL": 0.0,
           "usage": {
@@ -138,26 +152,30 @@
       "modelFamily": "decoder-llm",
       "license": "Apache-2.0",
       "load": {
-        "loadSeconds": 2.3871,
+        "loadSeconds": 4.842,
         "parameterCount": 596050000,
         "artifactSizeMiB": 604.15,
         "quantization": "Q8_0",
         "runtime": "Docker Model Runner + llama.cpp CPU"
       },
-      "systemMemoryDeltaAfterLoadMiB": 76.81,
+      "systemMemoryDeltaAfterLoadMiB": 721.19,
       "aggregate": {
         "sampleCount": 6,
-        "latencyMedianSeconds": 2.6855,
-        "latencyP95Seconds": 2.8171,
-        "formatValidRate": 1.0,
+        "latencyMedianSeconds": 2.7212,
+        "latencyP95Seconds": 2.7343,
+        "strictJsonObjectRate": 0.0,
+        "recoverableJsonObjectRate": 1.0,
+        "schemaValidRate": 1.0,
         "sectionCompletenessAverage": 1.0,
         "rougeLAverage": 0.1496
       },
       "samples": [
         {
           "sampleId": "synthetic-keyboard-001",
-          "latencySeconds": 2.5585,
-          "formatValid": true,
+          "latencySeconds": 2.5292,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
           "sectionCompleteness": 1.0,
           "rougeL": 0.2642,
           "usage": {
@@ -179,8 +197,10 @@
         },
         {
           "sampleId": "synthetic-tumbler-001",
-          "latencySeconds": 2.57,
-          "formatValid": true,
+          "latencySeconds": 2.5734,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
           "sectionCompleteness": 1.0,
           "rougeL": 0.1,
           "usage": {
@@ -203,8 +223,10 @@
         },
         {
           "sampleId": "synthetic-cushion-001",
-          "latencySeconds": 2.6911,
-          "formatValid": true,
+          "latencySeconds": 2.73,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
           "sectionCompleteness": 1.0,
           "rougeL": 0.1408,
           "usage": {
@@ -227,8 +249,10 @@
         },
         {
           "sampleId": "synthetic-pan-001",
-          "latencySeconds": 2.715,
-          "formatValid": true,
+          "latencySeconds": 2.7343,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
           "sectionCompleteness": 1.0,
           "rougeL": 0.1538,
           "usage": {
@@ -251,8 +275,10 @@
         },
         {
           "sampleId": "synthetic-lamp-001",
-          "latencySeconds": 2.8171,
-          "formatValid": true,
+          "latencySeconds": 2.7272,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
           "sectionCompleteness": 1.0,
           "rougeL": 0.0896,
           "usage": {
@@ -275,8 +301,10 @@
         },
         {
           "sampleId": "synthetic-bag-001",
-          "latencySeconds": 2.6799,
-          "formatValid": true,
+          "latencySeconds": 2.7153,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
           "sectionCompleteness": 1.0,
           "rougeL": 0.1493,
           "usage": {
