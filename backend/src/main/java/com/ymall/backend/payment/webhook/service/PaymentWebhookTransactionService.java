@@ -45,13 +45,13 @@ public class PaymentWebhookTransactionService {
         PaymentGatewayStatus requestedStatus,
         PaymentGatewayResult verifiedPayment
     ) {
-        if (webhookEventRepository.existsByTransmissionId(transmissionId)) {
-            return;
-        }
         validateVerifiedPayment(request, verifiedPayment);
 
         Order order = orderRepository.findByPaymentOrderIdForUpdate(verifiedPayment.orderId())
             .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_WEBHOOK_INVALID));
+        if (webhookEventRepository.existsByTransmissionId(transmissionId)) {
+            return;
+        }
         validateOrder(order, verifiedPayment);
 
         Payment payment = paymentRepository.findByPaymentKey(verifiedPayment.paymentKey())
