@@ -47,6 +47,7 @@ export interface SellerOrderItem {
     productName: string
     unitPrice: number
     quantity: number
+    refundedQuantity: number
     lineTotal: number
     fulfillmentStatus: FulfillmentStatus
 }
@@ -56,6 +57,7 @@ export interface SellerOrder {
     orderStatus: string
     sellerAmount: number
     createdAt: string
+    refundSupported: boolean
     items: SellerOrderItem[]
 }
 

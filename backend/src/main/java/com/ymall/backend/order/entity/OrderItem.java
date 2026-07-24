@@ -49,6 +49,9 @@ public class OrderItem {
     @Column(nullable = false, precision = 22, scale = 2)
     private BigDecimal lineTotal;
 
+    @Column(name = "refunded_quantity", nullable = false)
+    private int refundedQuantity;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private OrderItemFulfillmentStatus fulfillmentStatus;
@@ -63,6 +66,7 @@ public class OrderItem {
         this.quantity = quantity;
         this.lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
         this.fulfillmentStatus = OrderItemFulfillmentStatus.PENDING;
+        this.refundedQuantity = 0;
     }
 
     void assignOrder(Order order) {
@@ -82,5 +86,16 @@ public class OrderItem {
             throw new IllegalStateException("배송 상태는 한 단계씩 변경해야 합니다.");
         }
         this.fulfillmentStatus = targetStatus;
+    }
+
+    public int getRefundableQuantity() {
+        return quantity - refundedQuantity;
+    }
+
+    public void recordRefund(int refundQuantity) {
+        if (refundQuantity < 1 || refundQuantity > getRefundableQuantity()) {
+            throw new IllegalArgumentException("Refund quantity exceeds the refundable quantity.");
+        }
+        this.refundedQuantity += refundQuantity;
     }
 }

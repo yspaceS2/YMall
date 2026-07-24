@@ -1,0 +1,93 @@
+package com.ymall.backend.payment.refund.service;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
+
+import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.payment.exception.PaymentException;
+import com.ymall.backend.payment.gateway.PaymentCancelCommand;
+import com.ymall.backend.payment.gateway.PaymentGateway;
+import com.ymall.backend.payment.gateway.PaymentGatewayResult;
+import com.ymall.backend.payment.refund.dto.PaymentRefundRequest;
+import com.ymall.backend.payment.refund.dto.PaymentRefundResponse;
+
+@Service
+@RequiredArgsConstructor
+public class PaymentRefundService {
+
+    private final PaymentRefundTransactionService transactionService;
+    private final PaymentGateway paymentGateway;
+
+    public PaymentRefundResponse refundUser(
+        Long memberId,
+        Long orderId,
+        PaymentRefundRequest request
+    ) {
+        return execute(transactionService.prepareUser(memberId, orderId, request));
+    }
+
+    public PaymentRefundResponse refundSeller(
+        Long memberId,
+        Long orderId,
+        PaymentRefundRequest request
+    ) {
+        return execute(transactionService.prepareSeller(memberId, orderId, request));
+    }
+
+    public PaymentRefundResponse refundAdmin(
+        Long memberId,
+        Long orderId,
+        PaymentRefundRequest request
+    ) {
+        return execute(transactionService.prepareAdmin(memberId, orderId, request));
+    }
+
+    private PaymentRefundResponse execute(PaymentRefundPreparation preparation) {
+        if (!preparation.requiresGatewayCall()) {
+            return preparation.existingResponse();
+        }
+
+        try {
+            PaymentGatewayResult result = paymentGateway.cancel(new PaymentCancelCommand(
+                preparation.paymentKey(),
+                preparation.reason(),
+                preparation.amount(),
+                preparation.idempotencyKey()
+            ));
+            return transactionService.complete(preparation.refundId(), result);
+        } catch (PaymentException exception) {
+            boolean outcomeUnknown = exception.getErrorCode() == ErrorCode.PAYMENT_GATEWAY_TIMEOUT
+                || exception.getErrorCode() == ErrorCode.PAYMENT_GATEWAY_UNAVAILABLE;
+            transactionService.recordFailure(
+                preparation.refundId(),
+                exception.getProviderCode(),
+                exception.getProviderMessage(),
+                outcomeUnknown
+            );
+            throw exception;
+        } catch (RuntimeException exception) {
+            transactionService.recordFailure(
+                preparation.refundId(),
+                "INTERNAL_ERROR",
+                "Refund provider result requires reconciliation before retry.",
+                true
+            );
+            throw exception;
+        }
+    }
+
+    public List<PaymentRefundResponse> getRefunds(Long memberId, Long orderId) {
+        return transactionService.getRefunds(memberId, orderId);
+    }
+
+    public List<PaymentRefundResponse> getSellerRefunds(Long memberId, Long orderId) {
+        return transactionService.getSellerRefunds(memberId, orderId);
+    }
+
+    public List<PaymentRefundResponse> getAdminRefunds(Long orderId) {
+        return transactionService.getAdminRefunds(orderId);
+    }
+}

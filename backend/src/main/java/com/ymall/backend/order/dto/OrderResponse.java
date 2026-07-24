@@ -13,10 +13,11 @@ public record OrderResponse(
     BigDecimal totalAmount,
     List<OrderItemResponse> items,
     OrderDeliveryAddressResponse deliveryAddress,
+    boolean refundSupported,
     LocalDateTime createdAt
 ) {
     public OrderResponse(Long orderId, OrderStatus status, BigDecimal totalAmount,
         List<OrderItemResponse> items, LocalDateTime createdAt) {
-        this(orderId, null, status, totalAmount, items, null, createdAt);
+        this(orderId, null, status, totalAmount, items, null, false, createdAt);
     }
 }

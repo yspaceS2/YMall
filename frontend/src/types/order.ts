@@ -3,6 +3,8 @@ export type OrderStatus =
     | 'PAID'
     | 'PAYMENT_FAILED'
     | 'CANCELED'
+    | 'PARTIALLY_REFUNDED'
+    | 'REFUNDED'
     | 'PREPARING'
     | 'SHIPPED'
     | 'DELIVERED'
@@ -15,6 +17,7 @@ export interface OrderItem {
     productName: string
     unitPrice: number
     quantity: number
+    refundedQuantity: number
     totalPrice: number
     fulfillmentStatus: OrderItemFulfillmentStatus
 }
@@ -26,6 +29,7 @@ export interface Order {
     totalAmount: number
     items: OrderItem[]
     deliveryAddress: OrderDeliveryAddress | null
+    refundSupported: boolean
     createdAt: string
 }
 
@@ -63,4 +67,38 @@ export interface PaymentResponse {
     failureCode: string | null
     failureMessage: string | null
     processedAt: string
+}
+
+export type PaymentRefundType = 'FULL' | 'PARTIAL'
+export type PaymentRefundStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'UNKNOWN'
+
+export interface PaymentRefundItemRequest {
+    orderItemId: number
+    quantity: number
+}
+
+export interface PaymentRefundRequest {
+    idempotencyKey: string
+    reason: string
+    items?: PaymentRefundItemRequest[]
+}
+
+export interface PaymentRefundItem {
+    orderItemId: number
+    productName: string
+    quantity: number
+    amount: number
+}
+
+export interface PaymentRefund {
+    refundId: number
+    orderId: number
+    type: PaymentRefundType
+    status: PaymentRefundStatus
+    amount: number
+    reason: string
+    failureMessage: string | null
+    items: PaymentRefundItem[]
+    createdAt: string
+    processedAt: string | null
 }

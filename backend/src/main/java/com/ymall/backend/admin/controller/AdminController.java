@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,10 @@ import com.ymall.backend.admin.service.AdminService;
 import com.ymall.backend.global.common.ApiResponse;
 import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.product.entity.ProductStatus;
+import com.ymall.backend.global.security.MemberPrincipal;
+import com.ymall.backend.payment.refund.dto.PaymentRefundRequest;
+import com.ymall.backend.payment.refund.dto.PaymentRefundResponse;
+import com.ymall.backend.payment.refund.service.PaymentRefundService;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,6 +33,7 @@ import com.ymall.backend.product.entity.ProductStatus;
 public class AdminController {
 
     private final AdminService adminService;
+    private final PaymentRefundService paymentRefundService;
 
     @GetMapping("/products")
     public ApiResponse<PageResponse<AdminProductResponse>> getProducts(
@@ -70,5 +77,24 @@ public class AdminController {
         @RequestParam(defaultValue = "20") int size
     ) {
         return ApiResponse.success(adminService.getOrders(page, size));
+    }
+
+    @PostMapping("/orders/{orderId}/refunds")
+    public ApiResponse<PaymentRefundResponse> refundOrder(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long orderId,
+        @Valid @RequestBody PaymentRefundRequest request
+    ) {
+        return ApiResponse.success(
+            paymentRefundService.refundAdmin(principal.memberId(), orderId, request),
+            "환불 요청을 처리했습니다."
+        );
+    }
+
+    @GetMapping("/orders/{orderId}/refunds")
+    public ApiResponse<java.util.List<PaymentRefundResponse>> getRefunds(
+        @PathVariable Long orderId
+    ) {
+        return ApiResponse.success(paymentRefundService.getAdminRefunds(orderId));
     }
 }

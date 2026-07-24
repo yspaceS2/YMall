@@ -6,6 +6,7 @@ import type {
     AdminSellerPage,
 } from '../types/admin'
 import { apiRequest } from './client'
+import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 
 const ADMIN_PAGE_SIZE = 20
 
@@ -45,4 +46,15 @@ export function getAdminSellers(options: AdminPageOptions = {}) {
 export function getAdminOrders(options: AdminPageOptions = {}) {
     const { page = 1, signal } = options
     return apiRequest<AdminOrderPage>(`/admin/orders?page=${page}&size=${ADMIN_PAGE_SIZE}`, { signal })
+}
+
+export function requestAdminRefund(orderId: number, request: PaymentRefundRequest) {
+    return apiRequest<PaymentRefund>(`/admin/orders/${orderId}/refunds`, {
+        method: 'POST',
+        body: request,
+    })
+}
+
+export function getAdminRefunds(orderId: number, signal?: AbortSignal) {
+    return apiRequest<PaymentRefund[]>(`/admin/orders/${orderId}/refunds`, { signal })
 }

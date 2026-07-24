@@ -5,6 +5,8 @@ const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
     PAID: '결제 완료',
     PAYMENT_FAILED: '결제 실패',
     CANCELED: '주문 취소',
+    PARTIALLY_REFUNDED: '부분 환불',
+    REFUNDED: '환불 완료',
     PREPARING: '상품 준비 중',
     SHIPPED: '배송 중',
     DELIVERED: '배송 완료',

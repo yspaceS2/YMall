@@ -111,6 +111,15 @@ public class Order {
         this.status = OrderStatus.CANCELED;
     }
 
+    public void applyRefund(boolean fullyRefunded) {
+        this.status = fullyRefunded
+            ? OrderStatus.REFUNDED
+            : OrderStatus.PARTIALLY_REFUNDED;
+        if (fullyRefunded) {
+            this.inventoryReserved = false;
+        }
+    }
+
     public void reserveInventory() {
         this.inventoryReserved = true;
     }
@@ -120,13 +129,19 @@ public class Order {
     }
 
     public void refreshFulfillmentStatus() {
-        if (items.stream().allMatch(item ->
+        List<OrderItem> activeItems = items.stream()
+            .filter(item -> item.getRefundableQuantity() > 0)
+            .toList();
+        if (activeItems.isEmpty()) {
+            return;
+        }
+        if (activeItems.stream().allMatch(item ->
             item.getEffectiveFulfillmentStatus() == OrderItemFulfillmentStatus.DELIVERED
         )) {
             this.status = OrderStatus.DELIVERED;
             return;
         }
-        if (items.stream().allMatch(item -> {
+        if (activeItems.stream().allMatch(item -> {
             OrderItemFulfillmentStatus itemStatus = item.getEffectiveFulfillmentStatus();
             return itemStatus == OrderItemFulfillmentStatus.SHIPPED
                 || itemStatus == OrderItemFulfillmentStatus.DELIVERED;
@@ -134,13 +149,15 @@ public class Order {
             this.status = OrderStatus.SHIPPED;
             return;
         }
-        if (items.stream().anyMatch(item ->
+        if (activeItems.stream().anyMatch(item ->
             item.getEffectiveFulfillmentStatus() != OrderItemFulfillmentStatus.PENDING
         )) {
             this.status = OrderStatus.PREPARING;
             return;
         }
-        this.status = OrderStatus.PAID;
+        if (status != OrderStatus.PARTIALLY_REFUNDED) {
+            this.status = OrderStatus.PAID;
+        }
     }
 
     @PrePersist

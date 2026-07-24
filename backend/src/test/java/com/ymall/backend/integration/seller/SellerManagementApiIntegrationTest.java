@@ -1,6 +1,8 @@
 package com.ymall.backend.integration.seller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +22,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,12 @@ import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderItemFulfillmentStatus;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.payment.entity.Payment;
+import com.ymall.backend.payment.gateway.PaymentGateway;
+import com.ymall.backend.payment.gateway.PaymentGatewayResult;
+import com.ymall.backend.payment.gateway.PaymentGatewayStatus;
+import com.ymall.backend.payment.repository.PaymentRepository;
+import com.ymall.backend.payment.refund.repository.PaymentRefundRepository;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
@@ -64,10 +74,19 @@ class SellerManagementApiIntegrationTest {
     private OrderRepository orderRepository;
 
     @Autowired
+    private PaymentRepository paymentRepository;
+
+    @Autowired
+    private PaymentRefundRepository paymentRefundRepository;
+
+    @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
     @Autowired
     private EntityManager entityManager;
+
+    @MockitoBean
+    private PaymentGateway paymentGateway;
 
     private Member firstSeller;
     private Member secondSeller;
@@ -185,6 +204,202 @@ class SellerManagementApiIntegrationTest {
                 OrderItemFulfillmentStatus.PREPARING,
                 OrderItemFulfillmentStatus.PENDING
             );
+    }
+
+    @Test
+    void sellerShipsOnlyRemainingItemsAfterPartialRefund() throws Exception {
+        Product refundedProduct = saveProduct(firstProfile, "Refunded product");
+        Product remainingProduct = saveProduct(firstProfile, "Remaining product");
+        refundedProduct.decreaseStock(1);
+        remainingProduct.decreaseStock(1);
+        Order order = new Order(buyer, "partial-refund-fulfillment-order");
+        order.addItem(new OrderItem(
+            refundedProduct,
+            refundedProduct.getName(),
+            refundedProduct.getPrice(),
+            1
+        ));
+        order.addItem(new OrderItem(
+            remainingProduct,
+            remainingProduct.getName(),
+            remainingProduct.getPrice(),
+            1
+        ));
+        order.completePayment();
+        order = orderRepository.saveAndFlush(order);
+        paymentRepository.saveAndFlush(Payment.success(
+            order,
+            "partial-refund-fulfillment-payment",
+            "partial-refund-fulfillment-key",
+            order.getPaymentOrderId(),
+            order.getTotalAmount(),
+            order.getTotalAmount(),
+            "CARD",
+            OffsetDateTime.now()
+        ));
+        Long orderId = order.getId();
+        Long refundedItemId = order.getItems().get(0).getId();
+        given(paymentGateway.cancel(any())).willReturn(new PaymentGatewayResult(
+            "partial-refund-fulfillment-key",
+            order.getPaymentOrderId(),
+            PaymentGatewayStatus.PARTIAL_CANCELED,
+            order.getTotalAmount(),
+            BigDecimal.valueOf(10000),
+            "CARD",
+            OffsetDateTime.now()
+        ));
+
+        mockMvc.perform(post("/api/seller/orders/{orderId}/refunds", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "idempotencyKey":"partial-refund-before-fulfillment",
+                      "reason":"Refund one item before fulfillment",
+                      "items":[{"orderItemId":%d,"quantity":1}]
+                    }
+                    """.formatted(refundedItemId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("SUCCEEDED"));
+
+        mockMvc.perform(patch("/api/seller/orders/{orderId}/status", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fulfillmentStatus\":\"PREPARING\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.orderStatus").value("PREPARING"))
+            .andExpect(jsonPath("$.data.items[0].fulfillmentStatus").value("PENDING"))
+            .andExpect(jsonPath("$.data.items[1].fulfillmentStatus").value("PREPARING"));
+
+        mockMvc.perform(patch("/api/seller/orders/{orderId}/status", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fulfillmentStatus\":\"SHIPPED\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.orderStatus").value("SHIPPED"));
+
+        mockMvc.perform(patch("/api/seller/orders/{orderId}/status", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fulfillmentStatus\":\"DELIVERED\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.orderStatus").value("DELIVERED"));
+
+        entityManager.flush();
+        entityManager.clear();
+        Order deliveredOrder = orderRepository.findById(orderId).orElseThrow();
+        assertThat(deliveredOrder.getItems())
+            .extracting(OrderItem::getEffectiveFulfillmentStatus)
+            .containsExactly(
+                OrderItemFulfillmentStatus.PENDING,
+                OrderItemFulfillmentStatus.DELIVERED
+            );
+    }
+
+    @Test
+    void sellerRefundsOnlyOwnedItemsAndAdminRefundsRemainingOrder() throws Exception {
+        Product firstProduct = saveProduct(firstProfile, "First seller product");
+        Product secondProduct = saveProduct(secondProfile, "Second seller product");
+        firstProduct.decreaseStock(1);
+        secondProduct.decreaseStock(2);
+        Order order = new Order(buyer, "seller-refund-order");
+        order.addItem(new OrderItem(
+            firstProduct,
+            firstProduct.getName(),
+            firstProduct.getPrice(),
+            1
+        ));
+        order.addItem(new OrderItem(
+            secondProduct,
+            secondProduct.getName(),
+            secondProduct.getPrice(),
+            2
+        ));
+        order.completePayment();
+        order = orderRepository.saveAndFlush(order);
+        paymentRepository.saveAndFlush(Payment.success(
+            order,
+            "seller-refund-payment",
+            "seller-refund-payment-key",
+            order.getPaymentOrderId(),
+            order.getTotalAmount(),
+            order.getTotalAmount(),
+            "CARD",
+            OffsetDateTime.now()
+        ));
+        Long firstItemId = order.getItems().get(0).getId();
+        Long orderId = order.getId();
+        given(paymentGateway.cancel(any())).willReturn(
+            new PaymentGatewayResult(
+                "seller-refund-payment-key",
+                order.getPaymentOrderId(),
+                PaymentGatewayStatus.PARTIAL_CANCELED,
+                order.getTotalAmount(),
+                BigDecimal.valueOf(20000),
+                "CARD",
+                OffsetDateTime.now()
+            ),
+            new PaymentGatewayResult(
+                "seller-refund-payment-key",
+                order.getPaymentOrderId(),
+                PaymentGatewayStatus.CANCELED,
+                order.getTotalAmount(),
+                BigDecimal.ZERO,
+                "CARD",
+                OffsetDateTime.now()
+            )
+        );
+
+        String firstItemRefund = """
+            {
+              "idempotencyKey":"seller-item-refund",
+              "reason":"Seller approved return",
+              "items":[{"orderItemId":%d,"quantity":1}]
+            }
+            """.formatted(firstItemId);
+        mockMvc.perform(post("/api/seller/orders/{orderId}/refunds", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(secondSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(firstItemRefund))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error.code").value("PAYMENT_REFUND_AMOUNT_EXCEEDED"));
+
+        mockMvc.perform(post("/api/seller/orders/{orderId}/refunds", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(firstItemRefund))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("SUCCEEDED"))
+            .andExpect(jsonPath("$.data.items.length()").value(1))
+            .andExpect(jsonPath("$.data.items[0].orderItemId").value(firstItemId));
+
+        mockMvc.perform(get("/api/seller/orders/{orderId}/refunds", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(secondSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(0));
+
+        Member admin = saveMember("refund-admin@example.com", MemberRole.ROLE_ADMIN);
+        mockMvc.perform(post("/api/admin/orders/{orderId}/refunds", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "idempotencyKey":"admin-remaining-refund",
+                      "reason":"Admin approved remaining refund"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("SUCCEEDED"))
+            .andExpect(jsonPath("$.data.type").value("FULL"))
+            .andExpect(jsonPath("$.data.amount").value(20000));
+
+        assertThat(productRepository.findById(firstProduct.getId()).orElseThrow().getStock())
+            .isEqualTo(10);
+        assertThat(productRepository.findById(secondProduct.getId()).orElseThrow().getStock())
+            .isEqualTo(10);
+        assertThat(paymentRefundRepository.findAll()).hasSize(2);
+        assertThat(orderRepository.findById(orderId).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.REFUNDED);
     }
 
     private Member saveMember(String email, MemberRole role) {

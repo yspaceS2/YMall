@@ -4,9 +4,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.PageRequest;
@@ -34,6 +36,8 @@ import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.mapper.OrderMapper;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.payment.entity.PaymentResult;
+import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
@@ -51,6 +55,7 @@ public class OrderService {
     private final MemberRepository memberRepository;
     private final MemberAddressRepository memberAddressRepository;
     private final ProductRepository productRepository;
+    private final PaymentRepository paymentRepository;
     private final OrderMapper orderMapper;
     private final OrderOutboxService orderOutboxService;
 
@@ -65,9 +70,9 @@ public class OrderService {
     }
 
     public OrderResponse getOrder(Long memberId, Long orderId) {
-        return orderRepository.findByIdAndMemberId(orderId, memberId)
-            .map(orderMapper::toOrderResponse)
+        Order order = orderRepository.findByIdAndMemberId(orderId, memberId)
             .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+        return orderMapper.toOrderResponse(order, isRefundSupported(order.getId()));
     }
 
     public PageResponse<OrderResponse> getOrders(Long memberId, int page, int size) {
@@ -76,10 +81,15 @@ public class OrderService {
             Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
             Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        return PageResponse.from(
-            orderRepository.findByMemberIdOrderByCreatedAtDesc(memberId, pageable)
-                .map(orderMapper::toOrderResponse)
+        Page<Order> orders = orderRepository.findByMemberIdOrderByCreatedAtDesc(
+            memberId,
+            pageable
         );
+        Set<Long> refundSupportedOrderIds = findRefundSupportedOrderIds(orders);
+        return PageResponse.from(orders.map(order -> orderMapper.toOrderResponse(
+            order,
+            refundSupportedOrderIds.contains(order.getId())
+        )));
     }
 
     @Transactional
@@ -189,5 +199,23 @@ public class OrderService {
         return product.getPrice()
             .multiply(ONE_HUNDRED.subtract(discountPercentage))
             .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
+    }
+
+    private boolean isRefundSupported(Long orderId) {
+        return paymentRepository.existsByOrderIdAndResultAndPaymentKeyIsNotNull(
+            orderId,
+            PaymentResult.SUCCESS
+        );
+    }
+
+    private Set<Long> findRefundSupportedOrderIds(Page<Order> orders) {
+        List<Long> orderIds = orders.stream().map(Order::getId).toList();
+        if (orderIds.isEmpty()) {
+            return Set.of();
+        }
+        return paymentRepository.findRefundSupportedOrderIds(
+            orderIds,
+            PaymentResult.SUCCESS
+        );
     }
 }

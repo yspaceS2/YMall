@@ -10,6 +10,7 @@ import type {
     FulfillmentStatus,
 } from '../types/seller'
 import { apiRequest } from './client'
+import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 
 export function getSellerProfile(signal?: AbortSignal) {
     return apiRequest<SellerProfile>('/seller/profile', { signal })
@@ -70,4 +71,15 @@ export function updateSellerOrderStatus(orderId: number, fulfillmentStatus: Fulf
         method: 'PATCH',
         body: { fulfillmentStatus },
     })
+}
+
+export function requestSellerRefund(orderId: number, request: PaymentRefundRequest) {
+    return apiRequest<PaymentRefund>(`/seller/orders/${orderId}/refunds`, {
+        method: 'POST',
+        body: request,
+    })
+}
+
+export function getSellerRefunds(orderId: number, signal?: AbortSignal) {
+    return apiRequest<PaymentRefund[]>(`/seller/orders/${orderId}/refunds`, { signal })
 }

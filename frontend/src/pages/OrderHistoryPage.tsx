@@ -3,12 +3,18 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../api/client'
-import { getOrders } from '../api/orders'
+import { getOrder, getOrders, getRefunds, requestRefund } from '../api/orders'
 import { createReview, deleteReview, getAllMyReviews, updateReview } from '../api/reviews'
+import { RefundDialog } from '../components/RefundDialog'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
-import type { Order, OrderItem } from '../types/order'
+import type {
+    Order,
+    OrderItem,
+    PaymentRefund,
+    PaymentRefundRequest,
+} from '../types/order'
 import type { Review } from '../types/review'
 import { formatOrderDate, getOrderStatusLabel } from '../utils/order'
 import { formatPrice } from '../utils/product'
@@ -32,6 +38,11 @@ export function OrderHistoryPage() {
     const [errorMessage, setErrorMessage] = useState('')
     const [successMessage, setSuccessMessage] = useState('')
     const [reviewToDelete, setReviewToDelete] = useState<Review | null>(null)
+    const [refundOrder, setRefundOrder] = useState<Order | null>(null)
+    const [refunds, setRefunds] = useState<PaymentRefund[]>([])
+    const [isLoadingRefunds, setIsLoadingRefunds] = useState(false)
+    const [isRefunding, setIsRefunding] = useState(false)
+    const [refundError, setRefundError] = useState('')
     const [retryKey, setRetryKey] = useState(0)
     const loadMoreControllerRef = useRef<AbortController | null>(null)
     const reviewsByOrderItemId = useMemo(
@@ -139,6 +150,49 @@ export function OrderHistoryPage() {
         }
     }
 
+    async function openRefundDialog(order: Order) {
+        setRefundOrder(order)
+        setRefunds([])
+        setRefundError('')
+        setIsLoadingRefunds(true)
+        try {
+            setRefunds(await getRefunds(order.orderId))
+        } catch (error) {
+            setRefundError(error instanceof ApiError
+                ? error.message
+                : '환불 내역을 불러오지 못했습니다.')
+        } finally {
+            setIsLoadingRefunds(false)
+        }
+    }
+
+    async function submitRefund(request: PaymentRefundRequest) {
+        if (!refundOrder) return false
+        setRefundError('')
+        setIsRefunding(true)
+        try {
+            await requestRefund(refundOrder.orderId, request)
+            const [updatedOrder, updatedRefunds] = await Promise.all([
+                getOrder(refundOrder.orderId),
+                getRefunds(refundOrder.orderId),
+            ])
+            setRefundOrder(updatedOrder)
+            setRefunds(updatedRefunds)
+            setOrders((current) => current.map((order) =>
+                order.orderId === updatedOrder.orderId ? updatedOrder : order
+            ))
+            setSuccessMessage('환불 요청이 처리되었습니다.')
+            return true
+        } catch (error) {
+            setRefundError(error instanceof ApiError
+                ? error.message
+                : '환불 요청을 처리하지 못했습니다.')
+            return false
+        } finally {
+            setIsRefunding(false)
+        }
+    }
+
     if (isLoading) {
         return <PageState variant="loading" title="주문 내역을 불러오는 중입니다" description="잠시만 기다려 주세요." />
     }
@@ -171,6 +225,17 @@ export function OrderHistoryPage() {
                                 </div>
                                 <div className="flex items-center gap-5">
                                     <b>{formatPrice(order.totalAmount)}</b>
+                                    {order.refundSupported && (order.status === 'PAID'
+                                        || order.status === 'PARTIALLY_REFUNDED'
+                                        || order.status === 'REFUNDED') && (
+                                        <button
+                                            className="text-xs underline"
+                                            type="button"
+                                            onClick={() => void openRefundDialog(order)}
+                                        >
+                                            환불 신청·내역
+                                        </button>
+                                    )}
                                     <Link className="text-xs underline" to={`/orders/${order.orderId}/result`}>상세 보기</Link>
                                 </div>
                             </div>
@@ -288,6 +353,20 @@ export function OrderHistoryPage() {
                 onConfirm={() => {
                     if (reviewToDelete) void removeReview(reviewToDelete)
                 }}
+            />
+            <RefundDialog
+                key={refundOrder?.orderId ?? 'closed'}
+                open={refundOrder !== null}
+                orderId={refundOrder?.orderId ?? null}
+                items={refundOrder?.items ?? []}
+                refunds={refunds}
+                isLoadingHistory={isLoadingRefunds}
+                isSubmitting={isRefunding}
+                errorMessage={refundError}
+                onClose={() => {
+                    if (!isRefunding) setRefundOrder(null)
+                }}
+                onSubmit={submitRefund}
             />
         </section>
     )

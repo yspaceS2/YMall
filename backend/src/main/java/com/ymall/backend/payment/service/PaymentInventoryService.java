@@ -54,6 +54,21 @@ public class PaymentInventoryService {
         order.releaseInventory();
     }
 
+    public void releaseRefundableIfReserved(Order order) {
+        if (!order.isInventoryReserved()) {
+            return;
+        }
+
+        Map<Long, Product> products = loadProductsForUpdate(order);
+        for (OrderItem item : order.getItems()) {
+            int refundableQuantity = item.getRefundableQuantity();
+            if (refundableQuantity > 0) {
+                requireProduct(products, item).increaseStock(refundableQuantity);
+            }
+        }
+        order.releaseInventory();
+    }
+
     private Map<Long, Product> loadProductsForUpdate(Order order) {
         List<Long> productIds = order.getItems().stream()
             .map(item -> item.getProduct().getId())

@@ -32,11 +32,12 @@ public interface AdminMapper {
     @Mapping(source = "member.name", target = "memberName")
     AdminSellerResponse toSellerResponse(SellerProfile sellerProfile);
 
-    @Mapping(source = "id", target = "orderId")
-    @Mapping(source = "member.id", target = "memberId")
-    @Mapping(source = "member.email", target = "memberEmail")
-    @Mapping(source = "member.name", target = "memberName")
-    AdminOrderResponse toOrderResponse(Order order);
+    @Mapping(source = "order.id", target = "orderId")
+    @Mapping(source = "order.member.id", target = "memberId")
+    @Mapping(source = "order.member.email", target = "memberEmail")
+    @Mapping(source = "order.member.name", target = "memberName")
+    @Mapping(source = "refundSupported", target = "refundSupported")
+    AdminOrderResponse toOrderResponse(Order order, boolean refundSupported);
 
     @Mapping(source = "id", target = "orderItemId")
     @Mapping(source = "product.id", target = "productId")
