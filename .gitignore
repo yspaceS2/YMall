@@ -74,3 +74,14 @@ frontend/.vscode/*
 
 # Local agent instructions
 AGENTS.md
+
+# AI datasets and model artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+ai/datasets/imported/
+ai/datasets/processed/
+ai/models/
+*.gguf
+*.safetensors
