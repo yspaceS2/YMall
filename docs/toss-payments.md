@@ -8,13 +8,14 @@ YMall의 실제 결제 흐름은 브라우저의 Toss Payments SDK와 Backend의
 
 Toss Payments 개발자센터에서 같은 세트로 발급된 테스트 클라이언트 키와 테스트 시크릿 키를 사용한다.
 
-- `TOSS_CLIENT_KEY`: 브라우저 SDK에서 사용할 `test_ck` 또는 `test_gck` 키
+- `TOSS_CLIENT_KEY`: Backend와 Docker Compose에서 사용할 `test_ck` 또는 `test_gck` 키
 - `TOSS_SECRET_KEY`: Backend API 인증에 사용할 짝이 맞는 `test_sk` 또는 `test_gsk` 키
 - `TOSS_API_BASE_URL`: 기본값 `https://api.tosspayments.com`
+- `VITE_TOSS_CLIENT_KEY`: Vite로 Frontend를 직접 실행할 때 브라우저 SDK에 전달할 클라이언트 키
 
 시크릿 키는 `application-local.yaml` 또는 루트 `.env`에만 저장하고 커밋하지 않는다. 공유 파일에는
 실제 키를 입력하지 않는다. 브라우저에서 사용하는 클라이언트 키는 공개 가능한 식별자지만 실제 값은
-`frontend/.env.local`에서 관리한다.
+직접 실행할 때 `frontend/.env.local`에서 관리한다.
 
 로컬 Backend 설정 예시:
 
@@ -26,7 +27,20 @@ ymall:
       secret-key: ${TOSS_SECRET_KEY}
 ```
 
-Docker Compose를 사용할 때는 루트 `.env.example`을 `.env`로 복사한 다음 값을 입력한다.
+Vite로 Frontend를 직접 실행할 때 `frontend/.env.example`을 `.env.local`로 복사하고 아래 값을
+설정한다.
+
+```dotenv
+VITE_TOSS_CLIENT_KEY=test_ck_your_client_key
+```
+
+Docker Compose를 사용할 때는 루트 `.env.example`을 `.env`로 복사하고 아래 값을 설정한다. Compose가
+`TOSS_CLIENT_KEY`를 Frontend 이미지의 `VITE_TOSS_CLIENT_KEY` 빌드 인자로 전달한다.
+
+```dotenv
+TOSS_CLIENT_KEY=test_ck_your_client_key
+TOSS_SECRET_KEY=test_sk_your_secret_key
+```
 
 ## 로컬 실행과 사용자 흐름
 
