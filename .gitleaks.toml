@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "toss-payments-secret-key"
+description = "Toss Payments secret key"
+regex = '''(?:test|live)_sk_[A-Za-z0-9_-]{20,}'''
+keywords = [
+    "test_sk_",
+    "live_sk_",
+]
