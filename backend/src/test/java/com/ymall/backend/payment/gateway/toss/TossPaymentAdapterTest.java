@@ -11,6 +11,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
 import java.math.BigDecimal;
+import java.net.SocketTimeoutException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,12 +19,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import tools.jackson.databind.ObjectMapper;
 
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.payment.exception.PaymentException;
+import com.ymall.backend.payment.gateway.PaymentCancelCommand;
 import com.ymall.backend.payment.gateway.PaymentConfirmCommand;
 import com.ymall.backend.payment.gateway.PaymentGatewayResult;
 import com.ymall.backend.payment.gateway.PaymentGatewayStatus;
@@ -83,6 +86,67 @@ class TossPaymentAdapterTest {
 
         assertThat(result.status()).isEqualTo(PaymentGatewayStatus.DONE);
         assertThat(result.totalAmount()).isEqualByComparingTo("39000");
+        server.verify();
+    }
+
+    @Test
+    void cancelsPartialPaymentWithIdempotencyKeyAndMapsResponse() {
+        server.expect(requestTo(
+                "https://api.tosspayments.com/v1/payments/payment-key/cancel"
+            ))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(header("Idempotency-Key", "refund-idempotency-key"))
+            .andExpect(jsonPath("$.cancelReason").value("Partial refund"))
+            .andExpect(jsonPath("$.cancelAmount").value(20_000))
+            .andRespond(withSuccess(
+                """
+                    {
+                      "paymentKey": "payment-key",
+                      "orderId": "order-123456",
+                      "status": "PARTIAL_CANCELED",
+                      "totalAmount": 39000,
+                      "balanceAmount": 19000,
+                      "method": "카드",
+                      "approvedAt": null
+                    }
+                    """,
+                MediaType.APPLICATION_JSON
+            ));
+
+        PaymentGatewayResult result = adapter.cancel(new PaymentCancelCommand(
+            "payment-key",
+            "Partial refund",
+            BigDecimal.valueOf(20_000),
+            "refund-idempotency-key"
+        ));
+
+        assertThat(result.status()).isEqualTo(PaymentGatewayStatus.PARTIAL_CANCELED);
+        assertThat(result.balanceAmount()).isEqualByComparingTo("19000");
+        server.verify();
+    }
+
+    @Test
+    void mapsCancelTimeoutToUnknownOutcomeError() {
+        server.expect(requestTo(
+                "https://api.tosspayments.com/v1/payments/payment-key/cancel"
+            ))
+            .andRespond(request -> {
+                throw new ResourceAccessException(
+                    "Timed out while waiting for Toss Payments.",
+                    new SocketTimeoutException("Read timed out")
+                );
+            });
+
+        assertThatThrownBy(() -> adapter.cancel(new PaymentCancelCommand(
+            "payment-key",
+            "Timeout test",
+            BigDecimal.valueOf(10_000),
+            "timeout-idempotency-key"
+        )))
+            .isInstanceOfSatisfying(PaymentException.class, exception ->
+                assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.PAYMENT_GATEWAY_TIMEOUT)
+            );
         server.verify();
     }
 
