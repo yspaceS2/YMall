@@ -134,7 +134,7 @@ services:
       AI_REVIEW_MAX_TOKENS: ${AI_REVIEW_MAX_TOKENS:-192}
       AI_REVIEW_REQUEST_TIMEOUT_SECONDS: ${AI_REVIEW_REQUEST_TIMEOUT_SECONDS:-180}
     volumes:
-      - ./ai:/workspace/ai:ro
+      - ./ai/inference:/workspace/ai/inference:ro
     models:
       review-summary-model:
         endpoint_var: AI_REVIEW_MODEL_URL
