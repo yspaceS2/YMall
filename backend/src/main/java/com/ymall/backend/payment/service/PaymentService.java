@@ -2,10 +2,7 @@ package com.ymall.backend.payment.service;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -18,7 +15,6 @@ import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.messaging.OrderEventType;
 import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.order.entity.Order;
-import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
 import com.ymall.backend.payment.dto.MockPaymentRequest;
@@ -33,9 +29,6 @@ import com.ymall.backend.payment.gateway.PaymentGatewayResult;
 import com.ymall.backend.payment.gateway.PaymentGatewayStatus;
 import com.ymall.backend.payment.mapper.PaymentMapper;
 import com.ymall.backend.payment.repository.PaymentRepository;
-import com.ymall.backend.product.entity.Product;
-import com.ymall.backend.product.entity.ProductStatus;
-import com.ymall.backend.product.repository.ProductRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -48,8 +41,8 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
     private final OrderOutboxService orderOutboxService;
-    private final ProductRepository productRepository;
     private final PaymentGateway paymentGateway;
+    private final PaymentInventoryService paymentInventoryService;
 
     @Transactional
     public PaymentResponse processPayment(
@@ -92,7 +85,7 @@ public class PaymentService {
 
         validateConfirmationRequest(order, request);
         ensurePaymentAllowed(order);
-        reserveInventoryIfNeeded(order);
+        paymentInventoryService.reserveIfNeeded(order);
 
         try {
             PaymentGatewayResult gatewayResult = paymentGateway.confirm(new PaymentConfirmCommand(
@@ -118,7 +111,7 @@ public class PaymentService {
             return paymentMapper.toPaymentResponse(payment);
         } catch (PaymentException exception) {
             order.failPayment();
-            releaseInventory(order);
+            paymentInventoryService.releaseIfReserved(order);
 
             Payment payment = saveConfirmedPayment(Payment.failure(
                 order,
@@ -210,55 +203,6 @@ public class PaymentService {
                 "Toss Payments confirmation response did not match the request."
             );
         }
-    }
-
-    private void reserveInventoryIfNeeded(Order order) {
-        if (order.isInventoryReserved()) {
-            return;
-        }
-
-        Map<Long, Product> products = loadProductsForUpdate(order);
-        for (OrderItem item : order.getItems()) {
-            Product product = requireProduct(products, item);
-            if (product.getStatus() != ProductStatus.APPROVED) {
-                throw new BusinessException(ErrorCode.PRODUCT_NOT_ORDERABLE);
-            }
-            if (product.getStock() < item.getQuantity()) {
-                throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK);
-            }
-            product.decreaseStock(item.getQuantity());
-        }
-        order.reserveInventory();
-    }
-
-    private void releaseInventory(Order order) {
-        if (!order.isInventoryReserved()) {
-            return;
-        }
-
-        Map<Long, Product> products = loadProductsForUpdate(order);
-        for (OrderItem item : order.getItems()) {
-            requireProduct(products, item).increaseStock(item.getQuantity());
-        }
-        order.releaseInventory();
-    }
-
-    private Map<Long, Product> loadProductsForUpdate(Order order) {
-        List<Long> productIds = order.getItems().stream()
-            .map(item -> item.getProduct().getId())
-            .sorted()
-            .toList();
-        return productRepository.findAllByIdForUpdate(productIds)
-            .stream()
-            .collect(Collectors.toMap(Product::getId, Function.identity()));
-    }
-
-    private Product requireProduct(Map<Long, Product> products, OrderItem item) {
-        Product product = products.get(item.getProduct().getId());
-        if (product == null) {
-            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
-        }
-        return product;
     }
 
     private void savePaymentEvent(
