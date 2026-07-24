@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,8 @@ import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.payment.entity.PaymentResult;
+import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.seller.dto.SellerOrderItemResponse;
 import com.ymall.backend.seller.dto.SellerOrderResponse;
 import com.ymall.backend.seller.dto.SellerOrderStatusUpdateRequest;
@@ -35,12 +38,15 @@ public class SellerOrderService {
 
     private static final EnumSet<OrderStatus> SELLER_VISIBLE_STATUSES = EnumSet.of(
         OrderStatus.PAID,
+        OrderStatus.PARTIALLY_REFUNDED,
+        OrderStatus.REFUNDED,
         OrderStatus.PREPARING,
         OrderStatus.SHIPPED,
         OrderStatus.DELIVERED
     );
 
     private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
     private final SellerProfileService sellerProfileService;
     private final OrderOutboxService orderOutboxService;
 
@@ -50,12 +56,23 @@ public class SellerOrderService {
             Math.max(page - 1, 0),
             Math.min(Math.max(size, 1), MAX_PAGE_SIZE)
         );
-        Page<SellerOrderResponse> orders = orderRepository.findSellerOrders(
+        Page<Order> orders = orderRepository.findSellerOrders(
             profile.getId(),
             SELLER_VISIBLE_STATUSES,
             pageable
-        ).map(order -> toResponse(order, profile.getId()));
-        return PageResponse.from(orders);
+        );
+        List<Long> orderIds = orders.stream().map(Order::getId).toList();
+        Set<Long> refundSupportedOrderIds = orderIds.isEmpty()
+            ? Set.of()
+            : paymentRepository.findRefundSupportedOrderIds(
+                orderIds,
+                PaymentResult.SUCCESS
+            );
+        return PageResponse.from(orders.map(order -> toResponse(
+            order,
+            profile.getId(),
+            refundSupportedOrderIds.contains(order.getId())
+        )));
     }
 
     @Transactional
@@ -67,8 +84,9 @@ public class SellerOrderService {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         Order order = orderRepository.findSellerOrderByIdForUpdate(orderId, profile.getId())
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND));
-        if (!SELLER_VISIBLE_STATUSES.contains(order.getStatus())
-            || order.getStatus() == OrderStatus.DELIVERED) {
+        if (order.getStatus() != OrderStatus.PAID
+            && order.getStatus() != OrderStatus.PREPARING
+            && order.getStatus() != OrderStatus.SHIPPED) {
             throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
         }
 
@@ -93,7 +111,14 @@ public class SellerOrderService {
                 )
             );
         }
-        return toResponse(order, profile.getId());
+        return toResponse(
+            order,
+            profile.getId(),
+            paymentRepository.existsByOrderIdAndResultAndPaymentKeyIsNotNull(
+                order.getId(),
+                PaymentResult.SUCCESS
+            )
+        );
     }
 
     private OrderEventType toOrderEventType(OrderStatus status) {
@@ -105,7 +130,11 @@ public class SellerOrderService {
         };
     }
 
-    private SellerOrderResponse toResponse(Order order, Long sellerProfileId) {
+    private SellerOrderResponse toResponse(
+        Order order,
+        Long sellerProfileId,
+        boolean refundSupported
+    ) {
         List<SellerOrderItemResponse> items = ownedItems(order, sellerProfileId).stream()
             .map(this::toItemResponse)
             .toList();
@@ -117,6 +146,7 @@ public class SellerOrderService {
             order.getStatus(),
             sellerAmount,
             order.getCreatedAt(),
+            refundSupported,
             items
         );
     }
@@ -135,6 +165,7 @@ public class SellerOrderService {
             item.getProductName(),
             item.getUnitPrice(),
             item.getQuantity(),
+            item.getRefundedQuantity(),
             item.getLineTotal(),
             item.getEffectiveFulfillmentStatus()
         );

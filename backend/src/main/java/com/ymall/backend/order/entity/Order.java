@@ -111,6 +111,15 @@ public class Order {
         this.status = OrderStatus.CANCELED;
     }
 
+    public void applyRefund(boolean fullyRefunded) {
+        this.status = fullyRefunded
+            ? OrderStatus.REFUNDED
+            : OrderStatus.PARTIALLY_REFUNDED;
+        if (fullyRefunded) {
+            this.inventoryReserved = false;
+        }
+    }
+
     public void reserveInventory() {
         this.inventoryReserved = true;
     }

@@ -14,6 +14,7 @@ public record AdminOrderResponse(
     OrderStatus status,
     BigDecimal totalAmount,
     List<AdminOrderItemResponse> items,
+    boolean refundSupported,
     LocalDateTime createdAt
 ) {
 }

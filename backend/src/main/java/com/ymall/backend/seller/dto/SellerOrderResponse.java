@@ -11,6 +11,7 @@ public record SellerOrderResponse(
     OrderStatus orderStatus,
     BigDecimal sellerAmount,
     LocalDateTime createdAt,
+    boolean refundSupported,
     List<SellerOrderItemResponse> items
 ) {
 }

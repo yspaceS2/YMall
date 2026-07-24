@@ -35,6 +35,11 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"items", "items.product"})
+    @Query("select orders from Order orders where orders.id = :orderId")
+    Optional<Order> findByIdForUpdate(@Param("orderId") Long orderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"items", "items.product"})
     @Query("select orders from Order orders where orders.paymentOrderId = :paymentOrderId")
     Optional<Order> findByPaymentOrderIdForUpdate(
         @Param("paymentOrderId") String paymentOrderId
@@ -79,6 +84,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
           )
         """)
     Optional<Order> findSellerOrderByIdForUpdate(
+        @Param("orderId") Long orderId,
+        @Param("sellerProfileId") Long sellerProfileId
+    );
+
+    @EntityGraph(attributePaths = {"items", "items.product", "items.product.sellerProfile"})
+    @Query("""
+        select orders from Order orders
+        where orders.id = :orderId
+          and exists (
+              select item.id from OrderItem item
+              where item.order = orders
+                and item.product.sellerProfile.id = :sellerProfileId
+          )
+        """)
+    Optional<Order> findSellerOrderById(
         @Param("orderId") Long orderId,
         @Param("sellerProfileId") Long sellerProfileId
     );

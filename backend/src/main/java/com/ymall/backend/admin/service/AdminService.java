@@ -1,5 +1,9 @@
 package com.ymall.backend.admin.service;
 
+import java.util.List;
+import java.util.Set;
+
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -18,7 +22,10 @@ import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.payment.entity.PaymentResult;
+import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
@@ -36,6 +43,7 @@ public class AdminService {
     private final MemberRepository memberRepository;
     private final SellerProfileRepository sellerProfileRepository;
     private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
     private final AdminMapper adminMapper;
     private final ProductCacheInvalidator productCacheInvalidator;
 
@@ -92,10 +100,18 @@ public class AdminService {
     }
 
     public PageResponse<AdminOrderResponse> getOrders(int page, int size) {
-        return PageResponse.from(
-            orderRepository.findAll(createPageable(page, size))
-                .map(adminMapper::toOrderResponse)
-        );
+        Page<Order> orders = orderRepository.findAll(createPageable(page, size));
+        List<Long> orderIds = orders.stream().map(Order::getId).toList();
+        Set<Long> refundSupportedOrderIds = orderIds.isEmpty()
+            ? Set.of()
+            : paymentRepository.findRefundSupportedOrderIds(
+                orderIds,
+                PaymentResult.SUCCESS
+            );
+        return PageResponse.from(orders.map(order -> adminMapper.toOrderResponse(
+            order,
+            refundSupportedOrderIds.contains(order.getId())
+        )));
     }
 
     private Pageable createPageable(int page, int size) {

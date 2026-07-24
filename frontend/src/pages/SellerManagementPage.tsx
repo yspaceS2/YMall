@@ -4,6 +4,7 @@ import { ApiError } from '../api/client'
 import { getCategories } from '../api/products'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { RefundDialog } from '../components/RefundDialog'
 import {
     createSellerProduct,
     createSellerProfile,
@@ -12,10 +13,13 @@ import {
     getSellerProduct,
     getSellerProducts,
     getSellerProfile,
+    getSellerRefunds,
+    requestSellerRefund,
     updateSellerOrderStatus,
     updateSellerProduct,
     updateSellerProfile,
 } from '../api/seller'
+import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 import type { Category, ProductSummary } from '../types/product'
 import type {
     FulfillmentStatus,
@@ -69,6 +73,11 @@ export function SellerManagementPage() {
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
     const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null)
+    const [refundOrder, setRefundOrder] = useState<SellerOrder | null>(null)
+    const [refunds, setRefunds] = useState<PaymentRefund[]>([])
+    const [isLoadingRefunds, setIsLoadingRefunds] = useState(false)
+    const [isRefunding, setIsRefunding] = useState(false)
+    const [refundError, setRefundError] = useState('')
 
     useEffect(() => {
         const controller = new AbortController()
@@ -216,6 +225,49 @@ export function SellerManagementPage() {
         }
     }
 
+    async function openRefundDialog(order: SellerOrder) {
+        setRefundOrder(order)
+        setRefunds([])
+        setRefundError('')
+        setIsLoadingRefunds(true)
+        try {
+            setRefunds(await getSellerRefunds(order.orderId))
+        } catch (error) {
+            setRefundError(error instanceof ApiError
+                ? error.message
+                : '환불 내역을 불러오지 못했습니다.')
+        } finally {
+            setIsLoadingRefunds(false)
+        }
+    }
+
+    async function submitRefund(request: PaymentRefundRequest) {
+        if (!refundOrder) return
+        setRefundError('')
+        setIsRefunding(true)
+        try {
+            await requestSellerRefund(refundOrder.orderId, request)
+            const [refundHistory, orderPage] = await Promise.all([
+                getSellerRefunds(refundOrder.orderId),
+                getSellerOrders(),
+            ])
+            setRefunds(refundHistory)
+            setOrders(orderPage.content)
+            setRefundOrder(
+                orderPage.content.find((order) =>
+                    order.orderId === refundOrder.orderId
+                ) ?? refundOrder,
+            )
+            setMessage('환불 요청이 처리되었습니다.')
+        } catch (error) {
+            setRefundError(error instanceof ApiError
+                ? error.message
+                : '환불 요청을 처리하지 못했습니다.')
+        } finally {
+            setIsRefunding(false)
+        }
+    }
+
     async function loadMoreProducts() {
         if (!hasMoreProducts || isLoadingMoreProducts) return
         setIsLoadingMoreProducts(true)
@@ -290,7 +342,73 @@ export function SellerManagementPage() {
                     </Panel>
 
                     <Panel icon={<Truck />} title="주문·배송 관리">
-                        <div className="grid gap-4">{orders.length === 0 ? <p className="text-sm text-muted">처리할 주문이 없습니다.</p> : orders.map((order) => { const current = order.items[0]?.fulfillmentStatus; const target = current ? nextStatus[current] : undefined; return <article className="border border-line p-4" key={order.orderId}><div className="flex flex-wrap items-center justify-between gap-3"><div><strong>주문 #{order.orderId}</strong><p className="mt-1 text-xs text-muted">{new Date(order.createdAt).toLocaleString('ko-KR')} · 판매 금액 {formatPrice(order.sellerAmount)}</p></div>{current && <span className="bg-[#eef0df] px-3 py-1 text-xs font-bold text-[#66751c]">{statusLabel[current]}</span>}</div><ul className="my-4 grid gap-1 text-sm">{order.items.map((item) => <li key={item.orderItemId}>{item.productName} × {item.quantity}</li>)}</ul>{target && <button className="h-10 border border-ink px-4 text-xs font-bold" type="button" onClick={() => advanceOrder(order)}>{statusLabel[target]}{target === 'DELIVERED' ? '로' : '으로'} 변경</button>}</article> })}</div>
+                        <div className="grid gap-4">
+                            {orders.length === 0 ? (
+                                <p className="text-sm text-muted">처리할 주문이 없습니다.</p>
+                            ) : orders.map((order) => {
+                                const current = order.items[0]?.fulfillmentStatus
+                                const canAdvance = order.orderStatus === 'PAID'
+                                    || order.orderStatus === 'PREPARING'
+                                    || order.orderStatus === 'SHIPPED'
+                                const target = canAdvance && current
+                                    ? nextStatus[current]
+                                    : undefined
+                                const canOpenRefund = order.refundSupported
+                                    && (order.orderStatus === 'PAID'
+                                        || order.orderStatus === 'PARTIALLY_REFUNDED'
+                                        || order.orderStatus === 'REFUNDED')
+                                return (
+                                    <article className="border border-line p-4" key={order.orderId}>
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <div>
+                                                <strong>주문 #{order.orderId}</strong>
+                                                <p className="mt-1 text-xs text-muted">
+                                                    {new Date(order.createdAt).toLocaleString('ko-KR')}
+                                                    {' · '}판매 금액 {formatPrice(order.sellerAmount)}
+                                                    {' · '}{order.orderStatus}
+                                                </p>
+                                            </div>
+                                            {current && (
+                                                <span className="bg-[#eef0df] px-3 py-1 text-xs font-bold text-[#66751c]">
+                                                    {statusLabel[current]}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <ul className="my-4 grid gap-1 text-sm">
+                                            {order.items.map((item) => (
+                                                <li key={item.orderItemId}>
+                                                    {item.productName} × {item.quantity}
+                                                    {item.refundedQuantity > 0
+                                                        ? ` · 환불 ${item.refundedQuantity}개`
+                                                        : ''}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <div className="flex flex-wrap gap-2">
+                                            {target && (
+                                                <button
+                                                    className="h-10 border border-ink px-4 text-xs font-bold"
+                                                    type="button"
+                                                    onClick={() => advanceOrder(order)}
+                                                >
+                                                    {statusLabel[target]}
+                                                    {target === 'DELIVERED' ? '로' : '으로'} 변경
+                                                </button>
+                                            )}
+                                            {canOpenRefund && (
+                                                <button
+                                                    className="h-10 border border-ink px-4 text-xs font-bold"
+                                                    type="button"
+                                                    onClick={() => void openRefundDialog(order)}
+                                                >
+                                                    환불 처리·내역
+                                                </button>
+                                            )}
+                                        </div>
+                                    </article>
+                                )
+                            })}
+                        </div>
                         {hasMoreOrders && <button className="mx-auto mt-5 grid h-10 min-w-32 place-items-center border border-ink px-5 text-xs font-bold disabled:opacity-50" type="button" disabled={isLoadingMoreOrders} onClick={loadMoreOrders}>{isLoadingMoreOrders ? <LoaderCircle className="size-4 animate-spin" /> : '주문 더 보기'}</button>}
                     </Panel>
                 </>}
@@ -305,6 +423,20 @@ export function SellerManagementPage() {
                 onConfirm={() => {
                     if (productToDelete) void removeProduct(productToDelete.productId)
                 }}
+            />
+            <RefundDialog
+                key={refundOrder?.orderId ?? 'closed'}
+                open={refundOrder !== null}
+                orderId={refundOrder?.orderId ?? null}
+                items={refundOrder?.items ?? []}
+                refunds={refunds}
+                isLoadingHistory={isLoadingRefunds}
+                isSubmitting={isRefunding}
+                errorMessage={refundError}
+                onClose={() => {
+                    if (!isRefunding) setRefundOrder(null)
+                }}
+                onSubmit={submitRefund}
             />
         </section>
     )

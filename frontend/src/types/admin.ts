@@ -42,6 +42,7 @@ export interface AdminOrderItem {
     productName: string
     unitPrice: number
     quantity: number
+    refundedQuantity: number
     lineTotal: number
     fulfillmentStatus: FulfillmentStatus
 }
@@ -54,6 +55,7 @@ export interface AdminOrder {
     status: OrderStatus
     totalAmount: number
     items: AdminOrderItem[]
+    refundSupported: boolean
     createdAt: string
 }
 

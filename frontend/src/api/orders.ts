@@ -3,6 +3,8 @@ import type {
     Order,
     OrderCreateRequest,
     PaymentConfirmRequest,
+    PaymentRefund,
+    PaymentRefundRequest,
     PaymentResponse,
 } from '../types/order'
 import { apiRequest } from './client'
@@ -33,4 +35,15 @@ export function cancelOrder(orderId: number) {
     return apiRequest<Order>(`/orders/${orderId}/cancellations`, {
         method: 'POST',
     })
+}
+
+export function requestRefund(orderId: number, request: PaymentRefundRequest) {
+    return apiRequest<PaymentRefund>(`/orders/${orderId}/refunds`, {
+        method: 'POST',
+        body: request,
+    })
+}
+
+export function getRefunds(orderId: number, signal?: AbortSignal) {
+    return apiRequest<PaymentRefund[]>(`/orders/${orderId}/refunds`, { signal })
 }

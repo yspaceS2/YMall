@@ -34,6 +34,7 @@ import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.mapper.OrderMapper;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
@@ -62,6 +63,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderOutboxService orderOutboxService;
+
+    @Mock
+    private PaymentRepository paymentRepository;
 
     @InjectMocks
     private OrderService orderService;

@@ -22,6 +22,8 @@ import com.ymall.backend.payment.entity.Payment;
 import com.ymall.backend.payment.gateway.PaymentGatewayResult;
 import com.ymall.backend.payment.gateway.PaymentGatewayStatus;
 import com.ymall.backend.payment.repository.PaymentRepository;
+import com.ymall.backend.payment.refund.entity.PaymentRefundStatus;
+import com.ymall.backend.payment.refund.repository.PaymentRefundRepository;
 import com.ymall.backend.payment.service.PaymentInventoryService;
 import com.ymall.backend.payment.webhook.dto.TossPaymentWebhookRequest;
 import com.ymall.backend.payment.webhook.entity.PaymentWebhookEvent;
@@ -35,6 +37,7 @@ public class PaymentWebhookTransactionService {
     private final PaymentWebhookEventRepository webhookEventRepository;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
+    private final PaymentRefundRepository paymentRefundRepository;
     private final PaymentInventoryService paymentInventoryService;
     private final OrderOutboxService orderOutboxService;
 
@@ -187,11 +190,23 @@ public class PaymentWebhookTransactionService {
             payment,
             verifiedPayment
         );
-        if (isFulfillmentStarted(order.getStatus()) || order.getStatus() == OrderStatus.CANCELED) {
+        if (isFulfillmentStarted(order.getStatus())
+            || order.getStatus() == OrderStatus.CANCELED
+            || order.getStatus() == OrderStatus.REFUNDED) {
+            return PaymentWebhookProcessingResult.NO_CHANGE;
+        }
+        if (paymentRefundRepository.existsByOrderIdAndStatusIn(
+            order.getId(),
+            java.util.List.of(
+                PaymentRefundStatus.PENDING,
+                PaymentRefundStatus.UNKNOWN
+            )
+        )) {
+            synchronizedPayment.synchronizeProviderStatus(verifiedPayment.status());
             return PaymentWebhookProcessingResult.NO_CHANGE;
         }
 
-        paymentInventoryService.releaseIfReserved(order);
+        paymentInventoryService.releaseRefundableIfReserved(order);
         order.cancel();
         synchronizedPayment.synchronizeProviderStatus(verifiedPayment.status());
         saveOrderEvent(order, OrderEventType.ORDER_CANCELED, verifiedPayment.status());

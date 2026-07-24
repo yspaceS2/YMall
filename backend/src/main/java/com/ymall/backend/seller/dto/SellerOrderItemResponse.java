@@ -10,6 +10,7 @@ public record SellerOrderItemResponse(
     String productName,
     BigDecimal unitPrice,
     Integer quantity,
+    Integer refundedQuantity,
     BigDecimal lineTotal,
     OrderItemFulfillmentStatus fulfillmentStatus
 ) {

@@ -3,12 +3,16 @@ import { useEffect, useState, type ReactNode } from 'react'
 import {
     getAdminMembers,
     getAdminOrders,
+    getAdminRefunds,
     getAdminSellers,
     getPendingProducts,
+    requestAdminRefund,
     updateAdminProductStatus,
 } from '../api/admin'
 import { ApiError } from '../api/client'
+import { RefundDialog } from '../components/RefundDialog'
 import type { AdminMember, AdminOrder, AdminProduct, AdminSeller } from '../types/admin'
+import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 import { formatPrice } from '../utils/product'
 
 type AdminSection = 'products' | 'members' | 'sellers' | 'orders'
@@ -26,6 +30,11 @@ export function AdminManagementPage() {
     const [processingProductId, setProcessingProductId] = useState<number | null>(null)
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
+    const [refundOrder, setRefundOrder] = useState<AdminOrder | null>(null)
+    const [refunds, setRefunds] = useState<PaymentRefund[]>([])
+    const [isLoadingRefunds, setIsLoadingRefunds] = useState(false)
+    const [isRefunding, setIsRefunding] = useState(false)
+    const [refundError, setRefundError] = useState('')
 
     useEffect(() => {
         const controller = new AbortController()
@@ -114,6 +123,49 @@ export function AdminManagementPage() {
         }
     }
 
+    async function openRefundDialog(order: AdminOrder) {
+        setRefundOrder(order)
+        setRefunds([])
+        setRefundError('')
+        setIsLoadingRefunds(true)
+        try {
+            setRefunds(await getAdminRefunds(order.orderId))
+        } catch (error) {
+            setRefundError(error instanceof ApiError
+                ? error.message
+                : '환불 내역을 불러오지 못했습니다.')
+        } finally {
+            setIsLoadingRefunds(false)
+        }
+    }
+
+    async function submitRefund(request: PaymentRefundRequest) {
+        if (!refundOrder) return
+        setRefundError('')
+        setIsRefunding(true)
+        try {
+            await requestAdminRefund(refundOrder.orderId, request)
+            const [refundHistory, orderPage] = await Promise.all([
+                getAdminRefunds(refundOrder.orderId),
+                getAdminOrders(),
+            ])
+            setRefunds(refundHistory)
+            setOrders(orderPage.content)
+            setRefundOrder(
+                orderPage.content.find((order) =>
+                    order.orderId === refundOrder.orderId
+                ) ?? refundOrder,
+            )
+            setMessage('환불 요청이 처리되었습니다.')
+        } catch (error) {
+            setRefundError(error instanceof ApiError
+                ? error.message
+                : '환불 요청을 처리하지 못했습니다.')
+        } finally {
+            setIsRefunding(false)
+        }
+    }
+
     if (isLoading) {
         return <div className="grid min-h-100 place-content-center"><LoaderCircle className="size-6 animate-spin" /></div>
     }
@@ -172,10 +224,69 @@ export function AdminManagementPage() {
                 </Panel>
 
                 <Panel icon={<ReceiptText />} title="주문">
-                    <div className="grid gap-3">{orders.length === 0 ? <Empty>주문 내역이 없습니다.</Empty> : orders.map((order) => <article className="border border-line p-4" key={order.orderId}><div className="flex flex-wrap items-center justify-between gap-2"><strong>주문 #{order.orderId}</strong><span className="bg-[#eef0df] px-3 py-1 text-xs font-bold text-[#66751c]">{order.status}</span></div><p className="mt-2 text-xs text-muted">{order.memberName} · {order.memberEmail} · {formatDate(order.createdAt)}</p><p className="mt-3 text-sm">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</p><p className="mt-2 font-bold">{formatPrice(order.totalAmount)}</p></article>)}</div>
+                    <div className="grid gap-3">
+                        {orders.length === 0 ? (
+                            <Empty>주문 내역이 없습니다.</Empty>
+                        ) : orders.map((order) => {
+                            const canOpenRefund = order.refundSupported
+                                && (order.status === 'PAID'
+                                    || order.status === 'PARTIALLY_REFUNDED'
+                                    || order.status === 'REFUNDED')
+                            return (
+                                <article className="border border-line p-4" key={order.orderId}>
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <strong>주문 #{order.orderId}</strong>
+                                        <span className="bg-[#eef0df] px-3 py-1 text-xs font-bold text-[#66751c]">
+                                            {order.status}
+                                        </span>
+                                    </div>
+                                    <p className="mt-2 text-xs text-muted">
+                                        {order.memberName} · {order.memberEmail}
+                                        {' · '}{formatDate(order.createdAt)}
+                                    </p>
+                                    <ul className="mt-3 grid gap-1 text-sm">
+                                        {order.items.map((item) => (
+                                            <li key={item.orderItemId}>
+                                                {item.productName} × {item.quantity}
+                                                {item.refundedQuantity > 0
+                                                    ? ` · 환불 ${item.refundedQuantity}개`
+                                                    : ''}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <div className="mt-3 flex items-center justify-between gap-3">
+                                        <b>{formatPrice(order.totalAmount)}</b>
+                                        {canOpenRefund && (
+                                            <button
+                                                className="h-10 border border-ink px-4 text-xs font-bold"
+                                                type="button"
+                                                onClick={() => void openRefundDialog(order)}
+                                            >
+                                                환불 처리·내역
+                                            </button>
+                                        )}
+                                    </div>
+                                </article>
+                            )
+                        })}
+                    </div>
                     {hasMore.orders && <LoadMoreButton loading={loadingSection === 'orders'} onClick={() => loadMore('orders')} />}
                 </Panel>
             </div>
+            <RefundDialog
+                key={refundOrder?.orderId ?? 'closed'}
+                open={refundOrder !== null}
+                orderId={refundOrder?.orderId ?? null}
+                items={refundOrder?.items ?? []}
+                refunds={refunds}
+                isLoadingHistory={isLoadingRefunds}
+                isSubmitting={isRefunding}
+                errorMessage={refundError}
+                onClose={() => {
+                    if (!isRefunding) setRefundOrder(null)
+                }}
+                onSubmit={submitRefund}
+            />
         </section>
     )
 }

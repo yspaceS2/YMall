@@ -20,6 +20,9 @@ import com.ymall.backend.global.security.MemberPrincipal;
 import com.ymall.backend.order.dto.OrderCreateRequest;
 import com.ymall.backend.order.dto.OrderResponse;
 import com.ymall.backend.order.service.OrderService;
+import com.ymall.backend.payment.refund.dto.PaymentRefundRequest;
+import com.ymall.backend.payment.refund.dto.PaymentRefundResponse;
+import com.ymall.backend.payment.refund.service.PaymentRefundService;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,6 +30,7 @@ import com.ymall.backend.order.service.OrderService;
 public class OrderController {
 
     private final OrderService orderService;
+    private final PaymentRefundService paymentRefundService;
 
     @GetMapping
     public ApiResponse<PageResponse<OrderResponse>> getOrders(
@@ -66,6 +70,32 @@ public class OrderController {
         return ApiResponse.success(
             orderService.cancelOrder(principal.memberId(), orderId),
             "주문을 취소했습니다."
+        );
+    }
+
+    @PostMapping("/{orderId}/refunds")
+    public ApiResponse<PaymentRefundResponse> refundOrder(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long orderId,
+        @Valid @RequestBody PaymentRefundRequest request
+    ) {
+        return ApiResponse.success(
+            paymentRefundService.refundUser(
+                principal.memberId(),
+                orderId,
+                request
+            ),
+            "환불 요청을 처리했습니다."
+        );
+    }
+
+    @GetMapping("/{orderId}/refunds")
+    public ApiResponse<java.util.List<PaymentRefundResponse>> getRefunds(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long orderId
+    ) {
+        return ApiResponse.success(
+            paymentRefundService.getRefunds(principal.memberId(), orderId)
         );
     }
 }

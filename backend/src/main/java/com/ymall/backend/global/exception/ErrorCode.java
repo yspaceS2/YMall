@@ -43,6 +43,17 @@ public enum ErrorCode {
     PAYMENT_GATEWAY_ERROR(HttpStatus.BAD_GATEWAY, "결제사 요청 처리에 실패했습니다."),
     PAYMENT_WEBHOOK_INVALID(HttpStatus.BAD_REQUEST, "유효하지 않은 결제 웹훅입니다."),
     PAYMENT_WEBHOOK_UNSUPPORTED_EVENT(HttpStatus.BAD_REQUEST, "지원하지 않는 결제 웹훅 이벤트입니다."),
+    PAYMENT_REFUND_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 환불할 수 없습니다."),
+    PAYMENT_REFUND_AMOUNT_EXCEEDED(HttpStatus.CONFLICT, "환불 가능 금액 또는 수량을 초과했습니다."),
+    PAYMENT_REFUND_NOT_FOUND(HttpStatus.NOT_FOUND, "환불 이력을 찾을 수 없습니다."),
+    PAYMENT_REFUND_RECONCILIATION_REQUIRED(
+        HttpStatus.CONFLICT,
+        "처리 중이거나 결과를 확인 중인 환불이 있어 새 환불을 요청할 수 없습니다."
+    ),
+    PAYMENT_REFUND_PROVIDER_MISMATCH(
+        HttpStatus.BAD_GATEWAY,
+        "결제사의 환불 결과가 요청 내용과 일치하지 않습니다."
+    ),
     ORDER_CANCELLATION_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 주문을 취소할 수 없습니다."),
     SELLER_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "판매자 프로필을 찾을 수 없습니다."),
     SELLER_PROFILE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 판매자 프로필이 존재합니다."),
