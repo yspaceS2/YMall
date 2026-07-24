@@ -83,6 +83,7 @@ __pycache__/
 ai/datasets/imported/
 ai/datasets/processed/
 ai/evaluation/results/smoke-*.json
+ai/training/data/
 ai/models/
 *.gguf
 *.safetensors
