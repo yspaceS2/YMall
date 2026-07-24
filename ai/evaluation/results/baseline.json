@@ -1,0 +1,331 @@
+{
+  "schemaVersion": "1.0",
+  "dataset": "ai\\datasets\\raw\\synthetic-v1.jsonl",
+  "environment": {
+    "platform": "Windows-11-10.0.22631-SP0",
+    "python": "3.12.13",
+    "processor": "Intel64 Family 6 Model 158 Stepping 13, GenuineIntel",
+    "logicalCpuCount": 8,
+    "systemMemoryUsedGiB": 11.25
+  },
+  "models": [
+    {
+      "modelId": "google/mt5-small",
+      "modelFamily": "seq2seq",
+      "license": "Apache-2.0",
+      "load": {
+        "loadSeconds": 1.3442,
+        "parameterCount": 300176768,
+        "modelMemoryMiB": 1145.08,
+        "runtime": "Transformers + PyTorch CPU"
+      },
+      "systemMemoryDeltaAfterLoadMiB": 800.0,
+      "aggregate": {
+        "sampleCount": 6,
+        "latencyMedianSeconds": 0.4173,
+        "latencyP95Seconds": 0.6193,
+        "strictJsonObjectRate": 0.0,
+        "recoverableJsonObjectRate": 0.0,
+        "schemaValidRate": 0.0,
+        "sectionCompletenessAverage": 0.0,
+        "rougeLAverage": 0.0
+      },
+      "samples": [
+        {
+          "sampleId": "synthetic-keyboard-001",
+          "latencySeconds": 0.6193,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
+          "sectionCompleteness": 0.0,
+          "rougeL": 0.0,
+          "usage": {
+            "inputTokens": 275,
+            "outputTokens": 5
+          },
+          "output": "<extra_id_0>하세요.",
+          "parsedSummary": {
+            "pros": [],
+            "cons": [],
+            "commonOpinions": []
+          }
+        },
+        {
+          "sampleId": "synthetic-tumbler-001",
+          "latencySeconds": 0.4098,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
+          "sectionCompleteness": 0.0,
+          "rougeL": 0.0,
+          "usage": {
+            "inputTokens": 273,
+            "outputTokens": 5
+          },
+          "output": "<extra_id_0>하세요.",
+          "parsedSummary": {
+            "pros": [],
+            "cons": [],
+            "commonOpinions": []
+          }
+        },
+        {
+          "sampleId": "synthetic-cushion-001",
+          "latencySeconds": 0.3826,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
+          "sectionCompleteness": 0.0,
+          "rougeL": 0.0,
+          "usage": {
+            "inputTokens": 273,
+            "outputTokens": 5
+          },
+          "output": "<extra_id_0>하세요.",
+          "parsedSummary": {
+            "pros": [],
+            "cons": [],
+            "commonOpinions": []
+          }
+        },
+        {
+          "sampleId": "synthetic-pan-001",
+          "latencySeconds": 0.3829,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
+          "sectionCompleteness": 0.0,
+          "rougeL": 0.0,
+          "usage": {
+            "inputTokens": 279,
+            "outputTokens": 5
+          },
+          "output": "<extra_id_0>하세요.",
+          "parsedSummary": {
+            "pros": [],
+            "cons": [],
+            "commonOpinions": []
+          }
+        },
+        {
+          "sampleId": "synthetic-lamp-001",
+          "latencySeconds": 0.457,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
+          "sectionCompleteness": 0.0,
+          "rougeL": 0.0,
+          "usage": {
+            "inputTokens": 272,
+            "outputTokens": 5
+          },
+          "output": "<extra_id_0>하세요.",
+          "parsedSummary": {
+            "pros": [],
+            "cons": [],
+            "commonOpinions": []
+          }
+        },
+        {
+          "sampleId": "synthetic-bag-001",
+          "latencySeconds": 0.4248,
+          "strictJsonObject": false,
+          "recoverableJsonObject": false,
+          "schemaValid": false,
+          "sectionCompleteness": 0.0,
+          "rougeL": 0.0,
+          "usage": {
+            "inputTokens": 268,
+            "outputTokens": 5
+          },
+          "output": "<extra_id_0>하세요.",
+          "parsedSummary": {
+            "pros": [],
+            "cons": [],
+            "commonOpinions": []
+          }
+        }
+      ]
+    },
+    {
+      "modelId": "huggingface.co/qwen/qwen3-0.6b-gguf:Q8_0",
+      "modelFamily": "decoder-llm",
+      "license": "Apache-2.0",
+      "load": {
+        "loadSeconds": 4.842,
+        "parameterCount": 596050000,
+        "artifactSizeMiB": 604.15,
+        "quantization": "Q8_0",
+        "runtime": "Docker Model Runner + llama.cpp CPU"
+      },
+      "systemMemoryDeltaAfterLoadMiB": 721.19,
+      "aggregate": {
+        "sampleCount": 6,
+        "latencyMedianSeconds": 2.7212,
+        "latencyP95Seconds": 2.7343,
+        "strictJsonObjectRate": 0.0,
+        "recoverableJsonObjectRate": 1.0,
+        "schemaValidRate": 1.0,
+        "sectionCompletenessAverage": 1.0,
+        "rougeLAverage": 0.1496
+      },
+      "samples": [
+        {
+          "sampleId": "synthetic-keyboard-001",
+          "latencySeconds": 2.5292,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
+          "sectionCompleteness": 1.0,
+          "rougeL": 0.2642,
+          "usage": {
+            "inputTokens": 321,
+            "outputTokens": 112
+          },
+          "output": "```json\n{\n  \"pros\": [\"키를 누르면 소리가 조용하고, 문서 작업을 해도 손가락이 편안합니다.\"],\n  \"cons\": [\"블루투스 연결이 빠르지만, 어두운 곳에서는 키 각인이 잘 보이지 않아 아쉽습니다.\"],\n  \"commonOpinions\": [\"배터리가 오래, 크기가 적당한 만족스러운 요소입니다.\"]\n}\n```",
+          "parsedSummary": {
+            "pros": [
+              "키를 누르면 소리가 조용하고, 문서 작업을 해도 손가락이 편안합니다."
+            ],
+            "cons": [
+              "블루투스 연결이 빠르지만, 어두운 곳에서는 키 각인이 잘 보이지 않아 아쉽습니다."
+            ],
+            "commonOpinions": [
+              "배터리가 오래, 크기가 적당한 만족스러운 요소입니다."
+            ]
+          }
+        },
+        {
+          "sampleId": "synthetic-tumbler-001",
+          "latencySeconds": 2.5734,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
+          "sectionCompleteness": 1.0,
+          "rougeL": 0.1,
+          "usage": {
+            "inputTokens": 317,
+            "outputTokens": 118
+          },
+          "output": "```json\n{\n  \"pros\": [\"아침에 넣은 얼음이 오후까지 남아 있을 정도로 보냉 성능이 좋습니다.\", \"표면이 미끄럽지 않고 한 손으로 잡기 좋은 크기라 출퇴근할 때 편합니다.\"],\n  \"cons\": [\"입구가 좁아서 안쪽을 세척할 때 조금 불편합니다.\"],\n  \"commonOpinions\": [\"리뷰 2에서 안심을 표현한 것.\"]\n}\n```",
+          "parsedSummary": {
+            "pros": [
+              "아침에 넣은 얼음이 오후까지 남아 있을 정도로 보냉 성능이 좋습니다.",
+              "표면이 미끄럽지 않고 한 손으로 잡기 좋은 크기라 출퇴근할 때 편합니다."
+            ],
+            "cons": [
+              "입구가 좁아서 안쪽을 세척할 때 조금 불편합니다."
+            ],
+            "commonOpinions": [
+              "리뷰 2에서 안심을 표현한 것."
+            ]
+          }
+        },
+        {
+          "sampleId": "synthetic-cushion-001",
+          "latencySeconds": 2.73,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
+          "sectionCompleteness": 1.0,
+          "rougeL": 0.1408,
+          "usage": {
+            "inputTokens": 324,
+            "outputTokens": 145
+          },
+          "output": "```json\n{\n  \"pros\": [\"허리를 안정적으로 받쳐 줘서 의자에 오래 앉아 있을 때 부담이 줄었습니다.\", \"커버 촉감이 부드럽고 지퍼로 쉽게 분리할 수 있어 세탁하기 편리합니다.\"],\n  \"cons\": [\"첫 번째 시점에서는 탄탄한 느낌이 있지만, 체격이 큰 사람에게는 크기가 조금 작게 느껴집니다.\"],\n  \"commonOpinions\": [\"모양이 쉽게 꺼지지 않고 복원력이 괜찮은 편입니다.\"]\n}\n```",
+          "parsedSummary": {
+            "pros": [
+              "허리를 안정적으로 받쳐 줘서 의자에 오래 앉아 있을 때 부담이 줄었습니다.",
+              "커버 촉감이 부드럽고 지퍼로 쉽게 분리할 수 있어 세탁하기 편리합니다."
+            ],
+            "cons": [
+              "첫 번째 시점에서는 탄탄한 느낌이 있지만, 체격이 큰 사람에게는 크기가 조금 작게 느껴집니다."
+            ],
+            "commonOpinions": [
+              "모양이 쉽게 꺼지지 않고 복원력이 괜찮은 편입니다."
+            ]
+          }
+        },
+        {
+          "sampleId": "synthetic-pan-001",
+          "latencySeconds": 2.7343,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
+          "sectionCompleteness": 1.0,
+          "rougeL": 0.1538,
+          "usage": {
+            "inputTokens": 325,
+            "outputTokens": 148
+          },
+          "output": "```json\n{\n  \"pros\": [\"달걀 요리를 할 때 재료가 잘 달라붙지 않고 적은 기름으로도 조리가 됩니다.\", \"열이 바닥 전체에 비교적 고르게 퍼져서 여러 재료를 함께 익히기 좋습니다.\"],\n  \"cons\": [\"코팅 성능은 만족하지만 손잡이가 길고 팬 자체가 조금 무겁게 느껴집니다.\"],\n  \"commonOpinions\": [\"조리 후 음식물이 쉽게 닦여 설거지 시간이 줄어든 점이 마음에 듭니다.\"]\n}\n```",
+          "parsedSummary": {
+            "pros": [
+              "달걀 요리를 할 때 재료가 잘 달라붙지 않고 적은 기름으로도 조리가 됩니다.",
+              "열이 바닥 전체에 비교적 고르게 퍼져서 여러 재료를 함께 익히기 좋습니다."
+            ],
+            "cons": [
+              "코팅 성능은 만족하지만 손잡이가 길고 팬 자체가 조금 무겁게 느껴집니다."
+            ],
+            "commonOpinions": [
+              "조리 후 음식물이 쉽게 닦여 설거지 시간이 줄어든 점이 마음에 듭니다."
+            ]
+          }
+        },
+        {
+          "sampleId": "synthetic-lamp-001",
+          "latencySeconds": 2.7272,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
+          "sectionCompleteness": 1.0,
+          "rougeL": 0.0896,
+          "usage": {
+            "inputTokens": 329,
+            "outputTokens": 151
+          },
+          "output": "```json\n{\n  \"pros\": [\"밝기를 여러 단계로 조절할 수 있어서 독서와 야간 조명으로 모두 활용하기 좋습니다.\", \"조명 색상을 바꿀 수 있고 버튼 반응도 빨라 책상에서 쓰기 편리합니다.\"],\n  \"cons\": [\"빛은 눈부시지 않지만 받침대가 가벼워 팔을 크게 펴면 조금 흔들립니다.\"],\n  \"commonOpinions\": [\"크기가 작아 좁은 책상에도 놓기 좋고 디자인도 단정한 편입니다.\"]\n}\n```",
+          "parsedSummary": {
+            "pros": [
+              "밝기를 여러 단계로 조절할 수 있어서 독서와 야간 조명으로 모두 활용하기 좋습니다.",
+              "조명 색상을 바꿀 수 있고 버튼 반응도 빨라 책상에서 쓰기 편리합니다."
+            ],
+            "cons": [
+              "빛은 눈부시지 않지만 받침대가 가벼워 팔을 크게 펴면 조금 흔들립니다."
+            ],
+            "commonOpinions": [
+              "크기가 작아 좁은 책상에도 놓기 좋고 디자인도 단정한 편입니다."
+            ]
+          }
+        },
+        {
+          "sampleId": "synthetic-bag-001",
+          "latencySeconds": 2.7153,
+          "strictJsonObject": false,
+          "recoverableJsonObject": true,
+          "schemaValid": true,
+          "sectionCompleteness": 1.0,
+          "rougeL": 0.1493,
+          "usage": {
+            "inputTokens": 314,
+            "outputTokens": 139
+          },
+          "output": "```json\n{\n  \"pros\": [\"노트북 수납 공간에 완충재가 들어 있어 출퇴근할 때 안심하고 사용할 수 있습니다.\", \"내부 주머니가 나뉘어 있어 충전기와 작은 소지품을 정리하기 편합니다.\"],\n  \"cons\": [\"수납력은 충분하지만 물건을 많이 넣으면 어깨끈이 조금 얇게 느껴집니다.\"],\n  \"commonOpinions\": [\"생활 방수 처리가 되어 가벼운 비에는 내용물이 젖지 않았습니다.\"]\n}\n```",
+          "parsedSummary": {
+            "pros": [
+              "노트북 수납 공간에 완충재가 들어 있어 출퇴근할 때 안심하고 사용할 수 있습니다.",
+              "내부 주머니가 나뉘어 있어 충전기와 작은 소지품을 정리하기 편합니다."
+            ],
+            "cons": [
+              "수납력은 충분하지만 물건을 많이 넣으면 어깨끈이 조금 얇게 느껴집니다."
+            ],
+            "commonOpinions": [
+              "생활 방수 처리가 되어 가벼운 비에는 내용물이 젖지 않았습니다."
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
