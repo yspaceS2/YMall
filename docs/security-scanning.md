@@ -19,7 +19,7 @@ Checkout 단계에서 `fetch-depth: 0`을 사용하므로 현재 파일뿐 아�
 GitHub Dependency Graph와 Dependabot은 다음 의존성을 확인합니다.
 
 - Frontend npm: `frontend/package-lock.json`에서 직접·전이 의존성을 인식합니다.
-- Backend Gradle: `.github/workflows/dependency-submission.yml`이 `develop`, `main` Push 후 해석된 의존성 그래프를 제출합니다.
+- Backend Gradle: `.github/workflows/dependency-submission.yml`이 기본 브랜치인 `main` Push 후 해석된 의존성 그래프를 제출합니다. GitHub Dependency Graph는 기본 브랜치의 제출 결과만 저장소 의존성 현황에 반영합니다.
 
 Dependabot Alerts는 알려진 취약점이 있는 의존성을 표시하고, Dependabot Security Updates는 수정 가능한 취약점에 대해 보안 업데이트 Pull Request를 생성합니다. 정기 버전 업데이트는 이번 범위에 포함하지 않으므로 `.github/dependabot.yml`은 사용하지 않습니다.
 
