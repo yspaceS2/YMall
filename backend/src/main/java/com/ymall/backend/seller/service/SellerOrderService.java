@@ -85,12 +85,18 @@ public class SellerOrderService {
         Order order = orderRepository.findSellerOrderByIdForUpdate(orderId, profile.getId())
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND));
         if (order.getStatus() != OrderStatus.PAID
+            && order.getStatus() != OrderStatus.PARTIALLY_REFUNDED
             && order.getStatus() != OrderStatus.PREPARING
             && order.getStatus() != OrderStatus.SHIPPED) {
             throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
         }
 
-        List<OrderItem> sellerItems = ownedItems(order, profile.getId());
+        List<OrderItem> sellerItems = ownedItems(order, profile.getId()).stream()
+            .filter(item -> item.getRefundableQuantity() > 0)
+            .toList();
+        if (sellerItems.isEmpty()) {
+            throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
+        }
         OrderStatus previousOrderStatus = order.getStatus();
         try {
             sellerItems.forEach(item ->

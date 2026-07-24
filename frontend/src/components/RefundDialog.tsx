@@ -25,7 +25,7 @@ interface RefundDialogProps {
     isSubmitting: boolean
     errorMessage: string
     onClose: () => void
-    onSubmit: (request: PaymentRefundRequest) => Promise<void>
+    onSubmit: (request: PaymentRefundRequest) => Promise<boolean>
 }
 
 export function RefundDialog({
@@ -41,7 +41,7 @@ export function RefundDialog({
 }: RefundDialogProps) {
     const [reason, setReason] = useState('')
     const [quantities, setQuantities] = useState<Record<number, number>>({})
-    const [idempotencyKey] = useState(() =>
+    const [idempotencyKey, setIdempotencyKey] = useState(() =>
         orderId === null ? '' : `refund-${orderId}-${crypto.randomUUID()}`
     )
 
@@ -94,11 +94,16 @@ export function RefundDialog({
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (!reason.trim() || selectedItems.length === 0 || !idempotencyKey) return
-        await onSubmit({
+        const succeeded = await onSubmit({
             idempotencyKey,
             reason: reason.trim(),
             items: selectedItems,
         })
+        if (succeeded) {
+            setReason('')
+            setQuantities({})
+            setIdempotencyKey(`refund-${orderId}-${crypto.randomUUID()}`)
+        }
     }
 
     return (

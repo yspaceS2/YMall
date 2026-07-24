@@ -242,7 +242,7 @@ export function SellerManagementPage() {
     }
 
     async function submitRefund(request: PaymentRefundRequest) {
-        if (!refundOrder) return
+        if (!refundOrder) return false
         setRefundError('')
         setIsRefunding(true)
         try {
@@ -259,10 +259,12 @@ export function SellerManagementPage() {
                 ) ?? refundOrder,
             )
             setMessage('환불 요청이 처리되었습니다.')
+            return true
         } catch (error) {
             setRefundError(error instanceof ApiError
                 ? error.message
                 : '환불 요청을 처리하지 못했습니다.')
+            return false
         } finally {
             setIsRefunding(false)
         }
@@ -346,8 +348,12 @@ export function SellerManagementPage() {
                             {orders.length === 0 ? (
                                 <p className="text-sm text-muted">처리할 주문이 없습니다.</p>
                             ) : orders.map((order) => {
-                                const current = order.items[0]?.fulfillmentStatus
+                                const activeItems = order.items.filter((item) =>
+                                    item.quantity > item.refundedQuantity
+                                )
+                                const current = activeItems[0]?.fulfillmentStatus
                                 const canAdvance = order.orderStatus === 'PAID'
+                                    || order.orderStatus === 'PARTIALLY_REFUNDED'
                                     || order.orderStatus === 'PREPARING'
                                     || order.orderStatus === 'SHIPPED'
                                 const target = canAdvance && current

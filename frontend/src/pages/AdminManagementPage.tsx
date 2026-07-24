@@ -140,7 +140,7 @@ export function AdminManagementPage() {
     }
 
     async function submitRefund(request: PaymentRefundRequest) {
-        if (!refundOrder) return
+        if (!refundOrder) return false
         setRefundError('')
         setIsRefunding(true)
         try {
@@ -157,10 +157,12 @@ export function AdminManagementPage() {
                 ) ?? refundOrder,
             )
             setMessage('환불 요청이 처리되었습니다.')
+            return true
         } catch (error) {
             setRefundError(error instanceof ApiError
                 ? error.message
                 : '환불 요청을 처리하지 못했습니다.')
+            return false
         } finally {
             setIsRefunding(false)
         }

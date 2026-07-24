@@ -207,6 +207,96 @@ class SellerManagementApiIntegrationTest {
     }
 
     @Test
+    void sellerShipsOnlyRemainingItemsAfterPartialRefund() throws Exception {
+        Product refundedProduct = saveProduct(firstProfile, "Refunded product");
+        Product remainingProduct = saveProduct(firstProfile, "Remaining product");
+        refundedProduct.decreaseStock(1);
+        remainingProduct.decreaseStock(1);
+        Order order = new Order(buyer, "partial-refund-fulfillment-order");
+        order.addItem(new OrderItem(
+            refundedProduct,
+            refundedProduct.getName(),
+            refundedProduct.getPrice(),
+            1
+        ));
+        order.addItem(new OrderItem(
+            remainingProduct,
+            remainingProduct.getName(),
+            remainingProduct.getPrice(),
+            1
+        ));
+        order.completePayment();
+        order = orderRepository.saveAndFlush(order);
+        paymentRepository.saveAndFlush(Payment.success(
+            order,
+            "partial-refund-fulfillment-payment",
+            "partial-refund-fulfillment-key",
+            order.getPaymentOrderId(),
+            order.getTotalAmount(),
+            order.getTotalAmount(),
+            "CARD",
+            OffsetDateTime.now()
+        ));
+        Long orderId = order.getId();
+        Long refundedItemId = order.getItems().get(0).getId();
+        given(paymentGateway.cancel(any())).willReturn(new PaymentGatewayResult(
+            "partial-refund-fulfillment-key",
+            order.getPaymentOrderId(),
+            PaymentGatewayStatus.PARTIAL_CANCELED,
+            order.getTotalAmount(),
+            BigDecimal.valueOf(10000),
+            "CARD",
+            OffsetDateTime.now()
+        ));
+
+        mockMvc.perform(post("/api/seller/orders/{orderId}/refunds", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "idempotencyKey":"partial-refund-before-fulfillment",
+                      "reason":"Refund one item before fulfillment",
+                      "items":[{"orderItemId":%d,"quantity":1}]
+                    }
+                    """.formatted(refundedItemId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("SUCCEEDED"));
+
+        mockMvc.perform(patch("/api/seller/orders/{orderId}/status", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fulfillmentStatus\":\"PREPARING\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.orderStatus").value("PREPARING"))
+            .andExpect(jsonPath("$.data.items[0].fulfillmentStatus").value("PENDING"))
+            .andExpect(jsonPath("$.data.items[1].fulfillmentStatus").value("PREPARING"));
+
+        mockMvc.perform(patch("/api/seller/orders/{orderId}/status", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fulfillmentStatus\":\"SHIPPED\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.orderStatus").value("SHIPPED"));
+
+        mockMvc.perform(patch("/api/seller/orders/{orderId}/status", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fulfillmentStatus\":\"DELIVERED\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.orderStatus").value("DELIVERED"));
+
+        entityManager.flush();
+        entityManager.clear();
+        Order deliveredOrder = orderRepository.findById(orderId).orElseThrow();
+        assertThat(deliveredOrder.getItems())
+            .extracting(OrderItem::getEffectiveFulfillmentStatus)
+            .containsExactly(
+                OrderItemFulfillmentStatus.PENDING,
+                OrderItemFulfillmentStatus.DELIVERED
+            );
+    }
+
+    @Test
     void sellerRefundsOnlyOwnedItemsAndAdminRefundsRemainingOrder() throws Exception {
         Product firstProduct = saveProduct(firstProfile, "First seller product");
         Product secondProduct = saveProduct(secondProfile, "Second seller product");
