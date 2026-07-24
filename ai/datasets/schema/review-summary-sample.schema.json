@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ymall.local/schemas/review-summary-sample.schema.json",
+  "title": "YMall review summary sample",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "sampleId",
+    "productGroupId",
+    "category",
+    "sourceId",
+    "reviews",
+    "referenceSummary",
+    "annotation"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "sampleId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "productGroupId": {
+      "type": "string",
+      "description": "실제 상품 ID가 아닌 데이터셋 전용 가명 그룹 ID",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviews": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["reviewId", "rating", "content"],
+        "properties": {
+          "reviewId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "content": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 2000
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "referenceSummary": {
+      "type": "object",
+      "required": ["pros", "cons", "commonOpinions", "evidenceReviewIds"],
+      "properties": {
+        "pros": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "cons": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "commonOpinions": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "evidenceReviewIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotation": {
+      "type": "object",
+      "required": ["version", "status"],
+      "properties": {
+        "version": {"type": "string"},
+        "status": {
+          "enum": ["draft", "reviewed", "approved"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "processing": {
+      "type": "object",
+      "required": ["maskedPersonalDataTypes", "removedReviewCount"],
+      "properties": {
+        "maskedPersonalDataTypes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string"}
+        },
+        "removedReviewCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
