@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 AI_DIR = Path(__file__).resolve().parents[1]
@@ -16,13 +17,19 @@ from common.review_summary import (  # noqa: E402
 from training.prepare_sft_data import (  # noqa: E402
     TrainingDataError,
     assert_split_isolation,
+    file_sha256,
     load_training_config,
 )
 from training.evaluate_lora import (  # noqa: E402
     aggregate_results,
     build_sample_result,
+    evaluate_candidates,
 )
-from training.train_lora import ReviewSummaryDataset  # noqa: E402
+from training.train_lora import (  # noqa: E402
+    ReviewSummaryDataset,
+    TrainingError,
+    validate_generated_data,
+)
 
 
 def sample(product_group_id: str) -> dict:
@@ -120,6 +127,52 @@ class PrepareSftDataTest(unittest.TestCase):
         self.assertEqual(aggregate["sampleCount"], 1)
         self.assertEqual(aggregate["strictJsonObjectRate"], 1.0)
         self.assertEqual(aggregate["rougeLAverage"], 1.0)
+
+    def test_rejects_generated_data_changed_after_manifest_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            generated = {}
+            for split in ("train", "validation", "test"):
+                split_path = data_dir / f"{split}.jsonl"
+                split_path.write_text(f'{{"split":"{split}"}}\n', encoding="utf-8")
+                generated[split] = {"sha256": file_sha256(split_path)}
+            (data_dir / "train.jsonl").write_text(
+                '{"split":"changed"}\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(TrainingError, "train 데이터 해시"):
+                validate_generated_data(data_dir, {"generated": generated})
+
+    @patch("training.evaluate_lora.generate_summary")
+    def test_warms_up_each_candidate_before_measuring(self, generate_summary_mock):
+        generate_summary_mock.return_value = (
+            '{"pros":[],"cons":[],"commonOpinions":[]}',
+            0.5,
+            10,
+            8,
+        )
+        evaluation_sample = {
+            "sampleId": "sample-1",
+            "referenceSummary": {
+                "pros": [],
+                "cons": [],
+                "commonOpinions": [],
+            },
+        }
+
+        evaluate_candidates(
+            model=object(),
+            tokenizer=object(),
+            samples=[evaluation_sample],
+            torch_module=object(),
+        )
+
+        calls = generate_summary_mock.call_args_list
+        self.assertEqual([False, True], [calls[0].args[4], calls[1].args[4]])
+        self.assertEqual(8, calls[0].kwargs["max_new_tokens"])
+        self.assertEqual(8, calls[1].kwargs["max_new_tokens"])
+        self.assertEqual([False, True], [calls[2].args[4], calls[3].args[4]])
 
 
 class FakeTokenizer:

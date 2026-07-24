@@ -46,6 +46,7 @@ from evaluate_models import (  # noqa: E402
 
 
 MAX_NEW_TOKENS = 192
+WARMUP_MAX_NEW_TOKENS = 8
 
 
 class LoraEvaluationError(RuntimeError):
@@ -132,6 +133,7 @@ def generate_summary(
     sample: dict[str, Any],
     torch_module: Any,
     adapter_enabled: bool,
+    max_new_tokens: int = MAX_NEW_TOKENS,
 ) -> tuple[str, float, int, int]:
     messages = build_training_messages(sample)[:-1]
     prompt = tokenizer.apply_chat_template(
@@ -152,7 +154,7 @@ def generate_summary(
     with adapter_context, torch_module.inference_mode():
         output = model.generate(
             **inputs,
-            max_new_tokens=MAX_NEW_TOKENS,
+            max_new_tokens=max_new_tokens,
             do_sample=False,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
@@ -162,6 +164,54 @@ def generate_summary(
     generated_ids = output[0, input_length:]
     text = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
     return text, latency_seconds, input_length, generated_ids.shape[-1]
+
+
+def evaluate_candidates(
+    model: Any,
+    tokenizer: Any,
+    samples: list[dict[str, Any]],
+    torch_module: Any,
+) -> dict[str, Any]:
+    candidates = {
+        "base": False,
+        "lora": True,
+    }
+    warmup_sample = samples[0]
+    for adapter_enabled in candidates.values():
+        generate_summary(
+            model,
+            tokenizer,
+            warmup_sample,
+            torch_module,
+            adapter_enabled,
+            max_new_tokens=WARMUP_MAX_NEW_TOKENS,
+        )
+
+    results: dict[str, Any] = {}
+    for candidate, adapter_enabled in candidates.items():
+        sample_results: list[dict[str, Any]] = []
+        for sample in samples:
+            raw_output, latency, input_tokens, output_tokens = generate_summary(
+                model,
+                tokenizer,
+                sample,
+                torch_module,
+                adapter_enabled,
+            )
+            sample_results.append(
+                build_sample_result(
+                    sample,
+                    raw_output,
+                    latency,
+                    input_tokens,
+                    output_tokens,
+                )
+            )
+        results[candidate] = {
+            "aggregate": aggregate_results(sample_results),
+            "samples": sample_results,
+        }
+    return results
 
 
 def evaluate(config_path: Path, adapter_dir: Path) -> dict[str, Any]:
@@ -202,34 +252,7 @@ def evaluate(config_path: Path, adapter_dir: Path) -> dict[str, Any]:
     model.eval()
     model.config.use_cache = True
 
-    candidates = {
-        "base": False,
-        "lora": True,
-    }
-    results: dict[str, Any] = {}
-    for candidate, adapter_enabled in candidates.items():
-        sample_results: list[dict[str, Any]] = []
-        for sample in samples:
-            raw_output, latency, input_tokens, output_tokens = generate_summary(
-                model,
-                tokenizer,
-                sample,
-                torch,
-                adapter_enabled,
-            )
-            sample_results.append(
-                build_sample_result(
-                    sample,
-                    raw_output,
-                    latency,
-                    input_tokens,
-                    output_tokens,
-                )
-            )
-        results[candidate] = {
-            "aggregate": aggregate_results(sample_results),
-            "samples": sample_results,
-        }
+    results = evaluate_candidates(model, tokenizer, samples, torch)
 
     gpu_properties = torch.cuda.get_device_properties(0)
     return {
@@ -252,6 +275,8 @@ def evaluate(config_path: Path, adapter_dir: Path) -> dict[str, Any]:
         "generation": {
             "doSample": False,
             "maxNewTokens": MAX_NEW_TOKENS,
+            "warmupRunsPerCandidate": 1,
+            "warmupMaxNewTokens": WARMUP_MAX_NEW_TOKENS,
         },
         "environment": {
             "python": platform.python_version(),

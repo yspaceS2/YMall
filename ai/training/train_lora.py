@@ -139,6 +139,31 @@ def adapter_hashes(adapter_dir: Path) -> dict[str, str]:
     }
 
 
+def validate_generated_data(
+    data_dir: Path,
+    data_manifest: dict[str, Any],
+) -> None:
+    generated = data_manifest.get("generated")
+    if not isinstance(generated, dict):
+        raise TrainingError("SFT 데이터 manifest의 generated 정보가 없습니다.")
+
+    for split in ("train", "validation", "test"):
+        split_metadata = generated.get(split)
+        if not isinstance(split_metadata, dict):
+            raise TrainingError(f"SFT 데이터 manifest에 {split} 정보가 없습니다.")
+        expected_hash = split_metadata.get("sha256")
+        if not isinstance(expected_hash, str) or not expected_hash:
+            raise TrainingError(f"SFT 데이터 manifest에 {split} 해시가 없습니다.")
+
+        split_path = data_dir / f"{split}.jsonl"
+        if not split_path.is_file():
+            raise TrainingError(f"SFT {split} 데이터가 없습니다: {split_path}")
+        if file_sha256(split_path) != expected_hash:
+            raise TrainingError(
+                f"SFT {split} 데이터 해시가 manifest와 일치하지 않습니다."
+            )
+
+
 def train(config_path: Path, data_dir: Path) -> dict[str, Any]:
     try:
         import numpy
@@ -177,6 +202,11 @@ def train(config_path: Path, data_dir: Path) -> dict[str, Any]:
     data_manifest = json.loads(data_manifest_path.read_text(encoding="utf-8"))
     if data_manifest.get("config", {}).get("sha256") != file_sha256(config_path):
         raise TrainingError("SFT 데이터와 학습 설정의 해시가 일치하지 않습니다.")
+    if data_manifest.get("runId") != config["runId"]:
+        raise TrainingError("SFT 데이터와 학습 설정의 runId가 일치하지 않습니다.")
+    if data_manifest.get("promptVersion") != config["promptVersion"]:
+        raise TrainingError("SFT 데이터와 학습 설정의 프롬프트 버전이 일치하지 않습니다.")
+    validate_generated_data(data_dir, data_manifest)
 
     tokenizer = AutoTokenizer.from_pretrained(
         base_model["id"],

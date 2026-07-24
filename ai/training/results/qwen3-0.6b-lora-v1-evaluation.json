@@ -21,7 +21,9 @@
   "promptVersion": "2.0",
   "generation": {
     "doSample": false,
-    "maxNewTokens": 192
+    "maxNewTokens": 192,
+    "warmupRunsPerCandidate": 1,
+    "warmupMaxNewTokens": 8
   },
   "environment": {
     "python": "3.12.13",
@@ -35,8 +37,8 @@
     "base": {
       "aggregate": {
         "sampleCount": 1,
-        "latencyMedianSeconds": 54.5734,
-        "latencyP95Seconds": 54.5734,
+        "latencyMedianSeconds": 49.2593,
+        "latencyP95Seconds": 49.2593,
         "strictJsonObjectRate": 0.0,
         "recoverableJsonObjectRate": 1.0,
         "schemaValidRate": 1.0,
@@ -46,7 +48,7 @@
       "samples": [
         {
           "sampleId": "synthetic-lamp-001",
-          "latencySeconds": 54.5734,
+          "latencySeconds": 49.2593,
           "strictJsonObject": false,
           "recoverableJsonObject": true,
           "schemaValid": true,
@@ -88,8 +90,8 @@
     "lora": {
       "aggregate": {
         "sampleCount": 1,
-        "latencyMedianSeconds": 50.5067,
-        "latencyP95Seconds": 50.5067,
+        "latencyMedianSeconds": 50.1859,
+        "latencyP95Seconds": 50.1859,
         "strictJsonObjectRate": 1.0,
         "recoverableJsonObjectRate": 1.0,
         "schemaValidRate": 1.0,
@@ -99,7 +101,7 @@
       "samples": [
         {
           "sampleId": "synthetic-lamp-001",
-          "latencySeconds": 50.5067,
+          "latencySeconds": 50.1859,
           "strictJsonObject": true,
           "recoverableJsonObject": true,
           "schemaValid": true,
