@@ -57,3 +57,36 @@ python -m unittest discover -s ai/tests -v
 
 데이터 형식과 운영 원칙은
 [`docs/ai/review-summary-dataset.md`](../docs/ai/review-summary-dataset.md)를 참고한다.
+
+## LoRA 미세조정
+
+YMALL-70에서는 Qwen3-0.6B 원본 가중치를 고정하고 LoRA 어댑터만 학습하는
+재현 가능한 실험 파이프라인을 구성했다. CUDA용 PyTorch는 환경에 맞는 공식
+설치 명령으로 먼저 설치하고, 나머지 의존성을 설치한다.
+
+```bash
+python -m venv ai/training/.venv
+ai/training/.venv/Scripts/python -m pip install \
+  torch --index-url https://download.pytorch.org/whl/cu130
+ai/training/.venv/Scripts/python -m pip install \
+  -r ai/training/requirements.txt
+
+ai/training/.venv/Scripts/python ai/training/prepare_sft_data.py \
+  --config ai/training/configs/qwen3-0.6b-lora-v1.json \
+  --output-dir ai/training/data/qwen3-0.6b-lora-v1
+
+ai/training/.venv/Scripts/python ai/training/train_lora.py \
+  --config ai/training/configs/qwen3-0.6b-lora-v1.json \
+  --data-dir ai/training/data/qwen3-0.6b-lora-v1 \
+  --result ai/training/results/qwen3-0.6b-lora-v1-training.json
+
+ai/training/.venv/Scripts/python ai/training/evaluate_lora.py \
+  --config ai/training/configs/qwen3-0.6b-lora-v1.json \
+  --adapter-dir ai/models/qwen3-0.6b-lora-v1/adapter \
+  --output ai/training/results/qwen3-0.6b-lora-v1-evaluation.json
+```
+
+학습 데이터와 모델 파일은 로컬 산출물이므로 Git에 포함하지 않는다. 설정,
+해시, 환경, 정량·정성 평가 및 모델 채택 결정은
+[`docs/ai/review-summary-fine-tuning.md`](../docs/ai/review-summary-fine-tuning.md)에
+기록한다.
