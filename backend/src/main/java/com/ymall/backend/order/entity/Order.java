@@ -53,7 +53,7 @@ public class Order {
     @Column(name = "idempotency_key", nullable = false, length = 100)
     private String idempotencyKey;
 
-    @Column(name = "payment_order_id", nullable = false, unique = true, updatable = false, length = 64)
+    @Column(name = "payment_order_id", nullable = false, updatable = false, length = 64)
     private String paymentOrderId;
 
     @Enumerated(EnumType.STRING)
