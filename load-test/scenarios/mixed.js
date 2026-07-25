@@ -1,11 +1,14 @@
 import execution from 'k6/execution'
 import { sleep } from 'k6'
+import { Trend } from 'k6/metrics'
 
 import { loginForCurrentVu, refreshAccessToken, validateCredentials } from '../lib/auth.js'
 import { config, rampingOptions } from '../lib/config.js'
 import { del, discoverProduct, expectStatus, get, post, responseData } from '../lib/api.js'
 
 export const options = rampingOptions('mixed')
+
+const orderCreationDuration = new Trend('order_creation_duration', true)
 
 let accessToken = null
 let addressId = config.addressId
@@ -91,6 +94,7 @@ function createOrder(productId) {
         accessToken,
         { name: 'POST /orders' },
     )
+    orderCreationDuration.add(orderResponse.timings.duration)
 
     if (!expectStatus(orderResponse, 201, 'order creation')) {
         cleanupCartItem(cartItemId)

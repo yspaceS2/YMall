@@ -6,11 +6,11 @@
 흐름을 분리해 측정했다. 모든 최종 실행은 check 100%, HTTP 실패율 0%로 임계값을
 통과했다.
 
-가장 먼저 개선할 구간은 주문 생성의 동기 DB 트랜잭션이다. 주문 포함 시나리오의
-p99는 56.58ms로 상품 조회 시나리오의 7.69ms보다 약 7.4배 높았다. 같은 구간에
-HikariCP 대기는 0, Kafka Consumer Lag은 0, Outbox 실패도 0이었으므로 DB 연결 풀이나
-Kafka 적체보다 주문 생성 트랜잭션 내부의 쿼리와 영속화 작업을 우선 분석하는 것이
-타당하다.
+가장 먼저 분석할 구간은 주문 생성의 동기 DB 트랜잭션이다. 주문 포함 시나리오
+전체의 p99는 56.58ms였고, 같은 측정 구간의 Prometheus endpoint histogram에서
+`POST /api/orders` 16건의 p99는 약 85.22ms로 가장 높았다. 같은 구간에 HikariCP
+대기는 0, Kafka Consumer Lag은 0, Outbox 실패도 0이었으므로 DB 연결 풀이나 Kafka
+적체보다 주문 생성 트랜잭션 내부의 쿼리와 영속화 작업을 우선 분석한다.
 
 ## 측정 환경
 
@@ -72,6 +72,23 @@ Prometheus는 각 측정 종료 시각을 기준으로 조회했다.
 | Backend working set | - | - | 약 575MiB |
 | Kafka Consumer Lag | - | - | 전체 partition 0 |
 
+주문·Kafka 측정 시작과 종료 시점의 요청 누적 카운터 차이로 endpoint별 표본 수를
+계산하고, 종료 시점의 최근 1분 histogram으로 p99를 확인했다.
+
+| endpoint | 표본 수 | p99 |
+| --- | ---: | ---: |
+| `POST /api/orders` | 16 | 85.22ms |
+| `POST /api/members/login` | 2 | 61.40ms |
+| `POST /api/cart/items` | 16 | 38.08ms |
+| `GET /api/orders` | 80 | 23.49ms |
+| `POST /api/members/tokens/refresh` | 3 | 12.54ms |
+| `GET /api/members/me/addresses` | 2 | 10.92ms |
+| `GET /api/cart` | 80 | 9.23ms |
+
+주문 생성 endpoint가 가장 높았지만 표본이 16건으로 작으므로 확정적인 성능 보장이
+아니라 후속 쿼리 분석의 우선순위를 정하는 근거로만 사용한다. 이후 k6 실행에서는
+`order_creation_duration` Trend를 통해 주문 생성 응답 시간을 전체 요청과 분리한다.
+
 `pg_stat_statements`의 누적 통계를 SQL 형태와 대조한 결과, 평균 실행 시간이 가장
 긴 반복 쿼리는 애플리케이션 주문 SQL이 아니라 PostgreSQL exporter의 통계 수집
 쿼리였다. 현재 지표만으로 특정 주문 SQL을 병목으로 단정할 수 없으므로, 다음
@@ -116,7 +133,7 @@ Outbox 행까지만 기록하고 Kafka 발행과 알림 처리는 비동기로 �
 ## 병목과 개선 우선순위
 
 1. **주문 생성 트랜잭션**
-   - 주문 포함 p99가 조회 p99보다 약 7.4배 높다.
+   - `POST /api/orders` 16건의 p99가 약 85.22ms로 측정 endpoint 중 가장 높다.
    - Kafka Lag과 HikariCP pending이 0이므로 메시지 적체나 풀 고갈이 원인은 아니다.
    - 주문·주문 항목·재고·Outbox 저장 쿼리 수와 실행 계획을 먼저 분석한다.
 2. **상품 목록·검색 DB 조회**

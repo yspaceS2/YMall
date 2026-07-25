@@ -103,6 +103,10 @@ docker compose --profile load-test run --rm k6 run `
 로그인과 토큰 갱신에 사용하는 refresh token은 VU별 메모리와 쿠키 저장소에만
 보관됩니다. 값은 콘솔 또는 요약 결과에 출력하지 않습니다.
 
+쓰기 시나리오를 활성화하면 주문 생성 요청의 응답 시간이
+`order_creation_duration` Trend로 별도 집계됩니다. 전체 요청 p99와 분리해 주문
+API 자체의 p50, p95, p99를 확인할 수 있습니다.
+
 ## 반복 실행 시 주의
 
 - `read`와 `spike`는 데이터를 변경하지 않아 그대로 반복할 수 있습니다.
