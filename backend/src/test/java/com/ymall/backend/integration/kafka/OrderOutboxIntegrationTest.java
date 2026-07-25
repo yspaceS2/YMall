@@ -21,8 +21,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import tools.jackson.databind.ObjectMapper;
 
+import com.ymall.backend.global.messaging.KafkaMessagingMetrics;
 import com.ymall.backend.global.messaging.OrderEventEnvelope;
 import com.ymall.backend.global.messaging.OrderEventProducer;
 import com.ymall.backend.global.messaging.OrderEventType;
@@ -159,7 +161,8 @@ class OrderOutboxIntegrationTest {
                 Duration.ofSeconds(1),
                 Duration.ofDays(7)
             ),
-            objectMapper
+            objectMapper,
+            new KafkaMessagingMetrics(new SimpleMeterRegistry())
         );
     }
 
