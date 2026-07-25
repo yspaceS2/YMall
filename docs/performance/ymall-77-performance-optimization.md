@@ -111,6 +111,74 @@ API 외부 요인의 영향을 줄이기 위해 같은 DB에서 주문 1,000건 
 중앙값은 12.0% 감소했다. 양쪽 조건에 큰 이상치가 한 번씩 있었기 때문에 평균보다
 중앙값을 대표 수치로 사용했다.
 
+## 재현 방법
+
+루트 `.env`에는 실제 운영 계정이 아닌 부하 테스트 전용 계정의
+`LOAD_TEST_USER_EMAILS`, `LOAD_TEST_USER_PASSWORDS`만 설정한다. 계정 수는 VU 이상이어야
+하며 각 계정에는 기본 배송지가 필요하다. 비밀번호와 토큰은 명령, 결과 파일, 문서에
+기록하지 않는다.
+
+먼저 YMall 컨테이너를 실행하고 아래 환경 변수를 동일하게 설정한다.
+
+```powershell
+docker compose up -d
+
+$env:LOAD_TEST_SCENARIO = "mixed"
+$env:LOAD_TEST_ENABLE_WRITES = "true"
+$env:LOAD_TEST_PRODUCT_ID = "2"
+$env:LOAD_TEST_TARGET_VUS = "2"
+$env:LOAD_TEST_RAMP_UP = "10s"
+$env:LOAD_TEST_HOLD = "30s"
+$env:LOAD_TEST_RAMP_DOWN = "10s"
+$env:LOAD_TEST_THINK_TIME = "1"
+$env:LOAD_TEST_REFRESH_EVERY = "20"
+$env:LOAD_TEST_WRITE_EVERY = "5"
+```
+
+개선 전 조건은 애플리케이션의 스키마 정의를 바꾸지 않고, 로컬 측정 DB에 같은 컬럼의
+두 번째 고유 인덱스를 측정 중에만 추가해 재현한다. 계정과 상품 준비가 끝난 뒤 통계를
+초기화하고 측정한다.
+
+```powershell
+"CREATE UNIQUE INDEX ymall77_benchmark_duplicate_payment_order_id ON orders (payment_order_id);" |
+  docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+
+"SELECT pg_stat_statements_reset();" |
+  docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+
+docker compose --profile load-test run --rm k6 run `
+  --summary-export=/results/ymall-77-before.json `
+  /scripts/scenarios/mixed.js
+```
+
+개선 후 조건은 임시 중복 인덱스를 제거한 직후 통계를 다시 초기화하고, 다른 설정을
+바꾸지 않은 채 같은 시나리오를 실행한다. 앞선 실행이 실패해도 임시 인덱스는 반드시
+제거한다.
+
+```powershell
+"DROP INDEX IF EXISTS ymall77_benchmark_duplicate_payment_order_id;" |
+  docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+
+"SELECT pg_stat_statements_reset();" |
+  docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+
+docker compose --profile load-test run --rm k6 run `
+  --summary-export=/results/ymall-77-after.json `
+  /scripts/scenarios/mixed.js
+```
+
+DB 마이크로 벤치마크는 아래 스크립트를 5회 실행한다. 한 번의 실행 안에서 중복 인덱스
+조건과 단일 인덱스 조건을 차례로 측정하며, 두 삽입은 모두 롤백된다. `EXPLAIN ANALYZE`
+출력의 `Execution Time` 중앙값을 비교한다. 주문 ID 시퀀스 값은 롤백되지 않으므로
+운영 DB가 아닌 로컬 측정 DB에서만 실행한다.
+
+```powershell
+1..5 | ForEach-Object {
+  Get-Content load-test/sql/ymall-77-order-index-benchmark.sql |
+    docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+}
+```
+
 ## 정합성 검증
 
 - Flyway V9가 PostgreSQL에 정상 적용됐다.
