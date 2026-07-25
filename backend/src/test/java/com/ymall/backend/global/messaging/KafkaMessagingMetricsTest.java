@@ -13,14 +13,13 @@ class KafkaMessagingMetricsTest {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         KafkaMessagingMetrics metrics = new KafkaMessagingMetrics(registry);
 
-        metrics.recordConsumerRetry("orders");
+        metrics.recordConsumerRetry();
         metrics.recordDeadLetter("orders");
         metrics.recordOutboxPublished();
         metrics.recordOutboxFailure(false);
         metrics.recordOutboxFailure(true);
 
         assertThat(registry.get("ymall.kafka.consumer.retries")
-            .tag("topic", "orders")
             .counter()
             .count()).isEqualTo(1);
         assertThat(registry.get("ymall.kafka.consumer.dead.letters")

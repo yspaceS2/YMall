@@ -86,7 +86,7 @@
       "id": 3,
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{application=\"backend\",status=~\"5..\"}[1m])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"backend\"}[1m])), 1)",
+          "expr": "(sum(rate(http_server_requests_seconds_count{application=\"backend\",status=~\"5..\"}[1m])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"backend\"}[1m])), 1e-9)) or vector(0)",
           "legendFormat": "5xx rate",
           "refId": "A"
         }
@@ -213,7 +213,7 @@
       "id": 7,
       "targets": [
         {
-          "expr": "sum(redis_keyspace_hits_total) / clamp_min(sum(redis_keyspace_hits_total) + sum(redis_keyspace_misses_total), 1)",
+          "expr": "(sum(rate(redis_keyspace_hits_total[1m])) / clamp_min(sum(rate(redis_keyspace_hits_total[1m])) + sum(rate(redis_keyspace_misses_total[1m])), 1e-9)) or vector(0)",
           "legendFormat": "hit ratio",
           "refId": "A"
         }
@@ -302,8 +302,8 @@
       "id": 10,
       "targets": [
         {
-          "expr": "sum by (topic) (rate(ymall_kafka_consumer_retries_total[1m]))",
-          "legendFormat": "retry {{topic}}",
+          "expr": "rate(ymall_kafka_consumer_retries_total[1m])",
+          "legendFormat": "retry",
           "refId": "A"
         },
         {
@@ -424,7 +424,7 @@
       "id": 14,
       "targets": [
         {
-          "expr": "topk(10, pg_stat_statements_seconds_total / clamp_min(pg_stat_statements_calls_total, 1))",
+          "expr": "topk(10, rate(pg_stat_statements_seconds_total[1m]) / clamp_min(rate(pg_stat_statements_calls_total[1m]), 1e-9))",
           "legendFormat": "queryid={{queryid}}",
           "refId": "A"
         }

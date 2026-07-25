@@ -89,7 +89,7 @@ docker compose --profile monitoring ps
 
 ### Redis
 
-- `redis_keyspace_hits_total`, `redis_keyspace_misses_total`: 캐시 적중률 계산에 사용합니다.
+- `redis_keyspace_hits_total`, `redis_keyspace_misses_total`: 최근 1분 캐시 적중률 계산에 사용합니다.
 - `redis_memory_used_bytes`: 캐시 데이터와 오버헤드 메모리입니다.
 - `redis_connected_clients`: 연결 수 증가를 확인합니다.
 - `redis_commands_duration_seconds_total`: 명령 처리 지연을 확인합니다.
@@ -98,7 +98,7 @@ docker compose --profile monitoring ps
 
 - `kafka_consumergroup_lag`: Consumer가 아직 처리하지 못한 메시지 수입니다.
 - `kafka_topic_partition_current_offset`: Topic·Partition별 누적 offset입니다.
-- `ymall_kafka_consumer_retries_total`: 애플리케이션 Consumer 재시도 횟수입니다.
+- `ymall_kafka_consumer_retries_total`: 실제 backoff가 수행된 Consumer 재시도 횟수입니다.
 - `ymall_kafka_consumer_dead_letters_total`: DLT 전송 횟수입니다.
 - `ymall_kafka_outbox_published_total`: Outbox 발행 성공 횟수입니다.
 - `ymall_kafka_outbox_publish_failures_total`: 일시·영구 Outbox 발행 실패 횟수입니다.

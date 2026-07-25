@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.BackOffHandler;
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
@@ -46,12 +47,14 @@ public class KafkaConsumerErrorConfig {
             recoverer.accept(record, exception);
             metrics.recordDeadLetter(record.topic());
         };
+        BackOffHandler meteredBackOffHandler = new KafkaRetryMetricsBackOffHandler(metrics);
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(
             meteredRecoverer,
             new FixedBackOff(
                 retryProperties.retryDelay().toMillis(),
                 retryProperties.maxRetries()
-            )
+            ),
+            meteredBackOffHandler
         );
         errorHandler.addNotRetryableExceptions(
             BusinessException.class,
@@ -59,7 +62,6 @@ public class KafkaConsumerErrorConfig {
             DeserializationException.class
         );
         errorHandler.setRetryListeners((record, exception, deliveryAttempt) -> {
-            metrics.recordConsumerRetry(record.topic());
             log.warn(
                 "Kafka event consumption failed: topic={}, partition={}, offset={}, attempt={}, error={}",
                 record.topic(),

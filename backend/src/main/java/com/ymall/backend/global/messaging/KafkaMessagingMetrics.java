@@ -15,12 +15,8 @@ public class KafkaMessagingMetrics {
         this.meterRegistry = meterRegistry;
     }
 
-    public void recordConsumerRetry(String topic) {
-        meterRegistry.counter(
-            "ymall.kafka.consumer.retries",
-            "topic",
-            normalizedTopic(topic)
-        ).increment();
+    public void recordConsumerRetry() {
+        meterRegistry.counter("ymall.kafka.consumer.retries").increment();
     }
 
     public void recordDeadLetter(String topic) {
