@@ -1,5 +1,10 @@
 import type { PageResponse } from '../types/api'
-import type { Review, ReviewCreateRequest, ReviewUpdateRequest } from '../types/review'
+import type {
+    Review,
+    ReviewCreateRequest,
+    ReviewSummary,
+    ReviewUpdateRequest,
+} from '../types/review'
 import { apiRequest } from './client'
 
 export function getProductReviews(productId: number, page = 1, size = 10, signal?: AbortSignal) {
@@ -7,6 +12,10 @@ export function getProductReviews(productId: number, page = 1, size = 10, signal
         `/products/${productId}/reviews?page=${page}&size=${size}`,
         { signal },
     )
+}
+
+export function getProductReviewSummary(productId: number, signal?: AbortSignal) {
+    return apiRequest<ReviewSummary>(`/products/${productId}/review-summary`, { signal })
 }
 
 export function getMyReviews(page = 1, size = 100, signal?: AbortSignal) {

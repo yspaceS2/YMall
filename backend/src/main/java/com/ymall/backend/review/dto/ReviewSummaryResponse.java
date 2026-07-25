@@ -1,6 +1,6 @@
 package com.ymall.backend.review.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 public record ReviewSummaryResponse(
@@ -10,7 +10,7 @@ public record ReviewSummaryResponse(
     List<String> cons,
     List<String> commonOpinions,
     String modelVersion,
-    LocalDateTime generatedAt
+    Instant generatedAt
 ) {
 
     public static ReviewSummaryResponse unavailable(long reviewCount) {

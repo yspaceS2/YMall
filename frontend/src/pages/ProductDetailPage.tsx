@@ -4,12 +4,13 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { addCartItem } from '../api/cart'
 import { ApiError } from '../api/client'
 import { getProduct } from '../api/products'
-import { getProductReviews } from '../api/reviews'
+import { getProductReviews, getProductReviewSummary } from '../api/reviews'
 import { useAuth } from '../auth/useAuth'
+import { ReviewSummaryPanel } from '../components/review/ReviewSummaryPanel'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
 import type { ProductDetail } from '../types/product'
-import type { Review } from '../types/review'
+import type { Review, ReviewSummary } from '../types/review'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
 
 export function ProductDetailPage() {
@@ -31,6 +32,18 @@ export function ProductDetailPage() {
     const [hasMoreReviews, setHasMoreReviews] = useState(false)
     const [isLoadingReviews, setIsLoadingReviews] = useState(false)
     const [reviewError, setReviewError] = useState('')
+    const [reviewSummaryState, setReviewSummaryState] = useState<{
+        productId: number | null
+        summary: ReviewSummary | null
+        isLoading: boolean
+        error: string
+    }>({
+        productId: null,
+        summary: null,
+        isLoading: true,
+        error: '',
+    })
+    const [reviewSummaryRetryKey, setReviewSummaryRetryKey] = useState(0)
     const [retryKey, setRetryKey] = useState(0)
     const reviewLoadMoreControllerRef = useRef<AbortController | null>(null)
 
@@ -74,6 +87,35 @@ export function ProductDetailPage() {
             reviewLoadMoreControllerRef.current = null
         }
     }, [id, invalidProductId, retryKey])
+
+    useEffect(() => {
+        const controller = new AbortController()
+        if (invalidProductId) return () => controller.abort()
+
+        getProductReviewSummary(id, controller.signal)
+            .then((summary) => {
+                setReviewSummaryState({
+                    productId: id,
+                    summary,
+                    isLoading: false,
+                    error: '',
+                })
+            })
+            .catch((requestError: unknown) => {
+                if (requestError instanceof Error && requestError.name !== 'AbortError') {
+                    setReviewSummaryState((current) => ({
+                        productId: id,
+                        summary: current.productId === id ? current.summary : null,
+                        isLoading: false,
+                        error: requestError instanceof ApiError
+                            ? requestError.message
+                            : 'AI 리뷰 요약을 불러오지 못했습니다.',
+                    }))
+                }
+            })
+
+        return () => controller.abort()
+    }, [id, invalidProductId, reviewSummaryRetryKey])
 
     const discountedPrice = useMemo(() => product ? getDiscountedPrice(product.price, product.discountPercentage) : 0, [product])
 
@@ -129,6 +171,15 @@ export function ProductDetailPage() {
         }
     }
 
+    function retryReviewSummary() {
+        setReviewSummaryState((current) => ({
+            ...current,
+            isLoading: true,
+            error: '',
+        }))
+        setReviewSummaryRetryKey((value) => value + 1)
+    }
+
     if (invalidProductId) return <PageState variant="error" title="상품을 찾을 수 없습니다" description="잘못된 상품 주소입니다." action={<Link className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" to="/">상품 목록으로</Link>} />
     if (error) return <PageState variant="error" title="상품을 불러오지 못했습니다" description={error} action={<button className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" type="button" onClick={() => { setError(''); setProduct(null); setRetryKey((value) => value + 1) }}>다시 시도</button>} />
     if (!product) return <PageState variant="loading" title="상품 정보를 불러오는 중입니다" description="잠시만 기다려 주세요." />
@@ -163,6 +214,12 @@ export function ProductDetailPage() {
                     </div>
                     <p className="text-sm text-muted">총 {reviewCount}개의 리뷰</p>
                 </div>
+                <ReviewSummaryPanel
+                    summary={reviewSummaryState.productId === id ? reviewSummaryState.summary : null}
+                    isLoading={reviewSummaryState.productId !== id || reviewSummaryState.isLoading}
+                    error={reviewSummaryState.productId === id ? reviewSummaryState.error : ''}
+                    onRetry={retryReviewSummary}
+                />
                 {reviewError && reviews.length > 0 && <FeedbackMessage className="mb-5" tone="error">{reviewError}</FeedbackMessage>}
                 {reviews.length === 0 ? (
                     reviewError

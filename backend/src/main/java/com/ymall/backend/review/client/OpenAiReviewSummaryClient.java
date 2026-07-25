@@ -1,5 +1,6 @@
 package com.ymall.backend.review.client;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -8,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import com.ymall.backend.review.config.ReviewSummaryProperties;
@@ -95,45 +97,103 @@ public class OpenAiReviewSummaryClient implements ReviewSummaryGenerator {
     }
 
     private Result parse(String content) {
-        String json = extractJson(content);
-        try {
-            SummaryContent summary = objectMapper.readValue(json, SummaryContent.class);
-            validate(summary.pros());
-            validate(summary.cons());
-            validate(summary.commonOpinions());
-            return new Result(
-                normalized(summary.pros()),
-                normalized(summary.cons()),
-                normalized(summary.commonOpinions()),
-                properties.model()
-            );
-        } catch (Exception exception) {
-            throw new IllegalStateException("AI review summary response is not valid JSON.", exception);
+        Exception lastException = null;
+        List<String> pros = null;
+        List<String> cons = null;
+        List<String> commonOpinions = null;
+        boolean hasPros = false;
+        boolean hasCons = false;
+        boolean hasCommonOpinions = false;
+        for (String json : extractJsonObjects(content)) {
+            try {
+                JsonNode summaryNode = objectMapper.readTree(json);
+                if (!summaryNode.isObject()) {
+                    continue;
+                }
+                SummaryContent summary = objectMapper.treeToValue(
+                    summaryNode,
+                    SummaryContent.class
+                );
+                if (summaryNode.has("pros")) {
+                    pros = normalized(summary.pros());
+                    hasPros = true;
+                }
+                if (summaryNode.has("cons")) {
+                    cons = normalized(summary.cons());
+                    hasCons = true;
+                }
+                if (summaryNode.has("commonOpinions")) {
+                    commonOpinions = normalized(summary.commonOpinions());
+                    hasCommonOpinions = true;
+                }
+                if (hasPros && hasCons && hasCommonOpinions) {
+                    return new Result(pros, cons, commonOpinions, properties.model());
+                }
+            } catch (Exception exception) {
+                lastException = exception;
+            }
         }
+        throw new IllegalStateException(
+            "AI review summary response is not valid JSON.",
+            lastException
+        );
     }
 
-    private String extractJson(String content) {
+    private List<String> extractJsonObjects(String content) {
         if (content == null) {
             throw new IllegalStateException("AI review summary response content is missing.");
         }
-        int firstBrace = content.indexOf('{');
-        int lastBrace = content.lastIndexOf('}');
-        if (firstBrace < 0 || lastBrace <= firstBrace) {
+
+        List<String> objects = new ArrayList<>();
+        int start = -1;
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+        for (int index = 0; index < content.length(); index++) {
+            char character = content.charAt(index);
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (character == '\\') {
+                    escaped = true;
+                } else if (character == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (character == '"') {
+                inString = true;
+                continue;
+            }
+            if (character == '{') {
+                if (depth == 0) {
+                    start = index;
+                }
+                depth++;
+                continue;
+            }
+            if (character == '}' && depth > 0) {
+                depth--;
+                if (depth == 0 && start >= 0) {
+                    objects.add(content.substring(start, index + 1));
+                    start = -1;
+                }
+            }
+        }
+        if (objects.isEmpty()) {
             throw new IllegalStateException("AI review summary response has no JSON object.");
         }
-        return content.substring(firstBrace, lastBrace + 1);
-    }
-
-    private void validate(List<String> values) {
-        if (values == null || values.size() > 3) {
-            throw new IllegalStateException("AI review summary response violates the list contract.");
-        }
+        return List.copyOf(objects);
     }
 
     private List<String> normalized(List<String> values) {
+        if (values == null) {
+            return List.of();
+        }
         return values.stream()
             .map(String::trim)
             .filter(value -> !value.isBlank())
+            .limit(3)
             .toList();
     }
 

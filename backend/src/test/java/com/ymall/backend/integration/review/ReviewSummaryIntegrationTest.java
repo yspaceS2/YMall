@@ -2,6 +2,7 @@ package com.ymall.backend.integration.review;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -138,13 +139,15 @@ class ReviewSummaryIntegrationTest {
         assertThat(response.pros()).containsExactly("키감이 부드럽습니다.");
         assertThat(response.cons()).containsExactly("무게가 무겁습니다.");
         assertThat(response.modelVersion()).isEqualTo("test-model-v1");
+        assertThat(response.generatedAt()).isNotNull();
         assertThat(reviewSummaryRepository.findByProductId(product.getId())).isPresent();
 
         mockMvc.perform(get("/api/products/{productId}/review-summary", product.getId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.available").value(true))
             .andExpect(jsonPath("$.data.reviewCount").value(10))
-            .andExpect(jsonPath("$.data.pros[0]").value("키감이 부드럽습니다."));
+            .andExpect(jsonPath("$.data.pros[0]").value("키감이 부드럽습니다."))
+            .andExpect(jsonPath("$.data.generatedAt").value(endsWith("Z")));
     }
 
     @Test
