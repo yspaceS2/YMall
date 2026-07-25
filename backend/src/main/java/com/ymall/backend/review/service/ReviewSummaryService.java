@@ -1,6 +1,7 @@
 package com.ymall.backend.review.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -184,7 +185,7 @@ public class ReviewSummaryService {
             );
         }
 
-        LocalDateTime generatedAt = LocalDateTime.now();
+        LocalDateTime generatedAt = LocalDateTime.now(ZoneOffset.UTC);
         String summaryJson = writeResult(result);
         ReviewSummary summary = reviewSummaryRepository.findByProductId(productId)
             .orElseGet(() -> {
@@ -218,7 +219,7 @@ public class ReviewSummaryService {
             result.cons(),
             result.commonOpinions(),
             summary.getModelVersion(),
-            summary.getGeneratedAt()
+            summary.getGeneratedAt().toInstant(ZoneOffset.UTC)
         );
     }
 
