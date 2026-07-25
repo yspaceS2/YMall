@@ -155,6 +155,41 @@ services:
     networks:
       - ymall-network
 
+  k6:
+    image: grafana/k6:2.1.0
+    profiles:
+      - load-test
+    command: ["run", "/scripts/scenarios/${LOAD_TEST_SCENARIO:-read}.js"]
+    environment:
+      LOAD_TEST_BASE_URL: ${LOAD_TEST_BASE_URL:-http://backend:8080/api}
+      LOAD_TEST_PRODUCT_ID: ${LOAD_TEST_PRODUCT_ID:-}
+      LOAD_TEST_SEARCH_KEYWORD: ${LOAD_TEST_SEARCH_KEYWORD:-}
+      LOAD_TEST_USER_EMAILS: ${LOAD_TEST_USER_EMAILS:-}
+      LOAD_TEST_USER_PASSWORDS: ${LOAD_TEST_USER_PASSWORDS:-}
+      LOAD_TEST_ADDRESS_ID: ${LOAD_TEST_ADDRESS_ID:-}
+      LOAD_TEST_ENABLE_WRITES: ${LOAD_TEST_ENABLE_WRITES:-false}
+      LOAD_TEST_TARGET_VUS: ${LOAD_TEST_TARGET_VUS:-10}
+      LOAD_TEST_RAMP_UP: ${LOAD_TEST_RAMP_UP:-30s}
+      LOAD_TEST_HOLD: ${LOAD_TEST_HOLD:-1m}
+      LOAD_TEST_RAMP_DOWN: ${LOAD_TEST_RAMP_DOWN:-30s}
+      LOAD_TEST_SPIKE_BASE_VUS: ${LOAD_TEST_SPIKE_BASE_VUS:-5}
+      LOAD_TEST_SPIKE_VUS: ${LOAD_TEST_SPIKE_VUS:-50}
+      LOAD_TEST_SPIKE_WARM_UP: ${LOAD_TEST_SPIKE_WARM_UP:-20s}
+      LOAD_TEST_SPIKE_DURATION: ${LOAD_TEST_SPIKE_DURATION:-30s}
+      LOAD_TEST_SPIKE_RECOVERY: ${LOAD_TEST_SPIKE_RECOVERY:-30s}
+      LOAD_TEST_P95_MS: ${LOAD_TEST_P95_MS:-500}
+      LOAD_TEST_FAILURE_RATE: ${LOAD_TEST_FAILURE_RATE:-0.01}
+      LOAD_TEST_THINK_TIME: ${LOAD_TEST_THINK_TIME:-1}
+      LOAD_TEST_REFRESH_EVERY: ${LOAD_TEST_REFRESH_EVERY:-20}
+      LOAD_TEST_WRITE_EVERY: ${LOAD_TEST_WRITE_EVERY:-10}
+    volumes:
+      - ./load-test:/scripts:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ymall-network
+
 models:
   review-summary-model:
     model: ${AI_REVIEW_MODEL:-hf.co/Qwen/Qwen3-0.6B-GGUF:Q8_0}
