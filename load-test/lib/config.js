@@ -65,6 +65,7 @@ export const config = {
 
 export function rampingOptions(name) {
     return {
+        summaryTrendStats: summaryTrendStats(),
         scenarios: {
             [name]: {
                 executor: 'ramping-vus',
@@ -84,6 +85,7 @@ export function rampingOptions(name) {
 
 export function spikeOptions() {
     return {
+        summaryTrendStats: summaryTrendStats(),
         scenarios: {
             spike: {
                 executor: 'ramping-vus',
@@ -102,6 +104,10 @@ export function spikeOptions() {
         },
         thresholds: thresholds(),
     }
+}
+
+function summaryTrendStats() {
+    return ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)']
 }
 
 function thresholds() {

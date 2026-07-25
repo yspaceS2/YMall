@@ -89,7 +89,19 @@ PowerShell 환경 변수가 루트 `.env`보다 우선합니다. 테스트 후�
 | `LOAD_TEST_WRITE_EVERY` | `10` | 주문 생성 실행 주기 |
 
 각 실행은 HTTP 실패율, p95 응답 시간, check 성공률 임계값을 평가하며 임계값을 넘으면
-k6가 0이 아닌 종료 코드로 끝납니다.
+k6가 0이 아닌 종료 코드로 끝납니다. 응답 시간 요약에는 p50(`med`), p95, p99가
+포함됩니다.
+
+원본 요약을 보존하려면 Compose에 연결된 `/results` 경로로 내보냅니다.
+
+```powershell
+docker compose --profile load-test run --rm k6 run `
+  --summary-export=/results/read-baseline.json `
+  /scripts/scenarios/read.js
+```
+
+로그인과 토큰 갱신에 사용하는 refresh token은 VU별 메모리와 쿠키 저장소에만
+보관됩니다. 값은 콘솔 또는 요약 결과에 출력하지 않습니다.
 
 ## 반복 실행 시 주의
 
