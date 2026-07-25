@@ -190,6 +190,7 @@ services:
       LOAD_TEST_WRITE_EVERY: ${LOAD_TEST_WRITE_EVERY:-10}
     volumes:
       - ./load-test:/scripts:ro
+      - ./docs/performance:/results
     depends_on:
       backend:
         condition: service_healthy

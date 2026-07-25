@@ -1,7 +1,11 @@
 import execution from 'k6/execution'
+import http from 'k6/http'
 
 import { config } from './config.js'
 import { expectStatus, post, responseData } from './api.js'
+
+const REFRESH_TOKEN_COOKIE = 'YMALL_REFRESH_TOKEN'
+let refreshToken = null
 
 export function validateCredentials() {
     if (config.userEmails.length === 0 || config.userPasswords.length === 0) {
@@ -37,17 +41,40 @@ export function loginForCurrentVu() {
         return null
     }
 
+    persistRefreshTokenCookie(response)
     return responseData(response)?.accessToken ?? null
 }
 
 export function refreshAccessToken() {
-    const response = post('/members/tokens/refresh', null, null, {
-        name: 'POST /members/tokens/refresh',
+    const response = http.post(`${config.baseUrl}/members/tokens/refresh`, null, {
+        headers: {
+            'Content-Type': 'application/json',
+            Cookie: `${REFRESH_TOKEN_COOKIE}=${refreshToken ?? ''}`,
+        },
+        tags: { name: 'POST /members/tokens/refresh' },
+        redirects: 0,
     })
 
     if (!expectStatus(response, 200, 'token refresh')) {
         return null
     }
 
+    persistRefreshTokenCookie(response)
     return responseData(response)?.accessToken ?? null
+}
+
+function persistRefreshTokenCookie(response) {
+    const refreshTokenCookie = response.cookies[REFRESH_TOKEN_COOKIE]?.[0]
+
+    if (!refreshTokenCookie) {
+        return
+    }
+
+    refreshToken = refreshTokenCookie.value
+    http.cookieJar().set(
+        config.baseUrl,
+        REFRESH_TOKEN_COOKIE,
+        refreshTokenCookie.value,
+        { path: '/' },
+    )
 }
