@@ -93,6 +93,15 @@ services:
       MAIL_FROM: ${MAIL_FROM:-noreply@ymall.local}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
       MAIL_STARTTLS_ENABLED: ${MAIL_STARTTLS_ENABLED:-false}
+      AI_REVIEW_ENABLED: ${AI_REVIEW_ENABLED:-true}
+      AI_REVIEW_MINIMUM_REVIEWS: ${AI_REVIEW_MINIMUM_REVIEWS:-10}
+      AI_REVIEW_MAXIMUM_REVIEWS: ${AI_REVIEW_MAXIMUM_REVIEWS:-100}
+      AI_REVIEW_MAXIMUM_REVIEW_LENGTH: ${AI_REVIEW_MAXIMUM_REVIEW_LENGTH:-1000}
+      AI_REVIEW_MAXIMUM_TOTAL_LENGTH: ${AI_REVIEW_MAXIMUM_TOTAL_LENGTH:-6000}
+      AI_REVIEW_MAX_TOKENS: ${AI_REVIEW_MAX_TOKENS:-192}
+      AI_REVIEW_CONNECT_TIMEOUT: ${AI_REVIEW_CONNECT_TIMEOUT:-3s}
+      AI_REVIEW_READ_TIMEOUT: ${AI_REVIEW_READ_TIMEOUT:-180s}
+      AI_REVIEW_LOCK_TTL: ${AI_REVIEW_LOCK_TTL:-5m}
     volumes:
       - backend-uploads:/app/uploads
     depends_on:
@@ -104,6 +113,10 @@ services:
         condition: service_healthy
     networks:
       - ymall-network
+    models:
+      review-summary-model:
+        endpoint_var: AI_REVIEW_BASE_URL
+        model_var: AI_REVIEW_MODEL
 
   frontend:
     build:

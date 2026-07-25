@@ -35,7 +35,7 @@ public class NotificationService {
         Pageable pageable = PageRequest.of(
             Math.max(page - 1, 0),
             Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
-            Sort.by(Sort.Direction.DESC, "createdAt")
+            Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
         );
         return PageResponse.from(
             notificationRepository.findByMemberId(memberId, pageable)

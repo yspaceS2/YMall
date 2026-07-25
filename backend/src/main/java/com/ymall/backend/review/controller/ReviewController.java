@@ -21,8 +21,10 @@ import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.global.security.MemberPrincipal;
 import com.ymall.backend.review.dto.ReviewCreateRequest;
 import com.ymall.backend.review.dto.ReviewResponse;
+import com.ymall.backend.review.dto.ReviewSummaryResponse;
 import com.ymall.backend.review.dto.ReviewUpdateRequest;
 import com.ymall.backend.review.service.ReviewService;
+import com.ymall.backend.review.service.ReviewSummaryService;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,6 +32,7 @@ import com.ymall.backend.review.service.ReviewService;
 public class ReviewController {
 
     private final ReviewService reviewService;
+    private final ReviewSummaryService reviewSummaryService;
 
     @GetMapping("/products/{productId}/reviews")
     public ApiResponse<PageResponse<ReviewResponse>> getProductReviews(
@@ -38,6 +41,13 @@ public class ReviewController {
         @RequestParam(defaultValue = "10") int size
     ) {
         return ApiResponse.success(reviewService.getProductReviews(productId, page, size));
+    }
+
+    @GetMapping("/products/{productId}/review-summary")
+    public ApiResponse<ReviewSummaryResponse> getProductReviewSummary(
+        @PathVariable Long productId
+    ) {
+        return ApiResponse.success(reviewSummaryService.getSummary(productId));
     }
 
     @GetMapping("/reviews/me")

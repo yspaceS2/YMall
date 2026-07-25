@@ -8,10 +8,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
 
+import com.ymall.backend.review.config.ReviewSummaryTopicProperties;
+
 @Configuration
 @EnableConfigurationProperties({
     OrderEventTopicProperties.class,
-    KafkaConsumerRetryProperties.class
+    KafkaConsumerRetryProperties.class,
+    ReviewSummaryTopicProperties.class
 })
 @ConditionalOnProperty(name = "ymall.kafka.enabled", havingValue = "true", matchIfMissing = true)
 public class KafkaTopicConfig {
@@ -28,6 +31,30 @@ public class KafkaTopicConfig {
     @Bean
     public NewTopic orderEventsDltTopic(
         OrderEventTopicProperties topicProperties,
+        KafkaConsumerRetryProperties retryProperties
+    ) {
+        return TopicBuilder.name(topicProperties.dltName())
+            .partitions(topicProperties.partitions())
+            .replicas(topicProperties.replicationFactor())
+            .config(
+                TopicConfig.RETENTION_MS_CONFIG,
+                String.valueOf(retryProperties.dltRetention().toMillis())
+            )
+            .build();
+    }
+
+    @Bean
+    public NewTopic reviewSummaryTopic(ReviewSummaryTopicProperties properties) {
+        return TopicBuilder.name(properties.name())
+            .partitions(properties.partitions())
+            .replicas(properties.replicationFactor())
+            .config(TopicConfig.RETENTION_MS_CONFIG, String.valueOf(properties.retention().toMillis()))
+            .build();
+    }
+
+    @Bean
+    public NewTopic reviewSummaryDltTopic(
+        ReviewSummaryTopicProperties topicProperties,
         KafkaConsumerRetryProperties retryProperties
     ) {
         return TopicBuilder.name(topicProperties.dltName())

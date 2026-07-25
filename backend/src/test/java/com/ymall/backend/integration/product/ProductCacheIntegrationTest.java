@@ -25,6 +25,7 @@ import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
 import com.ymall.backend.product.service.ProductService;
+import com.ymall.backend.review.config.ReviewSummaryCacheNames;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -74,7 +75,10 @@ class ProductCacheIntegrationTest {
     @Test
     void evictsCachedDetailWhenProductIsUpdatedOrDeleted() {
         productService.getProduct(product.getId());
+        cacheManager.getCache(ReviewSummaryCacheNames.BY_PRODUCT)
+            .put(product.getId(), "cached summary");
         assertThat(redisTemplate.hasKey(redisKey(product.getId()))).isTrue();
+        assertThat(redisTemplate.hasKey(reviewSummaryRedisKey(product.getId()))).isTrue();
 
         productService.updateProduct(product.getId(), new ProductUpdateRequest(
             category.getId(),
@@ -89,10 +93,14 @@ class ProductCacheIntegrationTest {
         ));
 
         assertThat(redisTemplate.hasKey(redisKey(product.getId()))).isFalse();
+        assertThat(redisTemplate.hasKey(reviewSummaryRedisKey(product.getId()))).isFalse();
         assertThat(productService.getProduct(product.getId()).name()).isEqualTo("수정된 캐시 상품");
 
+        cacheManager.getCache(ReviewSummaryCacheNames.BY_PRODUCT)
+            .put(product.getId(), "cached summary");
         productService.deleteProduct(product.getId());
         assertThat(redisTemplate.hasKey(redisKey(product.getId()))).isFalse();
+        assertThat(redisTemplate.hasKey(reviewSummaryRedisKey(product.getId()))).isFalse();
     }
 
     @Test
@@ -143,14 +151,23 @@ class ProductCacheIntegrationTest {
     }
 
     private void clearProductCache() {
-        Cache cache = cacheManager.getCache(ProductCacheNames.DETAILS);
-        if (cache != null) {
-            cache.clear();
+        for (String cacheName : List.of(
+            ProductCacheNames.DETAILS,
+            ReviewSummaryCacheNames.BY_PRODUCT
+        )) {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.clear();
+            }
         }
     }
 
     private String redisKey(Long productId) {
         return ProductCacheNames.DETAILS + "::" + productId;
+    }
+
+    private String reviewSummaryRedisKey(Long productId) {
+        return ReviewSummaryCacheNames.BY_PRODUCT + "::" + productId;
     }
 
     private double nanosToAverageMillis(long nanos) {
