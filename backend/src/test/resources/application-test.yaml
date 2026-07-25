@@ -47,6 +47,20 @@ ymall:
     from: test@ymall.local
   cache:
     product-detail-ttl: 10m
+    review-summary-ttl: 30m
+  ai:
+    review-summary:
+      enabled: false
+      base-url: http://localhost:12434/engines/v1
+      model: test-review-model
+      minimum-reviews: 10
+      maximum-reviews: 100
+      maximum-review-length: 1000
+      maximum-total-length: 6000
+      maximum-tokens: 192
+      connect-timeout: 100ms
+      read-timeout: 100ms
+      lock-ttl: 1m
   kafka:
     enabled: false
     order-events:
@@ -66,6 +80,12 @@ ymall:
     notification-consumer:
       enabled: false
       group-id: ymall-notification-test
+    review-summary:
+      name: ymall.review-summary.refresh.v1
+      partitions: 1
+      replication-factor: 1
+      retention: 1d
+      group-id: ymall-review-summary-test
     consumer-retry:
       max-retries: 2
       retry-delay: 10ms

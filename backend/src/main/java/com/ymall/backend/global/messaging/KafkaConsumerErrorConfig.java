@@ -13,6 +13,7 @@ import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.util.backoff.FixedBackOff;
 
 import com.ymall.backend.global.exception.BusinessException;
+import com.ymall.backend.review.config.ReviewSummaryTopicProperties;
 
 @Configuration
 @Slf4j
@@ -25,6 +26,7 @@ public class KafkaConsumerErrorConfig {
         KafkaTemplate<String, OrderEventEnvelope> kafkaTemplate,
         DeadLetterByteKafkaOperations deadLetterByteKafkaOperations,
         OrderEventTopicProperties topicProperties,
+        ReviewSummaryTopicProperties reviewSummaryTopicProperties,
         KafkaConsumerRetryProperties retryProperties
     ) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
@@ -32,7 +34,10 @@ public class KafkaConsumerErrorConfig {
                 ? deadLetterByteKafkaOperations.kafkaTemplate()
                 : kafkaTemplate,
             (record, exception) -> new TopicPartition(
-                topicProperties.dltName(), record.partition()
+                record.topic().equals(reviewSummaryTopicProperties.name())
+                    ? reviewSummaryTopicProperties.dltName()
+                    : topicProperties.dltName(),
+                record.partition()
             )
         );
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(
@@ -48,7 +53,7 @@ public class KafkaConsumerErrorConfig {
             DeserializationException.class
         );
         errorHandler.setRetryListeners((record, exception, deliveryAttempt) -> log.warn(
-            "Order event consumption failed: topic={}, partition={}, offset={}, attempt={}",
+            "Kafka event consumption failed: topic={}, partition={}, offset={}, attempt={}",
             record.topic(),
             record.partition(),
             record.offset(),

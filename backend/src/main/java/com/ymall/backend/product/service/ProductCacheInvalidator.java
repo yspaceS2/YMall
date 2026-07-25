@@ -9,6 +9,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.ymall.backend.global.config.ProductCacheNames;
+import com.ymall.backend.review.config.ReviewSummaryCacheNames;
 
 @Component
 public class ProductCacheInvalidator {
@@ -35,15 +36,20 @@ public class ProductCacheInvalidator {
     }
 
     private void evict(Long productId) {
-        Cache cache = cacheManager.getCache(ProductCacheNames.DETAILS);
+        evict(ProductCacheNames.DETAILS, productId);
+        evict(ReviewSummaryCacheNames.BY_PRODUCT, productId);
+    }
+
+    private void evict(String cacheName, Long productId) {
+        Cache cache = cacheManager.getCache(cacheName);
         if (cache == null) {
             return;
         }
         try {
             cache.evictIfPresent(productId);
         } catch (RuntimeException exception) {
-            log.warn("Product cache eviction failed. productId={}, reason={}",
-                productId, exception.getMessage());
+            log.warn("Product cache eviction failed. cache={}, productId={}, reason={}",
+                cacheName, productId, exception.getMessage());
         }
     }
 }

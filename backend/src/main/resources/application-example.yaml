@@ -110,6 +110,20 @@ ymall:
     from: ${MAIL_FROM}
   cache:
     product-detail-ttl: ${PRODUCT_DETAIL_CACHE_TTL:10m}
+    review-summary-ttl: ${REVIEW_SUMMARY_CACHE_TTL:30m}
+  ai:
+    review-summary:
+      enabled: ${AI_REVIEW_ENABLED:false}
+      base-url: ${AI_REVIEW_BASE_URL:http://localhost:12434/engines/v1}
+      model: ${AI_REVIEW_MODEL:huggingface.co/qwen/qwen3-0.6b-gguf:Q8_0}
+      minimum-reviews: ${AI_REVIEW_MINIMUM_REVIEWS:10}
+      maximum-reviews: ${AI_REVIEW_MAXIMUM_REVIEWS:100}
+      maximum-review-length: ${AI_REVIEW_MAXIMUM_REVIEW_LENGTH:1000}
+      maximum-total-length: ${AI_REVIEW_MAXIMUM_TOTAL_LENGTH:6000}
+      maximum-tokens: ${AI_REVIEW_MAX_TOKENS:192}
+      connect-timeout: ${AI_REVIEW_CONNECT_TIMEOUT:3s}
+      read-timeout: ${AI_REVIEW_READ_TIMEOUT:180s}
+      lock-ttl: ${AI_REVIEW_LOCK_TTL:5m}
   payment:
     toss:
       client-key: ${TOSS_CLIENT_KEY}
@@ -136,6 +150,12 @@ ymall:
     notification-consumer:
       enabled: ${KAFKA_NOTIFICATION_CONSUMER_ENABLED:true}
       group-id: ${KAFKA_NOTIFICATION_CONSUMER_GROUP:ymall-notification}
+    review-summary:
+      name: ${KAFKA_REVIEW_SUMMARY_TOPIC:ymall.review-summary.refresh.v1}
+      partitions: ${KAFKA_REVIEW_SUMMARY_PARTITIONS:3}
+      replication-factor: ${KAFKA_REVIEW_SUMMARY_REPLICATION_FACTOR:1}
+      retention: ${KAFKA_REVIEW_SUMMARY_RETENTION:7d}
+      group-id: ${KAFKA_REVIEW_SUMMARY_GROUP:ymall-review-summary}
     consumer-retry:
       max-retries: ${KAFKA_CONSUMER_MAX_RETRIES:3}
       retry-delay: ${KAFKA_CONSUMER_RETRY_DELAY:1s}

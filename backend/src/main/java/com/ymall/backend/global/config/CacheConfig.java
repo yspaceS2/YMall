@@ -18,6 +18,8 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 
+import com.ymall.backend.review.config.ReviewSummaryCacheNames;
+
 @Configuration
 @EnableCaching
 public class CacheConfig implements CachingConfigurer {
@@ -27,15 +29,18 @@ public class CacheConfig implements CachingConfigurer {
     private final RedisConnectionFactory connectionFactory;
     private final GenericJacksonJsonRedisSerializer valueSerializer;
     private final Duration productDetailTtl;
+    private final Duration reviewSummaryTtl;
 
     public CacheConfig(
         RedisConnectionFactory connectionFactory,
         GenericJacksonJsonRedisSerializer valueSerializer,
-        @Value("${ymall.cache.product-detail-ttl:10m}") Duration productDetailTtl
+        @Value("${ymall.cache.product-detail-ttl:10m}") Duration productDetailTtl,
+        @Value("${ymall.cache.review-summary-ttl:30m}") Duration reviewSummaryTtl
     ) {
         this.connectionFactory = connectionFactory;
         this.valueSerializer = valueSerializer;
         this.productDetailTtl = productDetailTtl;
+        this.reviewSummaryTtl = reviewSummaryTtl;
     }
 
     @Override
@@ -47,10 +52,12 @@ public class CacheConfig implements CachingConfigurer {
                 RedisSerializationContext.SerializationPair.fromSerializer(valueSerializer)
             );
         RedisCacheConfiguration productDetails = defaults.entryTtl(productDetailTtl);
+        RedisCacheConfiguration reviewSummaries = defaults.entryTtl(reviewSummaryTtl);
 
         return RedisCacheManager.builder(connectionFactory)
             .cacheDefaults(defaults)
             .withCacheConfiguration(ProductCacheNames.DETAILS, productDetails)
+            .withCacheConfiguration(ReviewSummaryCacheNames.BY_PRODUCT, reviewSummaries)
             .build();
     }
 

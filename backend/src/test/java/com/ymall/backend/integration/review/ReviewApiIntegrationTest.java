@@ -21,6 +21,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,11 +41,13 @@ import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
 import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.review.repository.ReviewRepository;
+import com.ymall.backend.review.event.ReviewSummaryRefreshEvent;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@RecordApplicationEvents
 class ReviewApiIntegrationTest {
 
     @Autowired
@@ -69,6 +73,9 @@ class ReviewApiIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private ApplicationEvents applicationEvents;
 
     @MockitoSpyBean
     private ProductCacheInvalidator productCacheInvalidator;
@@ -120,6 +127,7 @@ class ReviewApiIntegrationTest {
             .andExpect(jsonPath("$.data.authorName").value("구매자"));
 
         verify(productCacheInvalidator).evictDetail(product.getId());
+        assertThat(applicationEvents.stream(ReviewSummaryRefreshEvent.class)).hasSize(1);
 
         mockMvc.perform(get("/api/products/{productId}/reviews", product.getId()))
             .andExpect(status().isOk())
