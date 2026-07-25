@@ -4,6 +4,12 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=all
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ymall}
       POSTGRES_USER: ${POSTGRES_USER:-ymall_user}
@@ -190,6 +196,151 @@ services:
     networks:
       - ymall-network
 
+  postgres-monitoring-init:
+    image: postgres:16-alpine
+    profiles:
+      - monitoring
+    restart: "no"
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-ymall}
+      PGUSER: ${POSTGRES_USER:-ymall_user}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-ymall_local_password}
+    command:
+      - psql
+      - -v
+      - ON_ERROR_STOP=1
+      - -c
+      - CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ymall-network
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.19.1
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    command:
+      - --collector.stat_statements
+      - --collector.stat_statements.limit=50
+      - --collector.long_running_transactions
+    environment:
+      DATA_SOURCE_URI: postgres:5432/${POSTGRES_DB:-ymall}?sslmode=disable
+      DATA_SOURCE_USER: ${POSTGRES_USER:-ymall_user}
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD:-ymall_local_password}
+      PG_EXPORTER_COLLECTION_TIMEOUT: 5s
+    depends_on:
+      postgres-monitoring-init:
+        condition: service_completed_successfully
+    networks:
+      - ymall-network
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.84.0
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ymall-network
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    command:
+      - --kafka.server=kafka:9092
+      - --refresh.metadata=10s
+      - --group.filter=ymall-.*
+      - --topic.filter=ymall\..*
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - ymall-network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    privileged: true
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=5s
+      - --store_container_labels=false
+      - --whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - ymall-network
+
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=24h
+      - --storage.tsdb.retention.size=1GB
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9091}:9090"
+    depends_on:
+      backend:
+        condition: service_healthy
+      postgres-exporter:
+        condition: service_started
+      redis-exporter:
+        condition: service_started
+      kafka-exporter:
+        condition: service_started
+      cadvisor:
+        condition: service_started
+    networks:
+      - ymall-network
+
+  grafana:
+    image: grafana/grafana:13.1.0
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+    networks:
+      - ymall-network
+
 models:
   review-summary-model:
     model: ${AI_REVIEW_MODEL:-hf.co/Qwen/Qwen3-0.6B-GGUF:Q8_0}
@@ -208,6 +359,8 @@ volumes:
   redis-data:
   kafka-data:
   backend-uploads:
+  prometheus-data:
+  grafana-data:
 
 networks:
   ymall-network:

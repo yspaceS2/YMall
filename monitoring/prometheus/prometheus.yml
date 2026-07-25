@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 5s
+  scrape_timeout: 4s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: ymall-backend
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - backend:8080
+
+  - job_name: ymall-postgresql
+    static_configs:
+      - targets:
+          - postgres-exporter:9187
+
+  - job_name: ymall-redis
+    static_configs:
+      - targets:
+          - redis-exporter:9121
+
+  - job_name: ymall-kafka
+    static_configs:
+      - targets:
+          - kafka-exporter:9308
+
+  - job_name: ymall-containers
+    static_configs:
+      - targets:
+          - cadvisor:8080

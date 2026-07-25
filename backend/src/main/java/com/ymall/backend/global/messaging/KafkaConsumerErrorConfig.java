@@ -7,6 +7,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.BackOffHandler;
+import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.DeserializationException;
@@ -27,7 +29,8 @@ public class KafkaConsumerErrorConfig {
         DeadLetterByteKafkaOperations deadLetterByteKafkaOperations,
         OrderEventTopicProperties topicProperties,
         ReviewSummaryTopicProperties reviewSummaryTopicProperties,
-        KafkaConsumerRetryProperties retryProperties
+        KafkaConsumerRetryProperties retryProperties,
+        KafkaMessagingMetrics metrics
     ) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
             producerRecord -> producerRecord.value() instanceof byte[]
@@ -40,26 +43,34 @@ public class KafkaConsumerErrorConfig {
                 record.partition()
             )
         );
+        ConsumerRecordRecoverer meteredRecoverer = (record, exception) -> {
+            recoverer.accept(record, exception);
+            metrics.recordDeadLetter(record.topic());
+        };
+        BackOffHandler meteredBackOffHandler = new KafkaRetryMetricsBackOffHandler(metrics);
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(
-            recoverer,
+            meteredRecoverer,
             new FixedBackOff(
                 retryProperties.retryDelay().toMillis(),
                 retryProperties.maxRetries()
-            )
+            ),
+            meteredBackOffHandler
         );
         errorHandler.addNotRetryableExceptions(
             BusinessException.class,
             IllegalArgumentException.class,
             DeserializationException.class
         );
-        errorHandler.setRetryListeners((record, exception, deliveryAttempt) -> log.warn(
-            "Kafka event consumption failed: topic={}, partition={}, offset={}, attempt={}",
-            record.topic(),
-            record.partition(),
-            record.offset(),
-            deliveryAttempt,
-            exception
-        ));
+        errorHandler.setRetryListeners((record, exception, deliveryAttempt) -> {
+            log.warn(
+                "Kafka event consumption failed: topic={}, partition={}, offset={}, attempt={}, error={}",
+                record.topic(),
+                record.partition(),
+                record.offset(),
+                deliveryAttempt,
+                exception.getClass().getSimpleName()
+            );
+        });
         return errorHandler;
     }
 }

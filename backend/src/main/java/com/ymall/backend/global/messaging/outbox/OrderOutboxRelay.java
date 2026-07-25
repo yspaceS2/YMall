@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import tools.jackson.databind.ObjectMapper;
 
+import com.ymall.backend.global.messaging.KafkaMessagingMetrics;
 import com.ymall.backend.global.messaging.OrderEventProducer;
 
 @Component
@@ -30,6 +31,7 @@ public class OrderOutboxRelay {
     private final OrderEventProducer orderEventProducer;
     private final OrderOutboxProperties properties;
     private final ObjectMapper objectMapper;
+    private final KafkaMessagingMetrics metrics;
 
     @Transactional
     @Scheduled(fixedDelayString = "${ymall.kafka.outbox.poll-interval:1s}")
@@ -62,6 +64,7 @@ public class OrderOutboxRelay {
             orderEventProducer.send(event.toEnvelope(objectMapper))
                 .get(properties.sendTimeout().toMillis(), TimeUnit.MILLISECONDS);
             event.markPublished(now);
+            metrics.recordOutboxPublished();
             log.debug("Published order outbox event: eventId={}", event.getEventId());
             return true;
         } catch (InterruptedException exception) {
@@ -77,6 +80,7 @@ public class OrderOutboxRelay {
     }
 
     private void logFailure(OrderOutboxEvent event, Exception exception) {
+        metrics.recordOutboxFailure(event.getStatus() == OutboxEventStatus.FAILED);
         if (event.getStatus() == OutboxEventStatus.FAILED) {
             log.error(
                 "Order outbox event reached maximum publish attempts: eventId={}, attempts={}",
@@ -87,10 +91,10 @@ public class OrderOutboxRelay {
             return;
         }
         log.warn(
-            "Order outbox event publish failed and will be retried: eventId={}, attempts={}",
+            "Order outbox event publish failed and will be retried: eventId={}, attempts={}, error={}",
             event.getEventId(),
             event.getAttemptCount(),
-            exception
+            exception.getClass().getSimpleName()
         );
     }
 }
