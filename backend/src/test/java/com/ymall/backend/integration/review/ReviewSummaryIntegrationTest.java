@@ -179,12 +179,14 @@ class ReviewSummaryIntegrationTest {
     }
 
     @Test
-    void skipsGenerationWhenAnotherRequestOwnsTheLock() {
+    void requestsRetryWithoutGeneratingWhenAnotherRequestOwnsTheLock() {
         saveReviews(10);
         when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class)))
             .thenReturn(false);
 
-        reviewSummaryService.refresh(product.getId());
+        assertThatThrownBy(() -> reviewSummaryService.refresh(product.getId()))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("already running");
 
         verify(generator, never()).generate(any());
         assertThat(reviewSummaryRepository.findByProductId(product.getId())).isEmpty();

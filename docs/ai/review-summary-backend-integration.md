@@ -51,6 +51,7 @@ GET /api/products/{productId}/review-summary
 ## 장애 처리
 
 - AI 타임아웃·5xx: Kafka Consumer 재시도 후 DLT로 이동하며 기존 요약은 유지한다.
+- 동일 상품 생성 잠금 경합: 이벤트를 완료 처리하지 않고 Kafka 재시도를 요청한다.
 - Redis 잠금 장애: 단일 Backend 인스턴스 안의 로컬 잠금으로 대체한다.
 - Redis 캐시 장애: PostgreSQL에서 요약을 조회한다.
 - 생성 도중 리뷰 변경: 결과를 저장하지 않고 재시도한다.

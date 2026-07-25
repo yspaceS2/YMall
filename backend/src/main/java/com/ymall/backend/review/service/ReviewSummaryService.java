@@ -78,8 +78,9 @@ public class ReviewSummaryService {
         }
         Optional<GenerationLock> generationLock = acquireLock(productId);
         if (generationLock.isEmpty()) {
-            log.debug("Review summary generation is already running. productId={}", productId);
-            return;
+            throw new IllegalStateException(
+                "Review summary generation is already running for productId=" + productId
+            );
         }
 
         try (GenerationLock ignored = generationLock.get()) {
