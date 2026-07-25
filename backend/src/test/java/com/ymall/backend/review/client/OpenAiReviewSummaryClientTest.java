@@ -1,7 +1,6 @@
 package com.ymall.backend.review.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.ExpectedCount.once;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -77,7 +76,7 @@ class OpenAiReviewSummaryClientTest {
     }
 
     @Test
-    void rejectsResponseThatViolatesSummaryContract() {
+    void normalizesNullSectionToEmptyList() {
         server.expect(once(), requestTo(
                 "http://review-model.test/engines/v1/chat/completions"
             ))
@@ -96,9 +95,115 @@ class OpenAiReviewSummaryClientTest {
                 MediaType.APPLICATION_JSON
             ));
 
-        assertThatThrownBy(() -> client.generate(List.of(
+        ReviewSummaryGenerator.Result result = client.generate(List.of(
             new ReviewSummaryGenerator.Input(5, "좋습니다.", LocalDateTime.now())
-        ))).isInstanceOf(IllegalStateException.class);
+        ));
+
+        assertThat(result.pros()).isEmpty();
+        assertThat(result.cons()).isEmpty();
+        assertThat(result.commonOpinions()).isEmpty();
+        server.verify();
+    }
+
+    @Test
+    void parsesFirstValidSummaryWhenModelAddsAnotherJsonObject() {
+        server.expect(once(), requestTo(
+                "http://review-model.test/engines/v1/chat/completions"
+            ))
+            .andRespond(withSuccess(
+                """
+                    {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": "{\\"unexpected\\":true}, {\\"pros\\":[\\"가격 대비 만족스럽습니다.\\"],\\"cons\\":[],\\"commonOpinions\\":[\\"사용하기 편하다는 의견이 많습니다.\\"]}"
+                                }
+                            }
+                        ]
+                    }
+                    """,
+                MediaType.APPLICATION_JSON
+            ));
+
+        ReviewSummaryGenerator.Result result = client.generate(List.of(
+            new ReviewSummaryGenerator.Input(
+                5,
+                "가격 대비 좋고 사용하기 편합니다.",
+                LocalDateTime.now()
+            )
+        ));
+
+        assertThat(result.pros()).containsExactly("가격 대비 만족스럽습니다.");
+        assertThat(result.commonOpinions())
+            .containsExactly("사용하기 편하다는 의견이 많습니다.");
+        server.verify();
+    }
+
+    @Test
+    void limitsEachSummarySectionToThreeItems() {
+        server.expect(once(), requestTo(
+                "http://review-model.test/engines/v1/chat/completions"
+            ))
+            .andRespond(withSuccess(
+                """
+                    {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": "{\\"pros\\":[\\"장점 1\\",\\"장점 2\\",\\"장점 3\\",\\"장점 4\\"],\\"cons\\":[],\\"commonOpinions\\":[]}"
+                                }
+                            }
+                        ]
+                    }
+                    """,
+                MediaType.APPLICATION_JSON
+            ));
+
+        ReviewSummaryGenerator.Result result = client.generate(List.of(
+            new ReviewSummaryGenerator.Input(
+                5,
+                "여러 장점이 있습니다.",
+                LocalDateTime.now()
+            )
+        ));
+
+        assertThat(result.pros()).containsExactly("장점 1", "장점 2", "장점 3");
+        server.verify();
+    }
+
+    @Test
+    void combinesSummarySectionsReturnedAsSeparateJsonObjects() {
+        server.expect(once(), requestTo(
+                "http://review-model.test/engines/v1/chat/completions"
+            ))
+            .andRespond(withSuccess(
+                """
+                    {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": "{\\"pros\\":[\\"사용하기 편합니다.\\"]}, {\\"cons\\":null}, {\\"commonOpinions\\":[\\"가격이 합리적이라는 의견이 많습니다.\\"]}"
+                                }
+                            }
+                        ]
+                    }
+                    """,
+                MediaType.APPLICATION_JSON
+            ));
+
+        ReviewSummaryGenerator.Result result = client.generate(List.of(
+            new ReviewSummaryGenerator.Input(
+                5,
+                "사용하기 편하고 가격도 합리적입니다.",
+                LocalDateTime.now()
+            )
+        ));
+
+        assertThat(result.pros()).containsExactly("사용하기 편합니다.");
+        assertThat(result.cons()).isEmpty();
+        assertThat(result.commonOpinions())
+            .containsExactly("가격이 합리적이라는 의견이 많습니다.");
+        server.verify();
     }
 
     private ReviewSummaryProperties properties() {
