@@ -86,7 +86,34 @@ class PaymentServiceTest {
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
         assertThat(result.result()).isEqualTo(PaymentResult.SUCCESS);
+        then(paymentInventoryService).should().reserveIfNeeded(order);
         then(paymentRepository).should().save(any(Payment.class));
+    }
+
+    @Test
+    void releasesInventoryWhenMockPaymentFails() {
+        Order order = order();
+        MockPaymentRequest request = new MockPaymentRequest(
+            "payment-failure",
+            PaymentResult.FAILURE
+        );
+        PaymentResponse response = response(
+            PaymentResult.FAILURE,
+            OrderStatus.PAYMENT_FAILED
+        );
+
+        given(orderRepository.findByIdAndMemberIdForUpdate(10L, 1L))
+            .willReturn(Optional.of(order));
+        given(paymentRepository.findByOrderIdAndIdempotencyKey(10L, "payment-failure"))
+            .willReturn(Optional.empty());
+        given(paymentRepository.save(any(Payment.class)))
+            .willAnswer(invocation -> invocation.getArgument(0));
+        given(paymentMapper.toPaymentResponse(any(Payment.class))).willReturn(response);
+
+        paymentService.processPayment(1L, 10L, request);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PAYMENT_FAILED);
+        then(paymentInventoryService).should().releaseIfReserved(order);
     }
 
     @Test

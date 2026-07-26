@@ -1,5 +1,9 @@
 package com.ymall.backend.product.service;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
@@ -23,16 +27,29 @@ public class ProductCacheInvalidator {
     }
 
     public void evictDetail(Long productId) {
+        executeAfterCommit(() -> evict(productId));
+    }
+
+    public void evictProductDetails(Collection<Long> productIds) {
+        Set<Long> uniqueProductIds = new LinkedHashSet<>(productIds);
+        executeAfterCommit(() ->
+            uniqueProductIds.forEach(productId ->
+                evict(ProductCacheNames.DETAILS, productId)
+            )
+        );
+    }
+
+    private void executeAfterCommit(Runnable eviction) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    evict(productId);
+                    eviction.run();
                 }
             });
             return;
         }
-        evict(productId);
+        eviction.run();
     }
 
     private void evict(Long productId) {

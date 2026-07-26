@@ -48,6 +48,12 @@ ymall:
   cache:
     product-detail-ttl: 10m
     review-summary-ttl: 30m
+  order:
+    pending-expiration:
+      enabled: false
+      timeout: 30m
+      batch-size: 100
+      poll-interval: 1h
   ai:
     review-summary:
       enabled: false

@@ -40,6 +40,7 @@ import com.ymall.backend.payment.refund.repository.PaymentRefundRepository;
 import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.seller.entity.SellerProfile;
 import com.ymall.backend.seller.repository.SellerProfileRepository;
 
@@ -51,6 +52,7 @@ public class PaymentRefundTransactionService {
     private final PaymentRepository paymentRepository;
     private final PaymentRefundRepository refundRepository;
     private final ProductRepository productRepository;
+    private final ProductCacheInvalidator productCacheInvalidator;
     private final SellerProfileRepository sellerProfileRepository;
 
     @Transactional
@@ -215,6 +217,7 @@ public class PaymentRefundTransactionService {
             orderItem.recordRefund(refundItem.getQuantity());
             product.increaseStock(refundItem.getQuantity());
         }
+        productCacheInvalidator.evictProductDetails(products.keySet());
 
         boolean fullyRefunded = gatewayResult.balanceAmount().signum() == 0;
         order.applyRefund(fullyRefunded);
