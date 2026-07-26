@@ -80,6 +80,9 @@ public class SecurityConfig {
                     "/api/members/login",
                     "/api/members/tokens/refresh",
                     "/api/members/logout",
+                    "/api/members/password-reset-requests",
+                    "/api/members/password-reset-verifications",
+                    "/api/members/password-resets",
                     "/api/members/oauth2/signup",
                     "/api/members/oauth2/email-verifications",
                     "/api/members/oauth2/email-verifications/confirm"

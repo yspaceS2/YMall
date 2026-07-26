@@ -5,8 +5,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.HexFormat;
+import java.util.Set;
 
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +26,7 @@ import com.ymall.backend.member.repository.MemberRepository;
 public class RefreshTokenService {
 
     private static final String KEY_PREFIX = "auth:refresh:";
+    private static final String MEMBER_KEY_PREFIX = "auth:member-refresh:";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final StringRedisTemplate redisTemplate;
@@ -31,11 +36,15 @@ public class RefreshTokenService {
 
     public AuthenticationTokens issue(Member member) {
         String refreshToken = generateToken();
+        String tokenKey = key(refreshToken);
+        String memberKey = memberKey(member.getId());
         redisTemplate.opsForValue().set(
-            key(refreshToken),
+            tokenKey,
             member.getId().toString(),
             jwtProperties.getRefreshTokenExpiration()
         );
+        redisTemplate.opsForSet().add(memberKey, tokenKey);
+        redisTemplate.expire(memberKey, jwtProperties.getRefreshTokenExpiration());
         return new AuthenticationTokens(jwtTokenProvider.createAccessToken(member), refreshToken);
     }
 
@@ -43,13 +52,16 @@ public class RefreshTokenService {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
-        String memberId = redisTemplate.opsForValue().getAndDelete(key(refreshToken));
+        String tokenKey = key(refreshToken);
+        String memberId = redisTemplate.opsForValue().getAndDelete(tokenKey);
         if (memberId == null) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
         Member member;
         try {
-            member = memberRepository.findById(Long.valueOf(memberId))
+            Long parsedMemberId = Long.valueOf(memberId);
+            redisTemplate.opsForSet().remove(memberKey(parsedMemberId), tokenKey);
+            member = memberRepository.findById(parsedMemberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
         } catch (NumberFormatException exception) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
@@ -59,8 +71,47 @@ public class RefreshTokenService {
 
     public void revoke(String refreshToken) {
         if (refreshToken != null && !refreshToken.isBlank()) {
-            redisTemplate.delete(key(refreshToken));
+            String tokenKey = key(refreshToken);
+            String memberId = redisTemplate.opsForValue().getAndDelete(tokenKey);
+            if (memberId != null) {
+                try {
+                    redisTemplate.opsForSet().remove(memberKey(Long.valueOf(memberId)), tokenKey);
+                } catch (NumberFormatException ignored) {
+                    // Invalid Redis data is already revoked by deleting the token key.
+                }
+            }
         }
+    }
+
+    public void revokeAll(Long memberId) {
+        String memberKey = memberKey(memberId);
+        Set<String> tokenKeys = new HashSet<>();
+        Set<String> indexedTokenKeys = redisTemplate.opsForSet().members(memberKey);
+        if (indexedTokenKeys != null) {
+            tokenKeys.addAll(indexedTokenKeys);
+        }
+        tokenKeys.addAll(findLegacyTokenKeys(memberId));
+        if (!tokenKeys.isEmpty()) {
+            redisTemplate.delete(tokenKeys);
+        }
+        redisTemplate.delete(memberKey);
+    }
+
+    private Set<String> findLegacyTokenKeys(Long memberId) {
+        Set<String> tokenKeys = new HashSet<>();
+        ScanOptions scanOptions = ScanOptions.scanOptions()
+            .match(KEY_PREFIX + "*")
+            .count(100)
+            .build();
+        try (Cursor<String> cursor = redisTemplate.scan(scanOptions)) {
+            cursor.forEachRemaining(tokenKey -> {
+                String storedMemberId = redisTemplate.opsForValue().get(tokenKey);
+                if (memberId.toString().equals(storedMemberId)) {
+                    tokenKeys.add(tokenKey);
+                }
+            });
+        }
+        return tokenKeys;
     }
 
     private String generateToken() {
@@ -77,5 +128,9 @@ public class RefreshTokenService {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
+    }
+
+    private String memberKey(Long memberId) {
+        return MEMBER_KEY_PREFIX + memberId;
     }
 }

@@ -1,4 +1,4 @@
-import type { EmailAvailabilityResponse, LoginRequest, MemberAddress, MemberAddressRequest, MemberPasswordChangeRequest, MemberProfile, MemberProfileUpdateRequest, MemberResponse, OAuthAccount, OAuthLinkResponse, OAuthProvider, OAuthSignupRequest, SignupRequest, TokenResponse } from '../types/auth'
+import type { EmailAvailabilityResponse, LoginRequest, MemberAddress, MemberAddressRequest, MemberPasswordChangeRequest, MemberProfile, MemberProfileUpdateRequest, MemberResponse, OAuthAccount, OAuthLinkResponse, OAuthProvider, OAuthSignupRequest, PasswordResetConfirmRequest, PasswordResetRequestResponse, PasswordResetVerificationResponse, SignupRequest, TokenResponse } from '../types/auth'
 import { apiRequest } from './client'
 
 export function loginMember(request: LoginRequest) {
@@ -43,6 +43,30 @@ export function changeMemberPassword(request: MemberPasswordChangeRequest) {
     return apiRequest<void>('/members/me/password', {
         method: 'PATCH',
         body: request,
+    })
+}
+
+export function requestPasswordReset(email: string) {
+    return apiRequest<PasswordResetRequestResponse>('/members/password-reset-requests', {
+        method: 'POST',
+        body: { email },
+        auth: false,
+    })
+}
+
+export function verifyPasswordReset(requestId: string, code: string) {
+    return apiRequest<PasswordResetVerificationResponse>('/members/password-reset-verifications', {
+        method: 'POST',
+        body: { requestId, code },
+        auth: false,
+    })
+}
+
+export function confirmPasswordReset(request: PasswordResetConfirmRequest) {
+    return apiRequest<void>('/members/password-resets', {
+        method: 'POST',
+        body: request,
+        auth: false,
     })
 }
 

@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Duration;
 import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.servlet.http.Cookie;
 
+import com.ymall.backend.global.security.RefreshTokenService;
 import com.ymall.backend.global.security.RefreshTokenCookieManager;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
@@ -38,11 +40,14 @@ class RefreshTokenIntegrationTest {
     @Autowired private MemberRepository memberRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private StringRedisTemplate redisTemplate;
+    @Autowired private RefreshTokenService refreshTokenService;
+
+    private Member member;
 
     @BeforeEach
     void setUp() {
         deleteRefreshTokens();
-        memberRepository.save(new Member(
+        member = memberRepository.save(new Member(
             "refresh@example.com",
             passwordEncoder.encode("password123"),
             "Refresh User",
@@ -97,6 +102,27 @@ class RefreshTokenIntegrationTest {
             .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TOKEN"));
     }
 
+    @Test
+    void revokeAllAlsoDeletesLegacyTokensWithoutMemberIndex() {
+        String legacyTokenKey = "auth:refresh:legacy-token";
+        String anotherMemberTokenKey = "auth:refresh:another-member-token";
+        redisTemplate.opsForValue().set(
+            legacyTokenKey,
+            member.getId().toString(),
+            Duration.ofMinutes(30)
+        );
+        redisTemplate.opsForValue().set(
+            anotherMemberTokenKey,
+            String.valueOf(member.getId() + 1),
+            Duration.ofMinutes(30)
+        );
+
+        refreshTokenService.revokeAll(member.getId());
+
+        assertThat(redisTemplate.hasKey(legacyTokenKey)).isFalse();
+        assertThat(redisTemplate.hasKey(anotherMemberTokenKey)).isTrue();
+    }
+
     private void assertSecureCookie(Cookie cookie) {
         assertThat(cookie).isNotNull();
         assertThat(cookie.isHttpOnly()).isTrue();
@@ -113,6 +139,10 @@ class RefreshTokenIntegrationTest {
         Set<String> keys = redisTemplate.keys("auth:refresh:*");
         if (!keys.isEmpty()) {
             redisTemplate.delete(keys);
+        }
+        Set<String> memberKeys = redisTemplate.keys("auth:member-refresh:*");
+        if (!memberKeys.isEmpty()) {
+            redisTemplate.delete(memberKeys);
         }
     }
 }
