@@ -125,8 +125,28 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
         if (path === '/members/email-availability' && method === 'GET') {
             return ok(route, { available: true })
         }
+        if (path === '/members/signup/email-verifications' && method === 'POST') {
+            return ok(route, {
+                requestId: 'e2e-signup-email-request',
+                expiresIn: 300,
+            })
+        }
+        if (path === '/members/signup/email-verifications/confirm' && method === 'POST') {
+            return ok(route, {
+                verificationToken: 'e2e-signup-verification-token',
+                expiresIn: 600,
+            })
+        }
         if (path === '/members/signup' && method === 'POST') {
-            const body = request.postDataJSON() as { email: string; name: string; phone: string }
+            const body = request.postDataJSON() as {
+                email: string
+                emailVerificationToken?: string
+                name: string
+                phone: string
+            }
+            if (body.emailVerificationToken !== 'e2e-signup-verification-token') {
+                return error(route, 400, 'SIGNUP_EMAIL_VERIFICATION_REQUIRED', '이메일 인증이 필요합니다.')
+            }
             return ok(route, {
                 memberId: 101,
                 email: body.email,
