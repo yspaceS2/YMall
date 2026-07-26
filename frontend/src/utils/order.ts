@@ -1,4 +1,5 @@
 import type { OrderStatus } from '../types/order'
+import { formatKoreanDateTime } from './dateTime'
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
     PENDING_PAYMENT: '결제 대기',
@@ -17,8 +18,5 @@ export function getOrderStatusLabel(status: OrderStatus) {
 }
 
 export function formatOrderDate(value: string) {
-    return new Intl.DateTimeFormat('ko-KR', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(new Date(value))
+    return formatKoreanDateTime(value)
 }

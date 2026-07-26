@@ -1,5 +1,6 @@
 package com.ymall.backend.global.security;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -10,20 +11,24 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.member.entity.OAuthProvider;
 
 @Component
+@RequiredArgsConstructor
 public class OAuthFlowContext {
 
     private static final String SESSION_KEY = OAuthFlowContext.class.getName() + ".request";
     private static final String LINK_SESSION_KEY = OAuthFlowContext.class.getName() + ".link";
     private static final String EMAIL_SESSION_KEY = OAuthFlowContext.class.getName() + ".email";
 
+    private final Clock clock;
+
     public void startLink(HttpServletRequest request, Long memberId, OAuthProvider provider) {
         request.getSession(true).setAttribute(
             LINK_SESSION_KEY,
-            new LinkRequest(memberId, provider, Instant.now().plus(5, ChronoUnit.MINUTES))
+            new LinkRequest(memberId, provider, clock.instant().plus(5, ChronoUnit.MINUTES))
         );
     }
 
@@ -38,7 +43,7 @@ public class OAuthFlowContext {
             return Optional.empty();
         }
         session.removeAttribute(LINK_SESSION_KEY);
-        if (link.provider() != provider || link.expiresAt().isBefore(Instant.now())) {
+        if (link.provider() != provider || link.expiresAt().isBefore(clock.instant())) {
             return Optional.empty();
         }
         return Optional.of(link.memberId());
@@ -47,7 +52,7 @@ public class OAuthFlowContext {
     public void start(HttpServletRequest request, OAuthProvider provider, OAuth2UserProfile profile) {
         request.getSession(true).setAttribute(
             SESSION_KEY,
-            new SignupRequest(provider, profile, Instant.now().plus(5, ChronoUnit.MINUTES))
+            new SignupRequest(provider, profile, clock.instant().plus(5, ChronoUnit.MINUTES))
         );
     }
 
@@ -56,7 +61,7 @@ public class OAuthFlowContext {
         if (session == null || !(session.getAttribute(SESSION_KEY) instanceof SignupRequest signup)) {
             return Optional.empty();
         }
-        if (signup.expiresAt().isBefore(Instant.now())) {
+        if (signup.expiresAt().isBefore(clock.instant())) {
             session.removeAttribute(SESSION_KEY);
             return Optional.empty();
         }
@@ -74,7 +79,13 @@ public class OAuthFlowContext {
     public void startEmailVerification(HttpServletRequest request, String email, String code) {
         request.getSession(true).setAttribute(
             EMAIL_SESSION_KEY,
-            new EmailVerification(email, code, false, 0, Instant.now().plus(5, ChronoUnit.MINUTES))
+            new EmailVerification(
+                email,
+                code,
+                false,
+                0,
+                clock.instant().plus(5, ChronoUnit.MINUTES)
+            )
         );
     }
 
@@ -82,7 +93,7 @@ public class OAuthFlowContext {
         HttpSession session = request.getSession(false);
         if (session == null
             || !(session.getAttribute(EMAIL_SESSION_KEY) instanceof EmailVerification verification)
-            || verification.expiresAt().isBefore(Instant.now())
+            || verification.expiresAt().isBefore(clock.instant())
             || verification.attempts() >= 5
             || !verification.email().equals(email)) {
             return false;
@@ -106,7 +117,7 @@ public class OAuthFlowContext {
         if (session == null
             || !(session.getAttribute(EMAIL_SESSION_KEY) instanceof EmailVerification verification)
             || !verification.verified()
-            || verification.expiresAt().isBefore(Instant.now())
+            || verification.expiresAt().isBefore(clock.instant())
             || !verification.email().equals(email)) {
             return Optional.empty();
         }

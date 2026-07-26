@@ -17,6 +17,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          time_zone: UTC
+
+  jackson:
+    time-zone: UTC
 
   flyway:
     baseline-on-migrate: true

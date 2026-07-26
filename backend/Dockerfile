@@ -27,7 +27,9 @@ USER ymall
 
 EXPOSE 8080
 
-ENV SPRING_PROFILES_ACTIVE=prod
+ENV SPRING_PROFILES_ACTIVE=prod \
+    TZ=UTC \
+    JAVA_TOOL_OPTIONS=-Duser.timezone=UTC
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD curl --fail --silent http://localhost:8080/actuator/health/readiness || exit 1

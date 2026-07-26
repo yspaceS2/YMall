@@ -10,7 +10,10 @@ services:
       - shared_preload_libraries=pg_stat_statements
       - -c
       - pg_stat_statements.track=all
+      - -c
+      - timezone=UTC
     environment:
+      TZ: UTC
       POSTGRES_DB: ${POSTGRES_DB:-ymall}
       POSTGRES_USER: ${POSTGRES_USER:-ymall_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ymall_local_password}
@@ -73,6 +76,8 @@ services:
       context: ./backend
     restart: unless-stopped
     environment:
+      TZ: UTC
+      JAVA_TOOL_OPTIONS: -Duser.timezone=UTC
       SPRING_PROFILES_ACTIVE: prod
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ymall}

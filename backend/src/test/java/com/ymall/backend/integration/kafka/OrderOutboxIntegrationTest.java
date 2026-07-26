@@ -7,6 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -162,7 +163,8 @@ class OrderOutboxIntegrationTest {
                 Duration.ofDays(7)
             ),
             objectMapper,
-            new KafkaMessagingMetrics(new SimpleMeterRegistry())
+            new KafkaMessagingMetrics(new SimpleMeterRegistry()),
+            Clock.systemUTC()
         );
     }
 

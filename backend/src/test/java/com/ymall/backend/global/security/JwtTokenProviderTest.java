@@ -3,6 +3,7 @@ package com.ymall.backend.global.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Clock;
 import java.time.Duration;
 
 import org.junit.jupiter.api.Test;
@@ -59,7 +60,7 @@ class JwtTokenProviderTest {
         JwtProperties properties = new JwtProperties();
         properties.setSecret(SECRET);
         properties.setAccessTokenExpiration(expiration);
-        return new JwtTokenProvider(properties);
+        return new JwtTokenProvider(properties, Clock.systemUTC());
     }
 
     private Member member() {

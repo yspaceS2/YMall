@@ -1,5 +1,6 @@
 package com.ymall.backend.global.messaging.outbox;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -32,11 +33,12 @@ public class OrderOutboxRelay {
     private final OrderOutboxProperties properties;
     private final ObjectMapper objectMapper;
     private final KafkaMessagingMetrics metrics;
+    private final Clock clock;
 
     @Transactional
     @Scheduled(fixedDelayString = "${ymall.kafka.outbox.poll-interval:1s}")
     public int publishPending() {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         List<OrderOutboxEvent> events = outboxEventRepository.findPublishable(
             List.of(OutboxEventStatus.PENDING),
             now,
@@ -55,7 +57,7 @@ public class OrderOutboxRelay {
     @Transactional
     @Scheduled(fixedDelayString = "${ymall.kafka.outbox.cleanup-interval:1h}")
     public int cleanupPublished() {
-        Instant cutoff = Instant.now().minus(properties.publishedRetention());
+        Instant cutoff = clock.instant().minus(properties.publishedRetention());
         return outboxEventRepository.deletePublishedBefore(OutboxEventStatus.PUBLISHED, cutoff);
     }
 

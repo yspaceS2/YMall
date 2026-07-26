@@ -1,6 +1,7 @@
 package com.ymall.backend.global.security;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
 
@@ -28,14 +29,16 @@ public class JwtTokenProvider {
 
     private final JwtProperties properties;
     private final SecretKey signingKey;
+    private final Clock clock;
 
-    public JwtTokenProvider(JwtProperties properties) {
+    public JwtTokenProvider(JwtProperties properties, Clock clock) {
         this.properties = properties;
+        this.clock = clock;
         this.signingKey = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
     public TokenResponse createAccessToken(Member member) {
-        Instant issuedAt = Instant.now();
+        Instant issuedAt = clock.instant();
         Instant expiresAt = issuedAt.plus(properties.getAccessTokenExpiration());
         String token = Jwts.builder()
             .subject(member.getId().toString())

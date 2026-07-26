@@ -1,5 +1,6 @@
 package com.ymall.backend.notification.service;
 
+import java.time.Clock;
 import java.time.Instant;
 
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class OrderNotificationEventProcessor {
     private final OrderEventTransitionValidator transitionValidator;
     private final OrderNotificationEventMapper eventMapper;
     private final NotificationService notificationService;
+    private final Clock clock;
 
     @Transactional
     public void process(OrderEventEnvelope event) {
@@ -36,14 +38,14 @@ public class OrderNotificationEventProcessor {
             .orElse(null);
         if (!transitionValidator.isAllowed(previousEventType, event.eventType())) {
             processedEventRepository.save(new ProcessedOrderEvent(
-                event, OrderEventProcessingResult.REJECTED, Instant.now()
+                event, OrderEventProcessingResult.REJECTED, clock.instant()
             ));
             return;
         }
 
         notificationService.create(eventMapper.map(event));
         processedEventRepository.save(new ProcessedOrderEvent(
-            event, OrderEventProcessingResult.ACCEPTED, Instant.now()
+            event, OrderEventProcessingResult.ACCEPTED, clock.instant()
         ));
     }
 }

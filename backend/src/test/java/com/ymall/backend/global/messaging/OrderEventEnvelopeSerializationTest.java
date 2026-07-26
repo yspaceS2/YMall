@@ -3,6 +3,7 @@ package com.ymall.backend.global.messaging;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -71,5 +72,15 @@ class OrderEventEnvelopeSerializationTest {
 
         assertThat(event.version()).isEqualTo(1);
         assertThat(event.payload().get("futureField")).isEqualTo("compatible");
+    }
+
+    @Test
+    void serializesApiLocalDateTimeWithExplicitUtcOffset() throws Exception {
+        String json = objectMapper.writeValueAsString(Map.of(
+            "createdAt",
+            LocalDateTime.of(2026, 7, 26, 12, 0)
+        ));
+
+        assertThat(json).contains("\"createdAt\":\"2026-07-26T12:00:00Z\"");
     }
 }
