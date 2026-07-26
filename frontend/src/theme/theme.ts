@@ -3,9 +3,25 @@ import type { ResolvedTheme, ThemePreference } from './ThemeContext'
 export const THEME_STORAGE_KEY = 'ymall:theme'
 export const DARK_MODE_QUERY = '(prefers-color-scheme: dark)'
 
-export function readThemePreference(storage: Storage = localStorage): ThemePreference {
-    const storedPreference = storage.getItem(THEME_STORAGE_KEY)
-    return isThemePreference(storedPreference) ? storedPreference : 'system'
+export function readThemePreference(storage?: Pick<Storage, 'getItem'>): ThemePreference {
+    try {
+        const storedPreference = (storage ?? globalThis.localStorage).getItem(THEME_STORAGE_KEY)
+        return isThemePreference(storedPreference) ? storedPreference : 'system'
+    } catch {
+        return 'system'
+    }
+}
+
+export function writeThemePreference(
+    preference: ThemePreference,
+    storage?: Pick<Storage, 'setItem'>,
+): boolean {
+    try {
+        (storage ?? globalThis.localStorage).setItem(THEME_STORAGE_KEY, preference)
+        return true
+    } catch {
+        return false
+    }
 }
 
 export function resolveTheme(

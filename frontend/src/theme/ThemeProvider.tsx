@@ -5,7 +5,7 @@ import {
     DARK_MODE_QUERY,
     readThemePreference,
     resolveTheme,
-    THEME_STORAGE_KEY,
+    writeThemePreference,
 } from './theme'
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -34,7 +34,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         preference,
         resolvedTheme,
         setPreference: (nextPreference: ThemePreference) => {
-            localStorage.setItem(THEME_STORAGE_KEY, nextPreference)
+            writeThemePreference(nextPreference)
             setPreferenceState(nextPreference)
         },
     }), [preference, resolvedTheme])
