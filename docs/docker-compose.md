@@ -36,6 +36,51 @@ curl http://localhost:5173/health
 Backend는 PostgreSQL, Redis, Kafka의 Health Check가 통과한 후 시작하고 Frontend는 Backend가
 준비된 후 시작한다.
 
+## IntelliJ와 Vite를 사용하는 개발 모드
+
+평소 코드 개발에서는 PostgreSQL, Redis, Kafka만 Docker로 실행하고 Backend는 IntelliJ,
+Frontend는 Vite로 실행할 수 있다. `compose.dev.yaml`은 PostgreSQL과 Kafka를 호스트의
+`localhost`에 공개하며, Redis는 기본 `compose.yaml`의 호스트 포트 설정을 그대로 사용한다.
+
+전체 Docker 환경이 실행 중이라면 먼저 컨테이너 Backend와 Frontend를 중지한다. 이 명령은
+데이터 볼륨을 삭제하지 않는다.
+
+```bash
+docker compose stop backend frontend
+```
+
+개발용 설정을 합쳐 인프라만 실행한다.
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml up -d postgres redis kafka
+docker compose -f compose.yaml -f compose.dev.yaml ps postgres redis kafka
+```
+
+기본 연결 주소는 다음과 같다.
+
+| 서비스 | 로컬 연결 주소 |
+| --- | --- |
+| PostgreSQL | `localhost:5432` |
+| Redis | `localhost:6379` |
+| Kafka | `localhost:9092` |
+
+IntelliJ에서는 `local` 프로필로 Backend를 실행하고, VS Code 또는 터미널에서는 Vite를 실행한다.
+`application-local.yaml`의 PostgreSQL 사용자·비밀번호·DB 이름은 루트 `.env`의
+`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`와 일치해야 한다.
+
+```bash
+cd frontend
+npm run dev
+```
+
+이 구성에서는 Backend와 Frontend 소스 변경을 위해 Docker 이미지를 다시 빌드하지 않아도 된다.
+Dockerfile, Compose 설정 또는 실제 컨테이너 통합 동작을 확인할 때는 전체 Docker 환경을 다시
+빌드한다.
+
+```bash
+docker compose up -d --build
+```
+
 ## 종료와 데이터 보존
 
 컨테이너만 종료하면 PostgreSQL, Redis, Kafka와 업로드 데이터가 볼륨에 보존된다.
