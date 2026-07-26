@@ -13,6 +13,7 @@ import { ApiError } from '../api/client'
 import { RefundDialog } from '../components/RefundDialog'
 import type { AdminMember, AdminOrder, AdminProduct, AdminSeller } from '../types/admin'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
+import { formatKoreanDateTime } from '../utils/dateTime'
 import { formatPrice } from '../utils/product'
 
 type AdminSection = 'products' | 'members' | 'sellers' | 'orders'
@@ -314,5 +315,5 @@ function LoadMoreButton({ loading, onClick }: { loading: boolean; onClick: () =>
 }
 
 function formatDate(value: string) {
-    return new Date(value).toLocaleString('ko-KR')
+    return formatKoreanDateTime(value)
 }

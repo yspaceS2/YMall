@@ -1,5 +1,6 @@
 package com.ymall.backend.order.service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,10 +24,11 @@ public class PendingOrderExpirationScheduler {
 
     private final PendingOrderExpirationService expirationService;
     private final PendingOrderExpirationProperties properties;
+    private final Clock clock;
 
     @Scheduled(fixedDelayString = "${ymall.order.pending-expiration.poll-interval:1m}")
     public void expirePendingOrders() {
-        LocalDateTime cutoff = LocalDateTime.now().minus(properties.timeout());
+        LocalDateTime cutoff = LocalDateTime.now(clock).minus(properties.timeout());
         int expiredCount = expirationService.expireCreatedOnOrBefore(cutoff);
         if (expiredCount > 0) {
             log.info("Expired pending orders and restored inventory. count={}", expiredCount);

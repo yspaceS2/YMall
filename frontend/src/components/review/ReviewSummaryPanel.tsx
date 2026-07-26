@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { ReviewSummary } from '../../types/review'
+import { formatKoreanDateTime } from '../../utils/dateTime'
 
 interface ReviewSummaryPanelProps {
     summary: ReviewSummary | null
@@ -23,16 +24,8 @@ interface SummaryColumnProps {
     emptyMessage: string
 }
 
-const generatedAtFormatter = new Intl.DateTimeFormat('ko-KR', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-})
-
 function formatGeneratedAt(generatedAt: string | null) {
-    if (!generatedAt) return ''
-
-    const date = new Date(generatedAt)
-    return Number.isNaN(date.getTime()) ? '' : generatedAtFormatter.format(date)
+    return generatedAt ? formatKoreanDateTime(generatedAt) : ''
 }
 
 function SummaryColumn({ icon, title, items, emptyMessage }: SummaryColumnProps) {

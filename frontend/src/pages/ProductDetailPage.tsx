@@ -11,6 +11,7 @@ import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
 import type { ProductDetail } from '../types/product'
 import type { Review, ReviewSummary } from '../types/review'
+import { formatKoreanDate } from '../utils/dateTime'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
 
 export function ProductDetailPage() {
@@ -232,7 +233,7 @@ export function ProductDetailPage() {
                                 <div>
                                     <strong className="block text-sm">{review.authorName}</strong>
                                     <span className="mt-1 block text-xs text-muted">
-                                        {new Date(review.createdAt).toLocaleDateString('ko-KR')}
+                                        {formatKoreanDate(review.createdAt)}
                                     </span>
                                 </div>
                                 <div>

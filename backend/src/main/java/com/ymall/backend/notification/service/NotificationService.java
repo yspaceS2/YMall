@@ -1,5 +1,6 @@
 package com.ymall.backend.notification.service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final MemberRepository memberRepository;
+    private final Clock clock;
 
     public PageResponse<NotificationResponse> getNotifications(Long memberId, int page, int size) {
         Pageable pageable = PageRequest.of(
@@ -60,7 +62,10 @@ public class NotificationService {
 
     @Transactional
     public NotificationReadAllResponse markAllAsRead(Long memberId) {
-        int updatedCount = notificationRepository.markAllAsRead(memberId, LocalDateTime.now());
+        int updatedCount = notificationRepository.markAllAsRead(
+            memberId,
+            LocalDateTime.now(clock)
+        );
         return new NotificationReadAllResponse(updatedCount);
     }
 

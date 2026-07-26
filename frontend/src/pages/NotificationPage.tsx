@@ -11,6 +11,7 @@ import {
     notifyNotificationsChanged,
 } from '../api/notifications'
 import type { Notification } from '../types/notification'
+import { formatKoreanDateTime } from '../utils/dateTime'
 
 export function NotificationPage() {
     const [notifications, setNotifications] = useState<Notification[]>([])
@@ -172,11 +173,5 @@ export function NotificationPage() {
 }
 
 function formatNotificationDate(value: string) {
-    return new Intl.DateTimeFormat('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(new Date(value))
+    return formatKoreanDateTime(value)
 }

@@ -27,6 +27,7 @@ import type {
     SellerProductRequest,
     SellerProfile,
 } from '../types/seller'
+import { formatKoreanDateTime } from '../utils/dateTime'
 import { formatPrice } from '../utils/product'
 
 const emptyProduct: SellerProductRequest = {
@@ -369,7 +370,7 @@ export function SellerManagementPage() {
                                             <div>
                                                 <strong>주문 #{order.orderId}</strong>
                                                 <p className="mt-1 text-xs text-muted">
-                                                    {new Date(order.createdAt).toLocaleString('ko-KR')}
+                                                    {formatKoreanDateTime(order.createdAt)}
                                                     {' · '}판매 금액 {formatPrice(order.sellerAmount)}
                                                     {' · '}{order.orderStatus}
                                                 </p>

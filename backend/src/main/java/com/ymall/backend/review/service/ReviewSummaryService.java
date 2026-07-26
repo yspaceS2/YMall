@@ -1,5 +1,6 @@
 package com.ymall.backend.review.service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -60,6 +61,7 @@ public class ReviewSummaryService {
     private final CacheManager cacheManager;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
+    private final Clock clock;
     private final Set<Long> localLocks = ConcurrentHashMap.newKeySet();
 
     @Cacheable(cacheNames = ReviewSummaryCacheNames.BY_PRODUCT, key = "#productId")
@@ -185,7 +187,7 @@ public class ReviewSummaryService {
             );
         }
 
-        LocalDateTime generatedAt = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime generatedAt = LocalDateTime.now(clock);
         String summaryJson = writeResult(result);
         ReviewSummary summary = reviewSummaryRepository.findByProductId(productId)
             .orElseGet(() -> {
