@@ -97,7 +97,7 @@ export function LoginPage() {
                     <span className="h-px flex-1 bg-line" />
                 </div>
                 <div className="grid gap-3">
-                    <a className="relative grid h-12 place-items-center border border-[#dadce0] bg-white px-12 text-sm font-bold text-[#3c4043]" href={getOAuthAuthorizationUrl('GOOGLE')} onClick={clearAccessToken}>
+                    <a className="theme-preserve-light relative grid h-12 place-items-center border border-[#dadce0] bg-white px-12 text-sm font-bold text-[#3c4043]" href={getOAuthAuthorizationUrl('GOOGLE')} onClick={clearAccessToken}>
                         <span className="absolute left-4"><GoogleLogo /></span>
                         <span>Google로 계속하기</span>
                     </a>

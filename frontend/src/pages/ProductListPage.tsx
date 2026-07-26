@@ -52,7 +52,7 @@ export function ProductListPage() {
 
     return (
         <>
-            <section className="flex min-h-[290px] flex-col justify-end border-b border-line bg-[radial-gradient(circle_at_82%_20%,rgba(217,255,67,.95),transparent_22%),linear-gradient(135deg,#e8e9df_0%,#f6f5ef_48%,#d6dbbb_100%)] px-5 py-15 min-[601px]:min-h-82.5 min-[601px]:px-[clamp(24px,7vw,110px)] min-[601px]:py-23 min-[901px]:min-h-95">
+            <section className="flex min-h-[290px] flex-col justify-end border-b border-line bg-[radial-gradient(circle_at_82%_20%,rgba(217,255,67,.95),transparent_22%),linear-gradient(135deg,#e8e9df_0%,#f6f5ef_48%,#d6dbbb_100%)] px-5 py-15 text-[#171717] min-[601px]:min-h-82.5 min-[601px]:px-[clamp(24px,7vw,110px)] min-[601px]:py-23 min-[901px]:min-h-95">
                 <p className="text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">CURATED FOR YOUR EVERYDAY</p>
                 <h1 className="my-3 max-w-180 font-serif text-[clamp(42px,6vw,78px)] leading-[.95] font-medium tracking-[-.055em]">Discover your next favorite.</h1>
                 <span className="text-[#64645e]">오래 곁에 둘 가치 있는 물건들을 소개합니다.</span>

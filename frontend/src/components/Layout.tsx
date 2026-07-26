@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getUnreadNotificationCount, NOTIFICATIONS_CHANGED_EVENT } from '../api/notifications'
 import { useAuth } from '../auth/useAuth'
+import { ThemeSelector } from './ThemeSelector'
 
 export function Layout({ children }: { children: ReactNode }) {
     const { isAuthenticated, role, logout } = useAuth()
@@ -55,6 +56,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 <div className="flex items-center justify-self-end gap-4.5" aria-label="사용자 메뉴">
                     <Search className="hidden size-5 min-[601px]:block" aria-hidden="true" />
                     <Heart className="hidden size-5 min-[601px]:block" aria-hidden="true" />
+                    <ThemeSelector />
                     <Link className="inline-grid size-5 place-items-center bg-transparent p-0" to="/cart" aria-label="장바구니">
                         <ShoppingBag className="size-5" aria-hidden="true" />
                     </Link>

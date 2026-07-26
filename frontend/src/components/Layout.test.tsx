@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AuthContextValue } from '../auth/AuthContext'
+import { ThemeProvider } from '../theme/ThemeProvider'
 import type { MemberRole } from '../types/auth'
 import { Layout } from './Layout'
 
@@ -24,11 +25,13 @@ function renderLayout(role: MemberRole | null) {
     }
 
     const result = render(
-        <AuthContext.Provider value={auth}>
-            <MemoryRouter>
-                <Layout><p>본문</p></Layout>
-            </MemoryRouter>
-        </AuthContext.Provider>,
+        <ThemeProvider>
+            <AuthContext.Provider value={auth}>
+                <MemoryRouter>
+                    <Layout><p>본문</p></Layout>
+                </MemoryRouter>
+            </AuthContext.Provider>
+        </ThemeProvider>,
     )
     return { ...result, logout }
 }
