@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -26,6 +27,8 @@ public class OAuthFlowContext {
     private static final String EMAIL_SESSION_KEY = OAuthFlowContext.class.getName() + ".email";
     private static final String EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY =
         OAuthFlowContext.class.getName() + ".emailChangeReauthentication";
+    private static final String EMAIL_CHANGE_SESSION_BINDING_KEY =
+        OAuthFlowContext.class.getName() + ".emailChangeSessionBinding";
 
     private final Clock clock;
 
@@ -45,6 +48,7 @@ public class OAuthFlowContext {
     ) {
         HttpSession session = request.getSession(true);
         session.removeAttribute(LINK_SESSION_KEY);
+        getOrCreateEmailChangeSessionBinding(request);
         session.setAttribute(
             EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY,
             new EmailChangeReauthentication(
@@ -122,6 +126,26 @@ public class OAuthFlowContext {
         }
         session.removeAttribute(EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY);
         return true;
+    }
+
+    public String getOrCreateEmailChangeSessionBinding(HttpServletRequest request) {
+        HttpSession session = request.getSession(true);
+        Object binding = session.getAttribute(EMAIL_CHANGE_SESSION_BINDING_KEY);
+        if (binding instanceof String value) {
+            return value;
+        }
+        String value = UUID.randomUUID().toString();
+        session.setAttribute(EMAIL_CHANGE_SESSION_BINDING_KEY, value);
+        return value;
+    }
+
+    public String getEmailChangeSessionBinding(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return null;
+        }
+        Object binding = session.getAttribute(EMAIL_CHANGE_SESSION_BINDING_KEY);
+        return binding instanceof String value ? value : null;
     }
 
     public Optional<Long> consumeLink(OAuthProvider provider) {

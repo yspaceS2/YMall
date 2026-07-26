@@ -41,10 +41,15 @@ public class MemberEmailChangeController {
     @PostMapping("/reauthentications")
     public ApiResponse<EmailChangeReauthenticationResponse> reauthenticate(
         @AuthenticationPrincipal MemberPrincipal principal,
-        @Valid @RequestBody EmailChangeReauthenticationRequest request
+        @Valid @RequestBody EmailChangeReauthenticationRequest request,
+        HttpServletRequest servletRequest
     ) {
         return ApiResponse.success(
-            emailChangeService.reauthenticate(principal.memberId(), request.currentPassword()),
+            emailChangeService.reauthenticate(
+                principal.memberId(),
+                request.currentPassword(),
+                oAuthFlowContext.getOrCreateEmailChangeSessionBinding(servletRequest)
+            ),
             "이메일 변경 본인 확인을 진행했습니다."
         );
     }
@@ -72,10 +77,15 @@ public class MemberEmailChangeController {
     @PostMapping("/verifications")
     public ApiResponse<EmailChangeVerificationResponse> sendNewEmailVerification(
         @AuthenticationPrincipal MemberPrincipal principal,
-        @Valid @RequestBody EmailChangeVerificationRequest request
+        @Valid @RequestBody EmailChangeVerificationRequest request,
+        HttpServletRequest servletRequest
     ) {
         return ApiResponse.success(
-            emailChangeService.sendNewEmailVerification(principal.memberId(), request.email()),
+            emailChangeService.sendNewEmailVerification(
+                principal.memberId(),
+                request.email(),
+                oAuthFlowContext.getEmailChangeSessionBinding(servletRequest)
+            ),
             "새 이메일로 인증번호를 발송했습니다."
         );
     }
@@ -91,7 +101,8 @@ public class MemberEmailChangeController {
             principal.memberId(),
             request.requestId(),
             request.email(),
-            request.code()
+            request.code(),
+            oAuthFlowContext.getEmailChangeSessionBinding(servletRequest)
         );
         refreshTokenCookieManager.clear(servletResponse);
         HttpSession session = servletRequest.getSession(false);

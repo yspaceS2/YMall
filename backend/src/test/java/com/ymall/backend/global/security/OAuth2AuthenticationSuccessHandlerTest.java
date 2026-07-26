@@ -101,9 +101,12 @@ class OAuth2AuthenticationSuccessHandlerTest {
             OAuthProvider.GOOGLE
         )).willReturn(true);
         MockHttpServletResponse response = new MockHttpServletResponse();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        given(oAuthFlowContext.getEmailChangeSessionBinding(request))
+            .willReturn("browser-session");
 
         handler.onAuthenticationSuccess(
-            new MockHttpServletRequest(),
+            request,
             response,
             authentication
         );
@@ -111,7 +114,7 @@ class OAuth2AuthenticationSuccessHandlerTest {
         assertThat(response.getRedirectedUrl()).isEqualTo(
             "http://localhost:5173/oauth2/callback#emailChangeReauthenticated=true"
         );
-        verify(emailChangeService).markOAuthReauthenticated(1L);
+        verify(emailChangeService).markOAuthReauthenticated(1L, "browser-session");
         verify(refreshTokenService, never()).issue(member);
     }
 }

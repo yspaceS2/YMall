@@ -45,28 +45,35 @@ public class MemberEmailChangeService {
     private static final String COOLDOWN_PREFIX = "email-change:cooldown:";
     private static final String PASSWORD_ATTEMPT_PREFIX = "email-change:password-attempt:";
     private static final int MAX_PASSWORD_ATTEMPTS = 10;
-    private static final DefaultRedisScript<String> VERIFY_NEW_SCRIPT = new DefaultRedisScript<>(
+    private static final String REAUTHENTICATION_REQUIRED = "reauthentication_required";
+    private static final DefaultRedisScript<String> VERIFY_AND_CONSUME_SCRIPT =
+        new DefaultRedisScript<>(
         """
+        local reauthenticatedEmailDigest = redis.call('GET', KEYS[2])
+        if not reauthenticatedEmailDigest or reauthenticatedEmailDigest ~= ARGV[5] then
+            return 'reauthentication_required'
+        end
         local storedMemberId = redis.call('HGET', KEYS[1], 'memberId')
         local storedEmailDigest = redis.call('HGET', KEYS[1], 'emailDigest')
         local storedCodeDigest = redis.call('HGET', KEYS[1], 'codeDigest')
         if not storedMemberId or storedMemberId ~= ARGV[2]
             or not storedEmailDigest or storedEmailDigest ~= ARGV[3]
             or not storedCodeDigest then
-            return nil
+            return 'verification_failed'
         end
         local attempts = redis.call('HINCRBY', KEYS[1], 'attempts', 1)
         if attempts > tonumber(ARGV[4]) then
             redis.call('DEL', KEYS[1])
-            return nil
+            return 'verification_failed'
         end
         if storedCodeDigest ~= ARGV[1] then
             if attempts >= tonumber(ARGV[4]) then
                 redis.call('DEL', KEYS[1])
             end
-            return nil
+            return 'verification_failed'
         end
         redis.call('DEL', KEYS[1])
+        redis.call('DEL', KEYS[2])
         return 'verified'
         """,
         String.class
@@ -85,7 +92,8 @@ public class MemberEmailChangeService {
 
     public EmailChangeReauthenticationResponse reauthenticate(
         Long memberId,
-        String currentPassword
+        String currentPassword,
+        String sessionBinding
     ) {
         Member member = findMember(memberId);
         if (member.hasPassword()) {
@@ -96,7 +104,7 @@ public class MemberEmailChangeService {
                 throw new BusinessException(ErrorCode.CURRENT_PASSWORD_MISMATCH);
             }
             redisTemplate.delete(PASSWORD_ATTEMPT_PREFIX + memberId);
-            markReauthenticated(member);
+            markReauthenticated(member, sessionBinding);
             return new EmailChangeReauthenticationResponse(
                 false,
                 null,
@@ -113,16 +121,17 @@ public class MemberEmailChangeService {
         }
     }
 
-    public void markOAuthReauthenticated(Long memberId) {
-        markReauthenticated(findMember(memberId));
+    public void markOAuthReauthenticated(Long memberId, String sessionBinding) {
+        markReauthenticated(findMember(memberId), sessionBinding);
     }
 
     public EmailChangeVerificationResponse sendNewEmailVerification(
         Long memberId,
-        String requestedEmail
+        String requestedEmail,
+        String sessionBinding
     ) {
         Member member = findMember(memberId);
-        requireReauthentication(member);
+        requireReauthentication(member, sessionBinding);
         String email = normalize(requestedEmail);
         validateNewEmail(member, email);
         enforceEmailRequestLimits("new", memberId, digest(email));
@@ -150,27 +159,35 @@ public class MemberEmailChangeService {
     }
 
     @Transactional
-    public void change(Long memberId, String requestId, String requestedEmail, String code) {
+    public void change(
+        Long memberId,
+        String requestId,
+        String requestedEmail,
+        String code,
+        String sessionBinding
+    ) {
         String email = normalize(requestedEmail);
-        String verified = redisTemplate.execute(
-            VERIFY_NEW_SCRIPT,
-            List.of(NEW_CHALLENGE_PREFIX + digest(requestId)),
+        Member member = memberRepository.findByIdForUpdate(memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        String verificationResult = redisTemplate.execute(
+            VERIFY_AND_CONSUME_SCRIPT,
+            List.of(
+                NEW_CHALLENGE_PREFIX + digest(requestId),
+                reauthenticationKey(memberId, sessionBinding)
+            ),
             digest(requestId + ":" + code),
             memberId.toString(),
             digest(email),
-            Integer.toString(properties.getMaxAttempts())
+            Integer.toString(properties.getMaxAttempts()),
+            digest(member.getEmail())
         );
-        if (verified == null) {
+        if (REAUTHENTICATION_REQUIRED.equals(verificationResult)) {
+            throw new BusinessException(ErrorCode.EMAIL_CHANGE_REAUTHENTICATION_REQUIRED);
+        }
+        if (!"verified".equals(verificationResult)) {
             throw new BusinessException(ErrorCode.EMAIL_CHANGE_VERIFICATION_FAILED);
         }
 
-        Member member = memberRepository.findByIdForUpdate(memberId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-        String reauthenticatedEmailDigest = redisTemplate.opsForValue()
-            .getAndDelete(reauthenticationKey(memberId));
-        if (!digest(member.getEmail()).equals(reauthenticatedEmailDigest)) {
-            throw new BusinessException(ErrorCode.EMAIL_CHANGE_REAUTHENTICATION_REQUIRED);
-        }
         validateNewEmail(member, email);
 
         String previousEmail = member.getEmail();
@@ -184,16 +201,17 @@ public class MemberEmailChangeService {
         eventPublisher.publishEvent(new MemberEmailChangedEvent(memberId, previousEmail, email));
     }
 
-    private void markReauthenticated(Member member) {
+    private void markReauthenticated(Member member, String sessionBinding) {
         redisTemplate.opsForValue().set(
-            reauthenticationKey(member.getId()),
+            reauthenticationKey(member.getId(), sessionBinding),
             digest(member.getEmail()),
             properties.getReauthenticationTtl()
         );
     }
 
-    private void requireReauthentication(Member member) {
-        String emailDigest = redisTemplate.opsForValue().get(reauthenticationKey(member.getId()));
+    private void requireReauthentication(Member member, String sessionBinding) {
+        String emailDigest = redisTemplate.opsForValue()
+            .get(reauthenticationKey(member.getId(), sessionBinding));
         if (!digest(member.getEmail()).equals(emailDigest)) {
             throw new BusinessException(ErrorCode.EMAIL_CHANGE_REAUTHENTICATION_REQUIRED);
         }
@@ -280,7 +298,10 @@ public class MemberEmailChangeService {
         }
     }
 
-    private String reauthenticationKey(Long memberId) {
-        return REAUTHENTICATION_PREFIX + memberId;
+    private String reauthenticationKey(Long memberId, String sessionBinding) {
+        if (sessionBinding == null || sessionBinding.isBlank()) {
+            throw new BusinessException(ErrorCode.EMAIL_CHANGE_REAUTHENTICATION_REQUIRED);
+        }
+        return REAUTHENTICATION_PREFIX + memberId + ":" + digest(sessionBinding);
     }
 }

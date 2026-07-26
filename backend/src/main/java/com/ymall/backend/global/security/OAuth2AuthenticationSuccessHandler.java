@@ -45,7 +45,10 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             principal.member().getId(),
             principal.provider()
         )) {
-            memberEmailChangeService.markOAuthReauthenticated(principal.member().getId());
+            memberEmailChangeService.markOAuthReauthenticated(
+                principal.member().getId(),
+                oAuthFlowContext.getEmailChangeSessionBinding(request)
+            );
             response.sendRedirect(frontendRedirectUri + "#emailChangeReauthenticated=true");
             return;
         }

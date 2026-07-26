@@ -25,6 +25,8 @@ import org.springframework.http.MediaType;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,6 +36,7 @@ import jakarta.servlet.http.Cookie;
 import tools.jackson.databind.ObjectMapper;
 
 import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.global.security.OAuthFlowContext;
 import com.ymall.backend.global.security.RefreshTokenCookieManager;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
@@ -56,6 +59,7 @@ class MemberEmailChangeIntegrationTest {
     @Autowired private OAuthAccountRepository oAuthAccountRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
+    @Autowired private OAuthFlowContext oAuthFlowContext;
     @Autowired private StringRedisTemplate redisTemplate;
     @Autowired private MemberEmailChangeService emailChangeService;
 
@@ -86,17 +90,19 @@ class MemberEmailChangeIntegrationTest {
             MemberRole.ROLE_USER
         ));
         LoginSession login = login("old@example.com", "password123");
+        MockHttpSession session = new MockHttpSession();
 
-        reauthenticate(login.authorization(), "password123")
+        reauthenticate(login.authorization(), "password123", session)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.verificationRequired").value(false));
 
-        String requestId = requestNewEmail(login.authorization(), "new@example.com");
+        String requestId = requestNewEmail(login.authorization(), "new@example.com", session);
         String code = capturedVerificationCode();
 
         mockMvc.perform(patch("/api/members/me/email-change")
                 .header(HttpHeaders.AUTHORIZATION, login.authorization())
                 .cookie(login.refreshCookie())
+                .session(session)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(changeJson(requestId, "new@example.com", code)))
             .andExpect(status().isOk())
@@ -123,21 +129,33 @@ class MemberEmailChangeIntegrationTest {
         ));
         oAuthAccountRepository.save(new OAuthAccount(member, OAuthProvider.GOOGLE, "google-sub-123"));
         String authorization = authorization(member);
+        MockHttpSession session = new MockHttpSession();
 
         mockMvc.perform(post(
                 "/api/members/me/email-change/oauth-reauthentications/google"
             )
+                .session(session)
                 .header(HttpHeaders.AUTHORIZATION, authorization))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.authorizationUrl")
                 .value("/oauth2/authorization/google"));
-        emailChangeService.markOAuthReauthenticated(member.getId());
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(session);
+        emailChangeService.markOAuthReauthenticated(
+            member.getId(),
+            oAuthFlowContext.getEmailChangeSessionBinding(request)
+        );
 
-        String newRequestId = requestNewEmail(authorization, "social-new@example.com");
+        String newRequestId = requestNewEmail(
+            authorization,
+            "social-new@example.com",
+            session
+        );
         String newCode = capturedVerificationCode();
 
         mockMvc.perform(patch("/api/members/me/email-change")
                 .header(HttpHeaders.AUTHORIZATION, authorization)
+                .session(session)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(changeJson(newRequestId, "social-new@example.com", newCode)))
             .andExpect(status().isOk());
@@ -161,8 +179,13 @@ class MemberEmailChangeIntegrationTest {
             MemberRole.ROLE_USER
         ));
         String authorization = authorization(member);
-        reauthenticate(authorization, "password123").andExpect(status().isOk());
-        String requestId = requestNewEmail(authorization, "race-new@example.com");
+        MockHttpSession session = new MockHttpSession();
+        reauthenticate(authorization, "password123", session).andExpect(status().isOk());
+        String requestId = requestNewEmail(
+            authorization,
+            "race-new@example.com",
+            session
+        );
         String code = capturedVerificationCode();
 
         memberRepository.saveAndFlush(new Member(
@@ -174,6 +197,7 @@ class MemberEmailChangeIntegrationTest {
 
         mockMvc.perform(patch("/api/members/me/email-change")
                 .header(HttpHeaders.AUTHORIZATION, authorization)
+                .session(session)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(changeJson(requestId, "race-new@example.com", code)))
             .andExpect(status().isConflict())
@@ -225,9 +249,73 @@ class MemberEmailChangeIntegrationTest {
                 .value("EMAIL_CHANGE_OAUTH_ACCOUNT_MISMATCH"));
     }
 
+    @Test
+    void reauthenticationCannotBeReusedFromAnotherSession() throws Exception {
+        Member member = memberRepository.save(new Member(
+            "session-bound@example.com",
+            passwordEncoder.encode("password123"),
+            "Session Bound User",
+            MemberRole.ROLE_USER
+        ));
+        String authorization = authorization(member);
+        MockHttpSession reauthenticatedSession = new MockHttpSession();
+        MockHttpSession otherSession = new MockHttpSession();
+
+        reauthenticate(authorization, "password123", reauthenticatedSession)
+            .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/members/me/email-change/verifications")
+                .header(HttpHeaders.AUTHORIZATION, authorization)
+                .session(otherSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email":"new@example.com"}
+                    """))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code")
+                .value("EMAIL_CHANGE_REAUTHENTICATION_REQUIRED"));
+    }
+
+    @Test
+    void expiredReauthenticationDoesNotConsumeValidEmailCode() throws Exception {
+        Member member = memberRepository.save(new Member(
+            "retry@example.com",
+            passwordEncoder.encode("password123"),
+            "Retry User",
+            MemberRole.ROLE_USER
+        ));
+        String authorization = authorization(member);
+        MockHttpSession session = new MockHttpSession();
+        reauthenticate(authorization, "password123", session).andExpect(status().isOk());
+        String requestId = requestNewEmail(authorization, "retry-new@example.com", session);
+        String code = capturedVerificationCode();
+        deleteKeys("email-change:reauthenticated:*");
+
+        mockMvc.perform(patch("/api/members/me/email-change")
+                .header(HttpHeaders.AUTHORIZATION, authorization)
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(changeJson(requestId, "retry-new@example.com", code)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code")
+                .value("EMAIL_CHANGE_REAUTHENTICATION_REQUIRED"));
+
+        reauthenticate(authorization, "password123", session).andExpect(status().isOk());
+        mockMvc.perform(patch("/api/members/me/email-change")
+                .header(HttpHeaders.AUTHORIZATION, authorization)
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(changeJson(requestId, "retry-new@example.com", code)))
+            .andExpect(status().isOk());
+
+        assertThat(memberRepository.findById(member.getId()).orElseThrow().getEmail())
+            .isEqualTo("retry-new@example.com");
+    }
+
     private org.springframework.test.web.servlet.ResultActions reauthenticate(
         String authorization,
-        String currentPassword
+        String currentPassword,
+        MockHttpSession session
     ) throws Exception {
         String body = currentPassword == null
             ? "{}"
@@ -236,13 +324,19 @@ class MemberEmailChangeIntegrationTest {
                 """.formatted(currentPassword);
         return mockMvc.perform(post("/api/members/me/email-change/reauthentications")
             .header(HttpHeaders.AUTHORIZATION, authorization)
+            .session(session)
             .contentType(MediaType.APPLICATION_JSON)
             .content(body));
     }
 
-    private String requestNewEmail(String authorization, String email) throws Exception {
+    private String requestNewEmail(
+        String authorization,
+        String email,
+        MockHttpSession session
+    ) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/members/me/email-change/verifications")
                 .header(HttpHeaders.AUTHORIZATION, authorization)
+                .session(session)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"email":"%s"}
