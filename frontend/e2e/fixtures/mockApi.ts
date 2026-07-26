@@ -1,0 +1,277 @@
+import type { Page, Route } from '@playwright/test'
+
+type Role = 'ROLE_USER' | 'ROLE_SELLER' | 'ROLE_ADMIN'
+
+interface MockApiOptions {
+    role?: Role
+}
+
+const product = {
+    productId: 1,
+    categoryId: 1,
+    categoryName: '생활',
+    name: '테스트 무선 키보드',
+    brand: 'YMALL LAB',
+    price: 50000,
+    discountPercentage: 10,
+    rating: 4.8,
+    stock: 20,
+    thumbnailUrl: null,
+    status: 'APPROVED',
+}
+
+const cartItem = {
+    cartItemId: 1,
+    productId: 1,
+    productName: product.name,
+    thumbnailUrl: null,
+    price: product.price,
+    discountPercentage: product.discountPercentage,
+    stock: product.stock,
+    productStatus: product.status,
+    quantity: 1,
+}
+
+const address = {
+    addressId: 1,
+    addressName: '테스트 배송지',
+    recipientName: '테스트 사용자',
+    recipientPhone: '01000000000',
+    postalCode: '00000',
+    roadAddress: '테스트로 1',
+    detailAddress: '테스트동 101호',
+    isDefault: true,
+}
+
+const baseOrder = {
+    orderId: 9001,
+    paymentOrderId: 'ymall-test-order-9001',
+    status: 'PENDING_PAYMENT',
+    totalAmount: 45000,
+    items: [{
+        orderItemId: 1,
+        productId: 1,
+        productName: product.name,
+        unitPrice: 45000,
+        quantity: 1,
+        refundedQuantity: 0,
+        totalPrice: 45000,
+        fulfillmentStatus: 'PENDING',
+    }],
+    deliveryAddress: {
+        recipientName: address.recipientName,
+        recipientPhone: address.recipientPhone,
+        postalCode: address.postalCode,
+        roadAddress: address.roadAddress,
+        detailAddress: address.detailAddress,
+    },
+    refundSupported: false,
+    createdAt: '2026-07-26T12:00:00+09:00',
+}
+
+const initialNotifications = [
+    {
+        notificationId: 1,
+        type: 'ORDER_CREATED',
+        title: '주문이 생성되었습니다',
+        message: '테스트 주문의 결제를 진행해 주세요.',
+        targetUrl: '/orders/9001/result',
+        readAt: null,
+        createdAt: '2026-07-26T12:01:00+09:00',
+    },
+    {
+        notificationId: 2,
+        type: 'PAYMENT_COMPLETED',
+        title: '결제가 완료되었습니다',
+        message: '테스트 주문의 결제가 완료되었습니다.',
+        targetUrl: '/orders/9001/result',
+        readAt: null,
+        createdAt: '2026-07-26T12:02:00+09:00',
+    },
+]
+
+export async function installMockApi(page: Page, options: MockApiOptions = {}) {
+    const defaultRole = options.role ?? 'ROLE_USER'
+    const state = {
+        cartItems: [] as typeof cartItem[],
+        notifications: initialNotifications.map((notification) => ({ ...notification })),
+        order: { ...baseOrder },
+    }
+
+    await page.route('**/api/**', async (route) => {
+        const request = route.request()
+        const url = new URL(request.url())
+        if (!url.pathname.startsWith('/api/')) {
+            return route.continue()
+        }
+        const path = url.pathname.replace(/^\/api/, '')
+        const method = request.method()
+
+        if (path === '/members/tokens/refresh' && method === 'POST') {
+            return error(route, 401, 'INVALID_TOKEN', '인증 정보가 없습니다.')
+        }
+        if (path === '/members/login' && method === 'POST') {
+            const body = request.postDataJSON() as { email: string }
+            const role = roleForEmail(body.email, defaultRole)
+            return ok(route, {
+                accessToken: createJwt(role),
+                tokenType: 'Bearer',
+                expiresIn: 3600,
+            })
+        }
+        if (path === '/members/logout' && method === 'POST') {
+            return noContent(route)
+        }
+        if (path === '/members/email-availability' && method === 'GET') {
+            return ok(route, { available: true })
+        }
+        if (path === '/members/signup' && method === 'POST') {
+            const body = request.postDataJSON() as { email: string; name: string; phone: string }
+            return ok(route, {
+                memberId: 101,
+                email: body.email,
+                name: body.name,
+                phone: body.phone,
+                role: 'ROLE_USER',
+                createdAt: '2026-07-26T12:00:00+09:00',
+            }, 201)
+        }
+        if (path === '/notifications/unread-count' && method === 'GET') {
+            return ok(route, {
+                unreadCount: state.notifications.filter((item) => item.readAt === null).length,
+            })
+        }
+        if (path === '/notifications' && method === 'GET') {
+            return ok(route, pageResponse(state.notifications))
+        }
+        if (/^\/notifications\/\d+\/read$/.test(path) && method === 'PATCH') {
+            const notificationId = Number(path.split('/')[2])
+            const notification = state.notifications.find((item) => item.notificationId === notificationId)
+            if (!notification) return error(route, 404, 'NOTIFICATION_NOT_FOUND', '알림이 없습니다.')
+            notification.readAt = new Date().toISOString()
+            return ok(route, notification)
+        }
+        if (path === '/notifications/read-all' && method === 'PATCH') {
+            let updatedCount = 0
+            state.notifications.forEach((notification) => {
+                if (notification.readAt === null) {
+                    notification.readAt = new Date().toISOString()
+                    updatedCount += 1
+                }
+            })
+            return ok(route, { updatedCount })
+        }
+        if (path === '/categories' && method === 'GET') {
+            return ok(route, [{ categoryId: 1, name: '생활', slug: 'life' }])
+        }
+        if ((path === '/products' || path === '/products/search') && method === 'GET') {
+            return ok(route, pageResponse([product], 12))
+        }
+        if (path === '/products/1' && method === 'GET') {
+            return ok(route, {
+                ...product,
+                category: { categoryId: 1, name: '생활', slug: 'life' },
+                description: '브라우저 자동화 검증용 상품입니다.',
+                images: [],
+            })
+        }
+        if (path === '/products/1/reviews' && method === 'GET') {
+            return ok(route, pageResponse([], 10))
+        }
+        if (path === '/products/1/review-summary' && method === 'GET') {
+            return ok(route, {
+                available: false,
+                reviewCount: 0,
+                pros: [],
+                cons: [],
+                commonOpinions: [],
+                modelVersion: null,
+                generatedAt: null,
+            })
+        }
+        if (path === '/cart/items' && method === 'POST') {
+            const body = request.postDataJSON() as { quantity: number }
+            state.cartItems = [{ ...cartItem, quantity: body.quantity }]
+            return ok(route, state.cartItems[0], 201)
+        }
+        if (path === '/cart' && method === 'GET') {
+            return ok(route, { items: state.cartItems })
+        }
+        if (path === '/members/me/addresses' && method === 'GET') {
+            return ok(route, [address])
+        }
+        if (path === '/orders' && method === 'POST') {
+            state.order = { ...baseOrder }
+            return ok(route, state.order, 201)
+        }
+        if (path === '/orders/9001' && method === 'GET') {
+            return ok(route, state.order)
+        }
+        if (path === '/orders/9001/cancellations' && method === 'POST') {
+            state.order = { ...state.order, status: 'CANCELED' }
+            return ok(route, state.order)
+        }
+
+        return error(route, 404, 'E2E_MOCK_NOT_FOUND', `${method} ${path} 가짜 응답이 없습니다.`)
+    })
+
+    return state
+}
+
+export async function loginThroughUi(page: Page, email = 'member@example.test') {
+    await page.goto('/login')
+    await page.getByLabel('이메일').fill(email)
+    await page.getByLabel('비밀번호').fill('Test1234!')
+    await page.getByRole('button', { name: '로그인' }).click()
+    await page.waitForURL('/')
+}
+
+function roleForEmail(email: string, fallback: Role): Role {
+    if (email.startsWith('admin')) return 'ROLE_ADMIN'
+    if (email.startsWith('seller')) return 'ROLE_SELLER'
+    return fallback
+}
+
+function createJwt(role: Role) {
+    const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url')
+    const now = Math.floor(Date.now() / 1000)
+    return `${encode({ alg: 'none', typ: 'JWT' })}.${encode({
+        sub: '101',
+        email: 'member@example.test',
+        role,
+        iat: now,
+        exp: now + 3600,
+    })}.e2e`
+}
+
+function pageResponse<T>(content: T[], size = 20) {
+    return {
+        content,
+        page: 1,
+        size,
+        totalElements: content.length,
+        totalPages: content.length === 0 ? 0 : 1,
+        hasNext: false,
+        hasPrevious: false,
+    }
+}
+
+function ok(route: Route, data: unknown, status = 200) {
+    return route.fulfill({
+        status,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data, message: '요청이 성공했습니다.' }),
+    })
+}
+
+function error(route: Route, status: number, code: string, message: string) {
+    return route.fulfill({
+        status,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: false, error: { code, message } }),
+    })
+}
+
+function noContent(route: Route) {
+    return route.fulfill({ status: 204 })
+}

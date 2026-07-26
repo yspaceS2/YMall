@@ -1,75 +1,47 @@
-# React + TypeScript + Vite
+# YMall Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Vite, React, TypeScript, Tailwind CSS 기반 YMall 프런트엔드입니다.
 
-Currently, two official plugins are available:
+## 로컬 실행
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+기본 개발 서버는 `http://localhost:5173`에서 실행됩니다.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 검증 명령
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm run test
+npm run lint
+npm run build
 ```
+
+- `npm run test`: Vitest와 React Testing Library 컴포넌트 테스트
+- `npm run lint`: ESLint 정적 검사
+- `npm run build`: TypeScript 검사 및 Vite production build
+
+## E2E 테스트
+
+최초 한 번 Playwright Chromium을 설치합니다.
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
+E2E 테스트는 전용 Vite 서버를 `http://127.0.0.1:4173`에 띄운 뒤 자동으로 종료합니다.
+백엔드, OAuth 공급자, Toss Payments에는 접속하지 않으며 Playwright의 네트워크 가짜
+응답을 사용합니다. 따라서 실제 계정, 결제 키, 개인정보가 필요하지 않습니다.
+
+검증 범위는 다음과 같습니다.
+
+- 이메일 중복 확인, 회원가입, 로그인
+- 일반 사용자·판매자·관리자 역할별 메뉴
+- 상품 상세, 장바구니, 주문 생성, 결제 화면 진입
+- 알림 미읽음 배지, 개별 읽음, 모두 읽음
+
+실패 시 `test-results`와 `playwright-report`에 스크린샷과 trace가 생성됩니다.
+GitHub Actions에서도 같은 명령을 실행하며 실패 결과를 artifact로 7일간 보관합니다.
