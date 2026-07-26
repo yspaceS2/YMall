@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -13,6 +14,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 
+import com.ymall.backend.global.exception.BusinessException;
+import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.entity.OAuthProvider;
 
 @Component
@@ -22,23 +25,131 @@ public class OAuthFlowContext {
     private static final String SESSION_KEY = OAuthFlowContext.class.getName() + ".request";
     private static final String LINK_SESSION_KEY = OAuthFlowContext.class.getName() + ".link";
     private static final String EMAIL_SESSION_KEY = OAuthFlowContext.class.getName() + ".email";
+    private static final String EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY =
+        OAuthFlowContext.class.getName() + ".emailChangeReauthentication";
+    private static final String EMAIL_CHANGE_SESSION_BINDING_KEY =
+        OAuthFlowContext.class.getName() + ".emailChangeSessionBinding";
 
     private final Clock clock;
 
     public void startLink(HttpServletRequest request, Long memberId, OAuthProvider provider) {
-        request.getSession(true).setAttribute(
+        HttpSession session = request.getSession(true);
+        session.removeAttribute(EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY);
+        session.setAttribute(
             LINK_SESSION_KEY,
             new LinkRequest(memberId, provider, clock.instant().plus(5, ChronoUnit.MINUTES))
         );
     }
 
-    public Optional<Long> consumeLink(OAuthProvider provider) {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder
-            .getRequestAttributes();
-        if (attributes == null) {
+    public void startEmailChangeReauthentication(
+        HttpServletRequest request,
+        Long memberId,
+        OAuthProvider provider
+    ) {
+        HttpSession session = request.getSession(true);
+        session.removeAttribute(LINK_SESSION_KEY);
+        getOrCreateEmailChangeSessionBinding(request);
+        session.setAttribute(
+            EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY,
+            new EmailChangeReauthentication(
+                memberId,
+                provider,
+                false,
+                clock.instant().plus(5, ChronoUnit.MINUTES)
+            )
+        );
+    }
+
+    public Optional<Long> getEmailChangeReauthenticationMemberId(OAuthProvider provider) {
+        HttpSession session = currentSession();
+        if (session == null) {
             return Optional.empty();
         }
-        HttpSession session = attributes.getRequest().getSession(false);
+        Object value = session.getAttribute(EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY);
+        if (!(value instanceof EmailChangeReauthentication reauthentication)) {
+            return Optional.empty();
+        }
+        if (reauthentication.expiresAt().isBefore(clock.instant())) {
+            session.removeAttribute(EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY);
+            throw new BusinessException(ErrorCode.EMAIL_CHANGE_REAUTHENTICATION_REQUIRED);
+        }
+        if (reauthentication.provider() != provider) {
+            throw new BusinessException(ErrorCode.EMAIL_CHANGE_OAUTH_ACCOUNT_MISMATCH);
+        }
+        return Optional.of(reauthentication.memberId());
+    }
+
+    public void completeEmailChangeReauthentication(Long memberId, OAuthProvider provider) {
+        HttpSession session = currentSession();
+        if (session == null
+            || !(session.getAttribute(EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY)
+                instanceof EmailChangeReauthentication reauthentication)
+            || !reauthentication.memberId().equals(memberId)
+            || reauthentication.provider() != provider
+            || reauthentication.expiresAt().isBefore(clock.instant())) {
+            throw new BusinessException(ErrorCode.EMAIL_CHANGE_REAUTHENTICATION_REQUIRED);
+        }
+        session.setAttribute(
+            EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY,
+            new EmailChangeReauthentication(
+                memberId,
+                provider,
+                true,
+                reauthentication.expiresAt()
+            )
+        );
+    }
+
+    public boolean consumeCompletedEmailChangeReauthentication(
+        Long memberId,
+        OAuthProvider provider
+    ) {
+        HttpSession session = currentSession();
+        if (session == null
+            || !(session.getAttribute(EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY)
+                instanceof EmailChangeReauthentication reauthentication)) {
+            return false;
+        }
+        session.removeAttribute(EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY);
+        return reauthentication.completed()
+            && reauthentication.memberId().equals(memberId)
+            && reauthentication.provider() == provider
+            && !reauthentication.expiresAt().isBefore(clock.instant());
+    }
+
+    public boolean consumeEmailChangeReauthenticationFailure() {
+        HttpSession session = currentSession();
+        if (session == null
+            || !(session.getAttribute(EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY)
+                instanceof EmailChangeReauthentication)) {
+            return false;
+        }
+        session.removeAttribute(EMAIL_CHANGE_REAUTHENTICATION_SESSION_KEY);
+        return true;
+    }
+
+    public String getOrCreateEmailChangeSessionBinding(HttpServletRequest request) {
+        HttpSession session = request.getSession(true);
+        Object binding = session.getAttribute(EMAIL_CHANGE_SESSION_BINDING_KEY);
+        if (binding instanceof String value) {
+            return value;
+        }
+        String value = UUID.randomUUID().toString();
+        session.setAttribute(EMAIL_CHANGE_SESSION_BINDING_KEY, value);
+        return value;
+    }
+
+    public String getEmailChangeSessionBinding(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return null;
+        }
+        Object binding = session.getAttribute(EMAIL_CHANGE_SESSION_BINDING_KEY);
+        return binding instanceof String value ? value : null;
+    }
+
+    public Optional<Long> consumeLink(OAuthProvider provider) {
+        HttpSession session = currentSession();
         if (session == null || !(session.getAttribute(LINK_SESSION_KEY) instanceof LinkRequest link)) {
             return Optional.empty();
         }
@@ -47,6 +158,12 @@ public class OAuthFlowContext {
             return Optional.empty();
         }
         return Optional.of(link.memberId());
+    }
+
+    private HttpSession currentSession() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder
+            .getRequestAttributes();
+        return attributes == null ? null : attributes.getRequest().getSession(false);
     }
 
     public void start(HttpServletRequest request, OAuthProvider provider, OAuth2UserProfile profile) {
@@ -135,6 +252,14 @@ public class OAuthFlowContext {
     }
 
     private record LinkRequest(Long memberId, OAuthProvider provider, Instant expiresAt) {
+    }
+
+    private record EmailChangeReauthentication(
+        Long memberId,
+        OAuthProvider provider,
+        boolean completed,
+        Instant expiresAt
+    ) {
     }
 
     private record EmailVerification(

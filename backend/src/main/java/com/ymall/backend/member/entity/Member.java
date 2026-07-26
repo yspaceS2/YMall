@@ -29,6 +29,9 @@ public class Member {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
+    @Column(nullable = false)
+    private LocalDateTime emailVerifiedAt;
+
     @Column(length = 100)
     private String password;
 
@@ -58,6 +61,7 @@ public class Member {
 
     public Member(String email, String password, String name, String phone, MemberRole role) {
         this.email = email;
+        this.emailVerifiedAt = LocalDateTime.now();
         this.password = password;
         this.name = name;
         this.phone = phone;
@@ -73,9 +77,17 @@ public class Member {
         this.password = password;
     }
 
+    public void changeEmail(String email) {
+        this.email = email;
+        this.emailVerifiedAt = LocalDateTime.now();
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
+        if (this.emailVerifiedAt == null) {
+            this.emailVerifiedAt = now;
+        }
         this.createdAt = now;
         this.updatedAt = now;
     }

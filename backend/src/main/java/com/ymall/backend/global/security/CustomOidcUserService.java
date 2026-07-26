@@ -30,8 +30,21 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
                 request.getClientRegistration().getRegistrationId()
             );
             OAuth2UserProfile profile = OAuth2UserProfileFactory.create(provider, user.getClaims());
-            Long linkMemberId = oAuthFlowContext.consumeLink(provider).orElse(null);
-            Member member = oAuthMemberService.resolve(provider, profile, linkMemberId).member();
+            Long emailChangeMemberId = oAuthFlowContext
+                .getEmailChangeReauthenticationMemberId(provider)
+                .orElse(null);
+            Member member;
+            if (emailChangeMemberId != null) {
+                member = oAuthMemberService.resolveEmailChangeReauthentication(
+                    provider,
+                    profile,
+                    emailChangeMemberId
+                );
+                oAuthFlowContext.completeEmailChangeReauthentication(member.getId(), provider);
+            } else {
+                Long linkMemberId = oAuthFlowContext.consumeLink(provider).orElse(null);
+                member = oAuthMemberService.resolve(provider, profile, linkMemberId).member();
+            }
             return new YMallOidcUser(member, user, provider, profile);
         } catch (BusinessException exception) {
             throw new OAuth2AuthenticationException(

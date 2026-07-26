@@ -13,6 +13,7 @@ import { AuthPageLayout } from '../components/auth/AuthPageLayout'
 interface LoginLocationState {
     from?: string
     signupCompleted?: boolean
+    emailChanged?: boolean
 }
 
 function GoogleLogo() {
@@ -83,7 +84,7 @@ export function LoginPage() {
             asideTitle={<>YOUR TASTE,<br />STILL HERE.</>}
             contentClassName="max-w-115"
         >
-                <GoogleOneTapPrompt
+            <GoogleOneTapPrompt
                     onAuthenticated={(token) => {
                         completeOAuthLogin(token.accessToken)
                         navigate(destination, { replace: true })
@@ -101,8 +102,9 @@ export function LoginPage() {
                                 : 'Google 간편 로그인을 사용할 수 없습니다. 다른 로그인 방법을 이용해 주세요.',
                         )
                     }}
-                />
-                {state?.signupCompleted && <div className="mb-6"><AuthMessage tone="success">회원가입이 완료되었습니다. 새 계정으로 로그인해 주세요.</AuthMessage></div>}
+            />
+            {state?.emailChanged && <div className="mb-6"><AuthMessage tone="success">이메일이 변경되었습니다. 새 이메일로 다시 로그인해 주세요.</AuthMessage></div>}
+            {state?.signupCompleted && <div className="mb-6"><AuthMessage tone="success">회원가입이 완료되었습니다. 새 계정으로 로그인해 주세요.</AuthMessage></div>}
 
                 <form className="grid gap-6" onSubmit={handleSubmit}>
                     <AuthField id="login-email" label="이메일" type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={cancelGoogleOneTap} autoComplete="email" placeholder="you@example.com" required />

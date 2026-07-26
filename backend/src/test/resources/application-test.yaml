@@ -37,6 +37,20 @@ ymall:
     google-one-tap:
       client-id: test-client-id
       nonce-ttl: 5m
+  email-change:
+    code-ttl: 5m
+    reauthentication-ttl: 10m
+    max-attempts: 5
+    max-requests: 5
+    request-window: 30m
+    resend-interval: 1m
+  signup-email-verification:
+    code-ttl: 5m
+    token-ttl: 10m
+    max-attempts: 5
+    max-requests: 5
+    request-window: 30m
+    resend-interval: 1m
   jwt:
     secret: test-jwt-secret-key-for-ymall-that-is-at-least-32-bytes-long
     access-token-expiration: 30m

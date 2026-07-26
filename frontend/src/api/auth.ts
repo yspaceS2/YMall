@@ -1,4 +1,4 @@
-import type { EmailAvailabilityResponse, GoogleOneTapLoginResponse, GoogleOneTapNonceResponse, LoginRequest, MemberAddress, MemberAddressRequest, MemberPasswordChangeRequest, MemberProfile, MemberProfileUpdateRequest, MemberResponse, OAuthAccount, OAuthLinkResponse, OAuthProvider, OAuthSignupRequest, PasswordResetConfirmRequest, PasswordResetRequestResponse, PasswordResetVerificationResponse, SignupRequest, TokenResponse } from '../types/auth'
+import type { EmailAvailabilityResponse, EmailChangeReauthenticationResponse, EmailChangeVerificationResponse, GoogleOneTapLoginResponse, GoogleOneTapNonceResponse, LoginRequest, MemberAddress, MemberAddressRequest, MemberPasswordChangeRequest, MemberProfile, MemberProfileUpdateRequest, MemberResponse, OAuthAccount, OAuthLinkResponse, OAuthProvider, OAuthSignupRequest, PasswordResetConfirmRequest, PasswordResetRequestResponse, PasswordResetVerificationResponse, SignupEmailVerificationConfirmResponse, SignupEmailVerificationResponse, SignupRequest, TokenResponse } from '../types/auth'
 import { apiRequest } from './client'
 
 export function loginMember(request: LoginRequest) {
@@ -43,6 +43,53 @@ export function changeMemberPassword(request: MemberPasswordChangeRequest) {
     return apiRequest<void>('/members/me/password', {
         method: 'PATCH',
         body: request,
+    })
+}
+
+export function requestSignupEmailVerification(email: string) {
+    return apiRequest<SignupEmailVerificationResponse>('/members/signup/email-verifications', {
+        method: 'POST',
+        body: { email },
+        auth: false,
+    })
+}
+
+export function confirmSignupEmailVerification(requestId: string, email: string, code: string) {
+    return apiRequest<SignupEmailVerificationConfirmResponse>(
+        '/members/signup/email-verifications/confirm',
+        {
+            method: 'POST',
+            body: { requestId, email, code },
+            auth: false,
+        },
+    )
+}
+
+export function startEmailChangeReauthentication(currentPassword?: string) {
+    return apiRequest<EmailChangeReauthenticationResponse>('/members/me/email-change/reauthentications', {
+        method: 'POST',
+        body: { currentPassword },
+    })
+}
+
+export function startEmailChangeOAuthReauthentication(provider: OAuthProvider) {
+    return apiRequest<OAuthLinkResponse>(
+        `/members/me/email-change/oauth-reauthentications/${provider.toLowerCase()}`,
+        { method: 'POST' },
+    )
+}
+
+export function requestNewEmailVerification(email: string) {
+    return apiRequest<EmailChangeVerificationResponse>('/members/me/email-change/verifications', {
+        method: 'POST',
+        body: { email },
+    })
+}
+
+export function changeMemberEmail(requestId: string, email: string, code: string) {
+    return apiRequest<void>('/members/me/email-change', {
+        method: 'PATCH',
+        body: { requestId, email, code },
     })
 }
 

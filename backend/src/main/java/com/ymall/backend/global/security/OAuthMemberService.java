@@ -33,6 +33,24 @@ public class OAuthMemberService {
             .map(OAuthAccount::getMember);
     }
 
+    @Transactional(readOnly = true)
+    public Member resolveEmailChangeReauthentication(
+        OAuthProvider provider,
+        OAuth2UserProfile profile,
+        Long expectedMemberId
+    ) {
+        Member member = oAuthAccountRepository
+            .findByProviderAndProviderUserId(provider, profile.providerUserId())
+            .map(OAuthAccount::getMember)
+            .orElseThrow(() -> new BusinessException(
+                ErrorCode.EMAIL_CHANGE_OAUTH_ACCOUNT_MISMATCH
+            ));
+        if (!member.getId().equals(expectedMemberId)) {
+            throw new BusinessException(ErrorCode.EMAIL_CHANGE_OAUTH_ACCOUNT_MISMATCH);
+        }
+        return member;
+    }
+
     @Transactional
     public OAuthLoginResult resolve(
         OAuthProvider provider,

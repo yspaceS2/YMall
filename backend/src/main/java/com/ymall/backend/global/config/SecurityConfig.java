@@ -77,6 +77,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     POST,
                     "/api/members/signup",
+                    "/api/members/signup/email-verifications",
+                    "/api/members/signup/email-verifications/confirm",
                     "/api/members/login",
                     "/api/members/tokens/refresh",
                     "/api/members/logout",

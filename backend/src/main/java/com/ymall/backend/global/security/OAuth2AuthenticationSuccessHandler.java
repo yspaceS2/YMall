@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.member.dto.TokenResponse;
+import com.ymall.backend.member.service.MemberEmailChangeService;
 
 @Component
 @RequiredArgsConstructor
@@ -23,6 +24,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     private final RefreshTokenService refreshTokenService;
     private final RefreshTokenCookieManager refreshTokenCookieManager;
     private final OAuthFlowContext oAuthFlowContext;
+    private final MemberEmailChangeService memberEmailChangeService;
 
     @Value("${ymall.oauth2.frontend-redirect-uri:http://localhost:5173/oauth2/callback}")
     private String frontendRedirectUri;
@@ -37,6 +39,17 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         if (principal.member() == null) {
             oAuthFlowContext.start(request, principal.provider(), principal.profile());
             response.sendRedirect(frontendRedirectUri + "#signupRequired=true");
+            return;
+        }
+        if (oAuthFlowContext.consumeCompletedEmailChangeReauthentication(
+            principal.member().getId(),
+            principal.provider()
+        )) {
+            memberEmailChangeService.markOAuthReauthenticated(
+                principal.member().getId(),
+                oAuthFlowContext.getEmailChangeSessionBinding(request)
+            );
+            response.sendRedirect(frontendRedirectUri + "#emailChangeReauthenticated=true");
             return;
         }
         refreshTokenService.revoke(refreshTokenCookieManager.read(request));

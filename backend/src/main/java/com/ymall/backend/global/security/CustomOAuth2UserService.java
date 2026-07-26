@@ -31,8 +31,21 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
                 request.getClientRegistration().getRegistrationId()
             );
             OAuth2UserProfile profile = OAuth2UserProfileFactory.create(provider, user.getAttributes());
-            Long linkMemberId = oAuthFlowContext.consumeLink(provider).orElse(null);
-            Member member = oAuthMemberService.resolve(provider, profile, linkMemberId).member();
+            Long emailChangeMemberId = oAuthFlowContext
+                .getEmailChangeReauthenticationMemberId(provider)
+                .orElse(null);
+            Member member;
+            if (emailChangeMemberId != null) {
+                member = oAuthMemberService.resolveEmailChangeReauthentication(
+                    provider,
+                    profile,
+                    emailChangeMemberId
+                );
+                oAuthFlowContext.completeEmailChangeReauthentication(member.getId(), provider);
+            } else {
+                Long linkMemberId = oAuthFlowContext.consumeLink(provider).orElse(null);
+                member = oAuthMemberService.resolve(provider, profile, linkMemberId).member();
+            }
 
             return new YMallOAuth2User(
                 member,

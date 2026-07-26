@@ -136,6 +136,57 @@ class OAuthMemberServiceTest {
         assertThat(result).containsSame(member);
     }
 
+    @Test
+    void resolvesLinkedAccountForEmailChangeReauthentication() {
+        Member member = member(1L, "member@example.com");
+        OAuthAccount account = new OAuthAccount(member, OAuthProvider.GOOGLE, "google-user");
+        OAuth2UserProfile profile = new OAuth2UserProfile(
+            "google-user",
+            "provider@example.com",
+            "Provider User"
+        );
+        given(oAuthAccountRepository.findByProviderAndProviderUserId(
+            OAuthProvider.GOOGLE,
+            "google-user"
+        )).willReturn(Optional.of(account));
+
+        Member result = service.resolveEmailChangeReauthentication(
+            OAuthProvider.GOOGLE,
+            profile,
+            1L
+        );
+
+        assertThat(result).isSameAs(member);
+    }
+
+    @Test
+    void rejectsDifferentAccountForEmailChangeReauthentication() {
+        Member otherMember = member(2L, "other@example.com");
+        OAuthAccount account = new OAuthAccount(
+            otherMember,
+            OAuthProvider.GOOGLE,
+            "google-user"
+        );
+        OAuth2UserProfile profile = new OAuth2UserProfile(
+            "google-user",
+            "other@example.com",
+            "Other User"
+        );
+        given(oAuthAccountRepository.findByProviderAndProviderUserId(
+            OAuthProvider.GOOGLE,
+            "google-user"
+        )).willReturn(Optional.of(account));
+
+        assertThatThrownBy(() -> service.resolveEmailChangeReauthentication(
+            OAuthProvider.GOOGLE,
+            profile,
+            1L
+        ))
+            .isInstanceOf(BusinessException.class)
+            .extracting("errorCode")
+            .isEqualTo(ErrorCode.EMAIL_CHANGE_OAUTH_ACCOUNT_MISMATCH);
+    }
+
     private Member member(Long id, String email) {
         Member member = new Member(email, "password", "사용자", MemberRole.ROLE_USER);
         ReflectionTestUtils.setField(member, "id", id);

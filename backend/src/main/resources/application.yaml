@@ -59,6 +59,20 @@ ymall:
     google-one-tap:
       client-id: ${spring.security.oauth2.client.registration.google.client-id}
       nonce-ttl: ${GOOGLE_ONE_TAP_NONCE_TTL:5m}
+  email-change:
+    code-ttl: ${EMAIL_CHANGE_CODE_TTL:5m}
+    reauthentication-ttl: ${EMAIL_CHANGE_REAUTHENTICATION_TTL:10m}
+    max-attempts: ${EMAIL_CHANGE_MAX_ATTEMPTS:5}
+    max-requests: ${EMAIL_CHANGE_MAX_REQUESTS:5}
+    request-window: ${EMAIL_CHANGE_REQUEST_WINDOW:30m}
+    resend-interval: ${EMAIL_CHANGE_RESEND_INTERVAL:1m}
+  signup-email-verification:
+    code-ttl: ${SIGNUP_EMAIL_VERIFICATION_CODE_TTL:5m}
+    token-ttl: ${SIGNUP_EMAIL_VERIFICATION_TOKEN_TTL:10m}
+    max-attempts: ${SIGNUP_EMAIL_VERIFICATION_MAX_ATTEMPTS:5}
+    max-requests: ${SIGNUP_EMAIL_VERIFICATION_MAX_REQUESTS:5}
+    request-window: ${SIGNUP_EMAIL_VERIFICATION_REQUEST_WINDOW:30m}
+    resend-interval: ${SIGNUP_EMAIL_VERIFICATION_RESEND_INTERVAL:1m}
   jwt:
     secret: ${JWT_SECRET:}
     access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:30m}

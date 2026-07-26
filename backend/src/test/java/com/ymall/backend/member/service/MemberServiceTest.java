@@ -40,11 +40,19 @@ class MemberServiceTest {
     @Mock
     private RefreshTokenService refreshTokenService;
 
+    @Mock
+    private SignupEmailVerificationService signupEmailVerificationService;
+
     private MemberService memberService;
 
     @BeforeEach
     void setUp() {
-        memberService = new MemberService(memberRepository, passwordEncoder, refreshTokenService);
+        memberService = new MemberService(
+            memberRepository,
+            passwordEncoder,
+            refreshTokenService,
+            signupEmailVerificationService
+        );
     }
 
     @Test
@@ -61,6 +69,7 @@ class MemberServiceTest {
     void signupStoresNormalizedEmailAndEncodedPassword() {
         MemberSignupRequest request = new MemberSignupRequest(
             " User@Example.com ",
+            "verification-token",
             "password123",
             "password123",
             "홍길동",
@@ -72,6 +81,8 @@ class MemberServiceTest {
 
         MemberResponse response = memberService.signup(request);
 
+        verify(signupEmailVerificationService)
+            .consume("verification-token", "user@example.com");
         ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
         verify(memberRepository).saveAndFlush(memberCaptor.capture());
         Member savedMember = memberCaptor.getValue();
@@ -87,6 +98,7 @@ class MemberServiceTest {
     void signupRejectsDuplicatedEmail() {
         MemberSignupRequest request = new MemberSignupRequest(
             "user@example.com",
+            "verification-token",
             "password123",
             "password123",
             "홍길동",
@@ -104,6 +116,7 @@ class MemberServiceTest {
     void signupMapsConcurrentDuplicateToBusinessException() {
         MemberSignupRequest request = new MemberSignupRequest(
             "user@example.com",
+            "verification-token",
             "password123",
             "password123",
             "홍길동",
