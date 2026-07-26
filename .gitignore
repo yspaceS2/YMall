@@ -16,6 +16,8 @@ frontend/dist-ssr/
 frontend/*.local
 frontend/.env.local
 frontend/.env.*.local
+frontend/playwright-report/
+frontend/test-results/
 
 # Backend
 backend/HELP.md

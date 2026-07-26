@@ -56,7 +56,7 @@ jobs:
         run: ./gradlew test --no-daemon
 
   frontend-check:
-    name: Frontend Lint and Build
+    name: Frontend Unit Test, Lint and Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -76,11 +76,52 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Run frontend unit tests
+        run: npm run test
+
       - name: Run frontend lint
         run: npm run lint
 
       - name: Build frontend
         run: npm run build
+
+  frontend-e2e:
+    name: Frontend E2E Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run frontend E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-failure-artifacts
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          if-no-files-found: ignore
+          retention-days: 7
 
   ai-test:
     name: AI Contract Test
