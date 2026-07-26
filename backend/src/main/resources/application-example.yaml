@@ -11,9 +11,9 @@ spring:
     name: backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/ymall
-    username: ymall_user
-    password: your_password
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:ymall}
+    username: ${POSTGRES_USER:ymall_user}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
