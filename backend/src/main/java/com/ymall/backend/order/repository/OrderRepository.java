@@ -1,6 +1,8 @@
 package com.ymall.backend.order.repository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -25,6 +27,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByIdAndMemberId(Long orderId, Long memberId);
 
     Page<Order> findByMemberIdOrderByCreatedAtDesc(Long memberId, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select orders from Order orders
+        where orders.status = :status
+          and orders.inventoryReserved = true
+          and orders.createdAt <= :cutoff
+        order by orders.createdAt, orders.id
+        """)
+    List<Order> findPendingForExpiration(
+        @Param("status") OrderStatus status,
+        @Param("cutoff") LocalDateTime cutoff,
+        Pageable pageable
+    );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select orders from Order orders where orders.id = :orderId and orders.member.id = :memberId")

@@ -16,12 +16,14 @@ import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 
 @Service
 @RequiredArgsConstructor
 public class PaymentInventoryService {
 
     private final ProductRepository productRepository;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
     public void reserveIfNeeded(Order order) {
         if (order.isInventoryReserved()) {
@@ -40,6 +42,7 @@ public class PaymentInventoryService {
             product.decreaseStock(item.getQuantity());
         }
         order.reserveInventory();
+        evictProductDetails(order);
     }
 
     public void releaseIfReserved(Order order) {
@@ -52,6 +55,7 @@ public class PaymentInventoryService {
             requireProduct(products, item).increaseStock(item.getQuantity());
         }
         order.releaseInventory();
+        evictProductDetails(order);
     }
 
     public void releaseRefundableIfReserved(Order order) {
@@ -60,6 +64,10 @@ public class PaymentInventoryService {
         }
 
         Map<Long, Product> products = loadProductsForUpdate(order);
+        List<Long> changedProductIds = order.getItems().stream()
+            .filter(item -> item.getRefundableQuantity() > 0)
+            .map(item -> item.getProduct().getId())
+            .toList();
         for (OrderItem item : order.getItems()) {
             int refundableQuantity = item.getRefundableQuantity();
             if (refundableQuantity > 0) {
@@ -67,6 +75,7 @@ public class PaymentInventoryService {
             }
         }
         order.releaseInventory();
+        productCacheInvalidator.evictProductDetails(changedProductIds);
     }
 
     private Map<Long, Product> loadProductsForUpdate(Order order) {
@@ -85,5 +94,13 @@ public class PaymentInventoryService {
             throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
         }
         return product;
+    }
+
+    private void evictProductDetails(Order order) {
+        productCacheInvalidator.evictProductDetails(
+            order.getItems().stream()
+                .map(item -> item.getProduct().getId())
+                .toList()
+        );
     }
 }

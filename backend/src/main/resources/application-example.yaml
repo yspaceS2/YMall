@@ -131,6 +131,12 @@ ymall:
       base-url: ${TOSS_API_BASE_URL:https://api.tosspayments.com}
       connect-timeout: ${TOSS_CONNECT_TIMEOUT:3s}
       read-timeout: ${TOSS_READ_TIMEOUT:5s}
+  order:
+    pending-expiration:
+      enabled: ${PENDING_ORDER_EXPIRATION_ENABLED:true}
+      timeout: ${PENDING_ORDER_EXPIRATION_TIMEOUT:30m}
+      batch-size: ${PENDING_ORDER_EXPIRATION_BATCH_SIZE:100}
+      poll-interval: ${PENDING_ORDER_EXPIRATION_POLL_INTERVAL:1m}
   kafka:
     enabled: ${KAFKA_ENABLED:true}
     order-events:

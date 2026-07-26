@@ -143,9 +143,11 @@ public class PaymentService {
 
         String failureMessage = null;
         if (request.result() == PaymentResult.SUCCESS) {
+            paymentInventoryService.reserveIfNeeded(order);
             order.completePayment();
         } else {
             order.failPayment();
+            paymentInventoryService.releaseIfReserved(order);
             failureMessage = MOCK_FAILURE_MESSAGE;
         }
 

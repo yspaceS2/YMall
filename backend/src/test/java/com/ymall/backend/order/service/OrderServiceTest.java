@@ -39,6 +39,7 @@ import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -67,6 +68,9 @@ class OrderServiceTest {
     @Mock
     private PaymentRepository paymentRepository;
 
+    @Mock
+    private ProductCacheInvalidator productCacheInvalidator;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -93,6 +97,7 @@ class OrderServiceTest {
         assertThat(product.getStock()).isEqualTo(7);
         then(cartItemRepository).should().deleteAll(List.of(cartItem));
         then(orderRepository).should().save(any(Order.class));
+        then(productCacheInvalidator).should().evictProductDetails(List.of(1L));
     }
 
     @Test

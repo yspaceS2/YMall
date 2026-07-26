@@ -41,6 +41,7 @@ import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +59,7 @@ public class OrderService {
     private final PaymentRepository paymentRepository;
     private final OrderMapper orderMapper;
     private final OrderOutboxService orderOutboxService;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
     @Transactional
     public OrderResponse createOrder(Long memberId, OrderCreateRequest request) {
@@ -117,6 +119,7 @@ public class OrderService {
                 product.increaseStock(item.getQuantity());
             }
             order.releaseInventory();
+            productCacheInvalidator.evictProductDetails(productIds);
         }
         order.cancel();
         orderOutboxService.save(
@@ -159,6 +162,7 @@ public class OrderService {
             ));
             product.decreaseStock(cartItem.getQuantity());
         }
+        productCacheInvalidator.evictProductDetails(productIds);
 
         Order savedOrder = orderRepository.save(order);
         cartItemRepository.deleteAll(cartItems);

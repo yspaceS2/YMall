@@ -1,5 +1,7 @@
 package com.ymall.backend.product.service;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -17,6 +19,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.ymall.backend.global.config.ProductCacheNames;
+import com.ymall.backend.review.config.ReviewSummaryCacheNames;
 
 @ExtendWith(MockitoExtension.class)
 class ProductCacheInvalidatorTest {
@@ -46,5 +49,28 @@ class ProductCacheInvalidatorTest {
             TransactionSynchronizationManager.getSynchronizations();
         synchronizations.forEach(TransactionSynchronization::afterCommit);
         verify(cache).evictIfPresent(1L);
+    }
+
+    @Test
+    void evictsOnlyProductDetailCacheForStockChanges() {
+        when(cacheManager.getCache(ProductCacheNames.DETAILS)).thenReturn(cache);
+        ProductCacheInvalidator invalidator = new ProductCacheInvalidator(cacheManager);
+
+        invalidator.evictProductDetails(List.of(1L, 1L, 2L));
+
+        verify(cache).evictIfPresent(1L);
+        verify(cache).evictIfPresent(2L);
+        verify(cacheManager, never()).getCache(ReviewSummaryCacheNames.BY_PRODUCT);
+    }
+
+    @Test
+    void doesNotPropagateCacheEvictionFailure() {
+        when(cacheManager.getCache(ProductCacheNames.DETAILS)).thenReturn(cache);
+        doThrow(new IllegalStateException("Redis unavailable"))
+            .when(cache).evictIfPresent(1L);
+        ProductCacheInvalidator invalidator = new ProductCacheInvalidator(cacheManager);
+
+        assertThatCode(() -> invalidator.evictProductDetails(List.of(1L)))
+            .doesNotThrowAnyException();
     }
 }
