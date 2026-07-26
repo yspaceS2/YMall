@@ -5,6 +5,7 @@
     --color-muted: #74746d;
     --color-line: #dfdfd7;
     --color-paper: #f8f8f5;
+    --color-surface: #ffffff;
     --color-lime: #d9ff43;
     --font-sans: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
     --font-serif: Georgia, serif;
@@ -18,10 +19,33 @@
         text-rendering: optimizeLegibility;
     }
 
+    :root[data-theme="dark"] {
+        --color-ink: #f1f1eb;
+        --color-muted: #aaa9a1;
+        --color-line: #3c3d38;
+        --color-paper: #11120f;
+        --color-surface: #1b1c18;
+        --color-lime: #c7eb3d;
+    }
+
     body {
         min-width: 320px;
         min-height: 100vh;
         margin: 0;
+        background: var(--color-paper);
+        color: var(--color-ink);
+        transition: background-color 160ms ease, color 160ms ease;
+    }
+
+    input,
+    select,
+    textarea {
+        color: inherit;
+    }
+
+    ::selection {
+        background: var(--color-lime);
+        color: #171717;
     }
 
     button,
@@ -36,4 +60,31 @@
     button:disabled {
         cursor: default;
     }
+}
+
+.auth-aside {
+    position: relative;
+    isolation: isolate;
+}
+
+.auth-aside > * {
+    position: relative;
+    z-index: 1;
+}
+
+:root[data-theme="dark"] .auth-aside::before {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    background: rgb(10 11 9 / 58%);
+    content: "";
+}
+
+:root[data-theme="dark"] .bg-white:not(.theme-preserve-light) {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+}
+
+:root[data-theme="dark"] .bg-ink.text-white {
+    color: var(--color-paper);
 }

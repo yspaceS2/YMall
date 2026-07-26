@@ -31,7 +31,7 @@ export function AuthPageLayout({
                 {description && <p className="mt-5 mb-10 text-sm leading-7 text-muted">{description}</p>}
                 {children}
             </div>
-            <aside className={`flex min-h-72 flex-col justify-end overflow-hidden p-5 text-ink min-[601px]:min-h-90 min-[601px]:p-[clamp(40px,7vw,100px)] ${asideClassName}`} aria-hidden="true">
+            <aside className={`auth-aside flex min-h-72 flex-col justify-end overflow-hidden p-5 text-ink min-[601px]:min-h-90 min-[601px]:p-[clamp(40px,7vw,100px)] ${asideClassName}`} aria-hidden="true">
                 <span className="mb-4.5 text-[11px] font-extrabold tracking-[.2em]">{asideEyebrow}</span>
                 <strong className="font-serif text-[clamp(46px,6vw,86px)] leading-[.9] font-medium tracking-[-.06em]">{asideTitle}</strong>
                 {asideDescription && <p className="mt-8 max-w-80 text-sm leading-7 opacity-75">{asideDescription}</p>}
