@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { completeOAuthSignup, confirmOAuthEmailVerification, requestOAuthEmailVerification } from '../api/auth'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
@@ -9,7 +9,10 @@ import { AuthPageLayout } from '../components/auth/AuthPageLayout'
 
 export function OAuthSignupPage() {
     const navigate = useNavigate()
+    const location = useLocation()
     const { completeOAuthLogin } = useAuth()
+    const provider = (location.state as { provider?: 'GOOGLE' | 'KAKAO' } | null)?.provider ?? 'KAKAO'
+    const providerName = provider === 'GOOGLE' ? 'Google' : '카카오'
     const [email, setEmail] = useState('')
     const [name, setName] = useState('')
     const [phone, setPhone] = useState('')
@@ -56,7 +59,7 @@ export function OAuthSignupPage() {
     }
 
     return (
-        <AuthPageLayout eyebrow="SOCIAL SIGNUP · KAKAO" title={<>마지막 한 단계만<br />완료해 주세요.</>} description={<>주문과 배송 안내에 사용할 실제 정보를 입력해 주세요.<br className="hidden min-[601px]:block" /> 입력한 정보는 YMall 회원 정보로 안전하게 관리됩니다.</>} asideEyebrow="CONNECTED WITH KAKAO" asideTitle={<>YOUR TASTE,<br />ONE STEP AWAY.</>} asideDescription={<>카카오 계정 연결이 확인되었습니다.<br />추가정보를 입력하면 바로 쇼핑을 시작할 수 있어요.</>} asideClassName="bg-[#fee500] text-center min-[901px]:justify-center">
+        <AuthPageLayout eyebrow={`SOCIAL SIGNUP · ${provider}`} title={<>마지막 한 단계만<br />완료해 주세요.</>} description={<>주문과 배송 안내에 사용할 실제 정보를 입력해 주세요.<br className="hidden min-[601px]:block" /> 입력한 정보는 YMall 회원 정보로 안전하게 관리됩니다.</>} asideEyebrow={`CONNECTED WITH ${provider}`} asideTitle={<>YOUR TASTE,<br />ONE STEP AWAY.</>} asideDescription={<>{providerName} 계정 연결이 확인되었습니다.<br />추가정보를 입력하면 바로 쇼핑을 시작할 수 있어요.</>} asideClassName={`${provider === 'GOOGLE' ? 'theme-preserve-light bg-white text-[#3c4043]' : 'bg-[#fee500]'} text-center min-[901px]:justify-center`}>
                 {error && <div className="mb-6"><AuthMessage tone="error">{error}</AuthMessage></div>}
 
                 <form className="grid gap-6" onSubmit={submit}>

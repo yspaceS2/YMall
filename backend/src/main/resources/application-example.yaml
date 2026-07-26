@@ -106,6 +106,9 @@ ymall:
     refresh-token-cookie-secure: ${JWT_REFRESH_TOKEN_COOKIE_SECURE:false}
   oauth2:
     frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:5173/oauth2/callback}
+    google-one-tap:
+      client-id: ${spring.security.oauth2.client.registration.google.client-id}
+      nonce-ttl: ${GOOGLE_ONE_TAP_NONCE_TTL:5m}
   mail:
     from: ${MAIL_FROM}
   password-reset:

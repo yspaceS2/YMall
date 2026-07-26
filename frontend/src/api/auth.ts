@@ -1,4 +1,4 @@
-import type { EmailAvailabilityResponse, LoginRequest, MemberAddress, MemberAddressRequest, MemberPasswordChangeRequest, MemberProfile, MemberProfileUpdateRequest, MemberResponse, OAuthAccount, OAuthLinkResponse, OAuthProvider, OAuthSignupRequest, PasswordResetConfirmRequest, PasswordResetRequestResponse, PasswordResetVerificationResponse, SignupRequest, TokenResponse } from '../types/auth'
+import type { EmailAvailabilityResponse, GoogleOneTapLoginResponse, GoogleOneTapNonceResponse, LoginRequest, MemberAddress, MemberAddressRequest, MemberPasswordChangeRequest, MemberProfile, MemberProfileUpdateRequest, MemberResponse, OAuthAccount, OAuthLinkResponse, OAuthProvider, OAuthSignupRequest, PasswordResetConfirmRequest, PasswordResetRequestResponse, PasswordResetVerificationResponse, SignupRequest, TokenResponse } from '../types/auth'
 import { apiRequest } from './client'
 
 export function loginMember(request: LoginRequest) {
@@ -103,6 +103,21 @@ export function confirmOAuthEmailVerification(email: string, code: string) {
 export function getOAuthAuthorizationUrl(provider: OAuthProvider) {
     const baseUrl = (import.meta.env.VITE_OAUTH2_BASE_URL ?? '').replace(/\/$/, '')
     return `${baseUrl}/oauth2/authorization/${provider.toLowerCase()}`
+}
+
+export function requestGoogleOneTapNonce() {
+    return apiRequest<GoogleOneTapNonceResponse>('/members/oauth2/google/one-tap/nonces', {
+        method: 'POST',
+        auth: false,
+    })
+}
+
+export function loginWithGoogleOneTap(credential: string) {
+    return apiRequest<GoogleOneTapLoginResponse>('/members/oauth2/google/one-tap', {
+        method: 'POST',
+        body: { credential },
+        auth: false,
+    })
 }
 
 export function getMemberAddresses(signal?: AbortSignal) {

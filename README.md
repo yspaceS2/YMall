@@ -87,6 +87,7 @@ docker compose down
 - [통합 Docker Compose 실행·백업·문제 해결](docs/docker-compose.md)
 - [Backend 컨테이너](docs/backend-container.md)
 - [Frontend 컨테이너](docs/frontend-container.md)
+- [Google One Tap](docs/google-one-tap.md)
 - [Kafka 개발 환경](docs/kafka-development.md)
 - [Transactional Outbox](docs/transactional-outbox.md)
 - [Kafka 재시도와 DLT](docs/kafka-retry-dlt.md)

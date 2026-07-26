@@ -85,7 +85,9 @@ public class SecurityConfig {
                     "/api/members/password-resets",
                     "/api/members/oauth2/signup",
                     "/api/members/oauth2/email-verifications",
-                    "/api/members/oauth2/email-verifications/confirm"
+                    "/api/members/oauth2/email-verifications/confirm",
+                    "/api/members/oauth2/google/one-tap",
+                    "/api/members/oauth2/google/one-tap/nonces"
                 ).permitAll()
                 .requestMatchers(GET, "/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers(GET, "/actuator/prometheus").permitAll()
