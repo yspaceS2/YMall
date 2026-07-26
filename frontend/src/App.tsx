@@ -10,6 +10,7 @@ import { NotificationPage } from './pages/NotificationPage'
 import { OrderHistoryPage } from './pages/OrderHistoryPage'
 import { OrderResultPage } from './pages/OrderResultPage'
 import { PaymentPage } from './pages/PaymentPage'
+import { PasswordResetPage } from './pages/PasswordResetPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ProductListPage } from './pages/ProductListPage'
 import { SellerManagementPage } from './pages/SellerManagementPage'
@@ -27,6 +28,7 @@ function App() {
             <Routes>
                 <Route path="/" element={<ProductListPage />} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/password-reset" element={<PasswordResetPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/oauth2/callback" element={<OAuth2CallbackPage />} />
                 <Route path="/oauth2/signup" element={<OAuthSignupPage />} />

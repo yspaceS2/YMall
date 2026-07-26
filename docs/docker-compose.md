@@ -52,8 +52,8 @@ docker compose stop backend frontend
 개발용 설정을 합쳐 인프라만 실행한다.
 
 ```bash
-docker compose -f compose.yaml -f compose.dev.yaml up -d postgres redis kafka
-docker compose -f compose.yaml -f compose.dev.yaml ps postgres redis kafka
+docker compose -f compose.yaml -f compose.dev.yaml up -d postgres redis kafka mailhog
+docker compose -f compose.yaml -f compose.dev.yaml ps postgres redis kafka mailhog
 ```
 
 기본 연결 주소는 다음과 같다.
@@ -63,6 +63,12 @@ docker compose -f compose.yaml -f compose.dev.yaml ps postgres redis kafka
 | PostgreSQL | `localhost:5432` |
 | Redis | `localhost:6379` |
 | Kafka | `localhost:9092` |
+| MailHog SMTP | `localhost:1025` |
+| MailHog Web UI | `http://localhost:8025` |
+
+MailHog는 로컬 이메일 발송을 확인하기 위한 개발 전용 서비스다. 비밀번호 재설정이나 OAuth 이메일 인증을
+요청한 뒤 Web UI에서 메일과 인증번호를 확인할 수 있다. 메일은 메모리에만 보관되며 운영 배포에는
+MailHog를 포함하지 않고 실제 SMTP 제공자를 사용한다.
 
 IntelliJ에서는 `local` 프로필로 Backend를 실행하고, VS Code 또는 터미널에서는 Vite를 실행한다.
 `application-local.yaml`의 PostgreSQL 사용자·비밀번호·DB 이름은 루트 `.env`의

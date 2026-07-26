@@ -114,5 +114,9 @@ class RefreshTokenIntegrationTest {
         if (!keys.isEmpty()) {
             redisTemplate.delete(keys);
         }
+        Set<String> memberKeys = redisTemplate.keys("auth:member-refresh:*");
+        if (!memberKeys.isEmpty()) {
+            redisTemplate.delete(memberKeys);
+        }
     }
 }

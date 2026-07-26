@@ -45,6 +45,21 @@ export interface MemberPasswordChangeRequest {
   newPasswordConfirmation: string
 }
 
+export interface PasswordResetRequestResponse {
+  requestId: string
+}
+
+export interface PasswordResetVerificationResponse {
+  resetToken: string
+  expiresIn: number
+}
+
+export interface PasswordResetConfirmRequest {
+  resetToken: string
+  newPassword: string
+  newPasswordConfirmation: string
+}
+
 export interface MemberAddress {
   addressId: number
   addressName: string

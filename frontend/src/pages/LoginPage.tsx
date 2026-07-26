@@ -86,6 +86,11 @@ export function LoginPage() {
                 <form className="grid gap-6" onSubmit={handleSubmit}>
                     <AuthField id="login-email" label="이메일" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required />
                     <AuthField id="login-password" label="비밀번호" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="비밀번호를 입력하세요" required />
+                    <div className="-mt-2 text-right">
+                        <Link className="text-sm font-bold text-muted underline underline-offset-4" to="/password-reset">
+                            비밀번호를 잊으셨나요?
+                        </Link>
+                    </div>
                     {errorMessage && <AuthMessage tone="error">{errorMessage}</AuthMessage>}
                     <button className="mt-2 h-13.5 border border-ink bg-ink font-extrabold text-white disabled:cursor-wait disabled:opacity-60" type="submit" disabled={isSubmitting}>
                         {isSubmitting ? '로그인 중...' : '로그인'}
