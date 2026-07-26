@@ -89,6 +89,7 @@ class MemberControllerTest {
                 .content("""
                     {
                         "email": "user@example.com",
+                        "emailVerificationToken": "verification-token",
                         "password": "password123",
                         "passwordConfirmation": "password123",
                         "name": "홍길동",
@@ -111,6 +112,7 @@ class MemberControllerTest {
                 .content("""
                     {
                         "email": "invalid-email",
+                        "emailVerificationToken": "verification-token",
                         "password": "short",
                         "passwordConfirmation": "different",
                         "name": "",
@@ -129,6 +131,7 @@ class MemberControllerTest {
                 .content("""
                     {
                         "email": "user@example.com",
+                        "emailVerificationToken": "verification-token",
                         "password": "password123",
                         "passwordConfirmation": "different123",
                         "name": "홍길동",
@@ -150,6 +153,7 @@ class MemberControllerTest {
                 .content("""
                     {
                         "email": "user@example.com",
+                        "emailVerificationToken": "verification-token",
                         "password": "password123",
                         "passwordConfirmation": "password123",
                         "name": "홍길동",

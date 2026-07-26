@@ -32,6 +32,7 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final SignupEmailVerificationService signupEmailVerificationService;
 
     public EmailAvailabilityResponse checkEmailAvailability(String requestedEmail) {
         String email = requestedEmail.trim().toLowerCase(Locale.ROOT);
@@ -65,6 +66,7 @@ public class MemberService {
         if (memberRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException(ErrorCode.MEMBER_EMAIL_DUPLICATED);
         }
+        signupEmailVerificationService.consume(request.emailVerificationToken(), email);
 
         Member member = new Member(
             email,

@@ -5,6 +5,7 @@ export interface LoginRequest {
 
 export interface SignupRequest {
   email: string
+  emailVerificationToken: string
   password: string
   passwordConfirmation: string
   name: string
@@ -22,6 +23,16 @@ export interface MemberResponse {
 
 export interface EmailAvailabilityResponse {
   available: boolean
+}
+
+export interface SignupEmailVerificationResponse {
+  requestId: string
+  expiresIn: number
+}
+
+export interface SignupEmailVerificationConfirmResponse {
+  verificationToken: string
+  expiresIn: number
 }
 
 export interface MemberProfile {
@@ -43,6 +54,18 @@ export interface MemberPasswordChangeRequest {
   currentPassword: string
   newPassword: string
   newPasswordConfirmation: string
+}
+
+export interface EmailChangeReauthenticationResponse {
+  verificationRequired: boolean
+  requestId: string | null
+  maskedEmail: string | null
+  expiresIn: number
+}
+
+export interface EmailChangeVerificationResponse {
+  requestId: string
+  expiresIn: number
 }
 
 export interface PasswordResetRequestResponse {

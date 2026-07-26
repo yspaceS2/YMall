@@ -1,6 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { checkEmailAvailability, signupMember } from '../api/auth'
+import {
+    checkEmailAvailability,
+    confirmSignupEmailVerification,
+    requestSignupEmailVerification,
+    signupMember,
+} from '../api/auth'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { AuthField } from '../components/auth/AuthField'
@@ -37,6 +42,11 @@ export function SignupPage() {
     const [errorMessage, setErrorMessage] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [emailCheck, setEmailCheck] = useState<EmailCheckState>({ email: '', status: 'idle' })
+    const [verificationRequestId, setVerificationRequestId] = useState('')
+    const [verificationCode, setVerificationCode] = useState('')
+    const [verifiedEmail, setVerifiedEmail] = useState('')
+    const [emailVerificationToken, setEmailVerificationToken] = useState('')
+    const [isEmailVerificationSubmitting, setIsEmailVerificationSubmitting] = useState(false)
 
     if (isAuthenticated) {
         return <Navigate to="/" replace />
@@ -46,6 +56,10 @@ export function SignupPage() {
         setForm((current) => ({ ...current, [field]: value }))
         if (field === 'email') {
             setEmailCheck({ email: value.trim().toLowerCase(), status: 'idle' })
+            setVerificationRequestId('')
+            setVerificationCode('')
+            setVerifiedEmail('')
+            setEmailVerificationToken('')
         }
     }
 
@@ -53,12 +67,13 @@ export function SignupPage() {
     const isEmailFormatValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
     const currentEmailCheckStatus = emailCheck.email === normalizedEmail ? emailCheck.status : 'idle'
     const isEmailAvailable = currentEmailCheckStatus === 'available'
+    const isEmailVerified = verifiedEmail === normalizedEmail && emailVerificationToken.length > 0
     const hasEmailCheckMessage = currentEmailCheckStatus === 'available'
         || currentEmailCheckStatus === 'unavailable'
         || currentEmailCheckStatus === 'error'
     const hasPasswordConfirmation = form.passwordConfirmation.length > 0
     const isPasswordMatched = hasPasswordConfirmation && form.password === form.passwordConfirmation
-    const canSubmit = isEmailAvailable && isPasswordMatched && !isSubmitting
+    const canSubmit = isEmailAvailable && isEmailVerified && isPasswordMatched && !isSubmitting
 
     async function handleEmailAvailabilityCheck() {
         if (!isEmailFormatValid) return
@@ -76,12 +91,59 @@ export function SignupPage() {
         }
     }
 
+    async function handleEmailVerificationRequest() {
+        if (!isEmailAvailable || !isEmailFormatValid) return
+
+        setErrorMessage('')
+        setIsEmailVerificationSubmitting(true)
+        try {
+            const response = await requestSignupEmailVerification(normalizedEmail)
+            setVerificationRequestId(response.requestId)
+            setVerificationCode('')
+            setVerifiedEmail('')
+            setEmailVerificationToken('')
+        } catch (error) {
+            setErrorMessage(
+                error instanceof ApiError ? error.message : '인증번호를 발송하지 못했습니다.',
+            )
+        } finally {
+            setIsEmailVerificationSubmitting(false)
+        }
+    }
+
+    async function handleEmailVerificationConfirm() {
+        if (!verificationRequestId || verificationCode.length !== 6) return
+
+        setErrorMessage('')
+        setIsEmailVerificationSubmitting(true)
+        try {
+            const response = await confirmSignupEmailVerification(
+                verificationRequestId,
+                normalizedEmail,
+                verificationCode,
+            )
+            setVerifiedEmail(normalizedEmail)
+            setEmailVerificationToken(response.verificationToken)
+        } catch (error) {
+            setErrorMessage(
+                error instanceof ApiError ? error.message : '인증번호를 확인하지 못했습니다.',
+            )
+        } finally {
+            setIsEmailVerificationSubmitting(false)
+        }
+    }
+
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         setErrorMessage('')
 
         if (!isEmailAvailable) {
             setErrorMessage('이메일 중복 확인을 완료해 주세요.')
+            return
+        }
+
+        if (!isEmailVerified) {
+            setErrorMessage('이메일 인증을 완료해 주세요.')
             return
         }
 
@@ -95,6 +157,7 @@ export function SignupPage() {
             await signupMember({
                 ...form,
                 email: form.email.trim(),
+                emailVerificationToken,
                 name: form.name.trim(),
                 phone: form.phone.replace(/[\s-]/g, ''),
             })
@@ -132,14 +195,35 @@ export function SignupPage() {
                         action={<button
                                 className="h-10.5 border border-ink px-4 font-bold text-ink disabled:cursor-default disabled:border-line disabled:text-muted"
                                 type="button"
-                                onClick={handleEmailAvailabilityCheck}
-                                disabled={!isEmailFormatValid || currentEmailCheckStatus === 'checking'}
+                                onClick={isEmailAvailable
+                                    ? handleEmailVerificationRequest
+                                    : handleEmailAvailabilityCheck}
+                                disabled={
+                                    !isEmailFormatValid
+                                    || currentEmailCheckStatus === 'checking'
+                                    || isEmailVerificationSubmitting
+                                    || isEmailVerified
+                                }
                             >
-                                {currentEmailCheckStatus === 'checking' ? '확인 중...' : '중복 확인'}
+                                {currentEmailCheckStatus === 'checking'
+                                    ? '확인 중...'
+                                    : isEmailVerified
+                                        ? '인증 완료'
+                                        : isEmailAvailable
+                                            ? verificationRequestId
+                                                ? '인증번호 재발송'
+                                                : '인증번호 발송'
+                                            : '중복 확인'}
                             </button>}
                         message={hasEmailCheckMessage ? <>
                         {currentEmailCheckStatus === 'available' && (
-                            <span className="font-medium text-[#657617]" role="status">사용 가능한 이메일입니다.</span>
+                            <span className="font-medium text-[#657617]" role="status">
+                                {isEmailVerified
+                                    ? '이메일 인증이 완료되었습니다.'
+                                    : verificationRequestId
+                                        ? '인증번호를 발송했습니다. MailHog 또는 받은편지함을 확인해 주세요.'
+                                        : '사용 가능한 이메일입니다. 인증번호를 발송해 주세요.'}
+                            </span>
                         )}
                         {currentEmailCheckStatus === 'unavailable' && (
                             <span className="font-medium text-[#b23b2f]" role="alert">이미 사용 중인 이메일입니다.</span>
@@ -149,6 +233,28 @@ export function SignupPage() {
                         )}
                         </> : undefined}
                     />
+                    {verificationRequestId && !isEmailVerified && (
+                        <AuthField
+                            id="signup-email-verification-code"
+                            label="이메일 인증번호"
+                            inputMode="numeric"
+                            value={verificationCode}
+                            onChange={(event) => setVerificationCode(
+                                event.target.value.replace(/\D/g, '').slice(0, 6),
+                            )}
+                            placeholder="6자리 인증번호"
+                            maxLength={6}
+                            required
+                            action={<button
+                                className="h-10.5 border border-ink px-4 font-bold text-ink disabled:cursor-default disabled:border-line disabled:text-muted"
+                                type="button"
+                                onClick={handleEmailVerificationConfirm}
+                                disabled={verificationCode.length !== 6 || isEmailVerificationSubmitting}
+                            >
+                                {isEmailVerificationSubmitting ? '확인 중...' : '인증 확인'}
+                            </button>}
+                        />
+                    )}
                     {fields.map((field) => (
                         <AuthField
                                 key={field.key}

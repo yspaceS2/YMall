@@ -5,6 +5,7 @@ import { changeMemberPassword, getMemberProfile, getOAuthAccounts, getOAuthAutho
 import { ApiError } from '../api/client'
 import type { MemberProfile, OAuthProvider } from '../types/auth'
 import { AddressManager } from '../components/AddressManager'
+import { EmailChangePanel } from '../components/member/EmailChangePanel'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
 
@@ -185,7 +186,7 @@ export function MyPage() {
                     <button className="mt-2 h-12 border border-ink bg-ink font-extrabold text-white disabled:opacity-60" type="submit" disabled={isChangingPassword || !isPasswordMatched || currentPassword.length === 0}>
                         {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
                     </button>
-                </form> : <div className="grid content-start gap-5 border border-line bg-[#f7f7f2] p-6 min-[601px]:p-8">
+                </form> : <div className="grid content-start gap-5 border border-line bg-surface p-6 min-[601px]:p-8">
                     <div>
                         <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">SECURITY</p>
                         <h2 className="mt-2 font-serif text-3xl">소셜 로그인 계정</h2>
@@ -193,7 +194,10 @@ export function MyPage() {
                     <p className="text-sm leading-7 text-muted">이 계정은 비밀번호 없이 연결된 소셜 계정으로 로그인합니다. 비밀번호 변경은 제공되지 않습니다.</p>
                 </div>}
             </div>
-            <div className="mt-8 scroll-mt-24 border border-line bg-white p-6 min-[601px]:p-8" id="social-accounts">
+            <div className="mt-8">
+                <EmailChangePanel currentEmail={profile.email} hasPassword={profile.hasPassword} />
+            </div>
+            <div className="mt-8 scroll-mt-24 border border-line bg-surface p-6 min-[601px]:p-8" id="social-accounts">
                 <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">SOCIAL LOGIN</p>
                 <h2 className="mt-2 font-serif text-3xl">연결된 소셜 계정</h2>
                 <p className="mt-3 text-sm text-muted">소셜 계정을 연결하면 해당 계정으로도 같은 YMall 회원에 로그인할 수 있습니다.</p>
@@ -202,7 +206,7 @@ export function MyPage() {
                         const isLinked = linkedProviders.includes(provider)
                         return (
                             <button
-                                className="flex h-13 items-center justify-between border border-line px-4 text-sm font-bold disabled:bg-[#f4f4ef] disabled:text-muted"
+                                className="flex h-13 items-center justify-between border border-line px-4 text-sm font-bold disabled:bg-paper disabled:text-muted"
                                 type="button"
                                 key={provider}
                                 disabled={isLinked || linkingProvider !== null}
