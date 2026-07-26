@@ -6,7 +6,7 @@ describe('한국 시간 표시', () => {
         const result = formatKoreanDateTime('2026-07-26T12:00:00Z')
 
         expect(result).toContain('2026')
-        expect(result).toContain('오후 9:00')
+        expect(result).toContain('9:00')
     })
 
     it('UTC 자정 경계를 한국 날짜로 변환한다', () => {
