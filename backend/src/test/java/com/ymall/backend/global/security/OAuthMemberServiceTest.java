@@ -119,6 +119,23 @@ class OAuthMemberServiceTest {
         verify(oAuthAccountRepository).save(any(OAuthAccount.class));
     }
 
+    @Test
+    void findsOnlyExistingProviderAccountForOneTapLogin() {
+        Member member = member(1L, "member@example.com");
+        OAuthAccount account = new OAuthAccount(member, OAuthProvider.GOOGLE, "google-user");
+        given(oAuthAccountRepository.findByProviderAndProviderUserId(
+            OAuthProvider.GOOGLE,
+            "google-user"
+        )).willReturn(Optional.of(account));
+
+        Optional<Member> result = service.findExistingMember(
+            OAuthProvider.GOOGLE,
+            "google-user"
+        );
+
+        assertThat(result).containsSame(member);
+    }
+
     private Member member(Long id, String email) {
         Member member = new Member(email, "password", "사용자", MemberRole.ROLE_USER);
         ReflectionTestUtils.setField(member, "id", id);

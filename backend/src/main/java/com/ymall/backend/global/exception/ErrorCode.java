@@ -21,6 +21,7 @@ public enum ErrorCode {
     OAUTH_EMAIL_VERIFICATION_REQUIRED(HttpStatus.BAD_REQUEST, "이메일 인증을 완료해 주세요."),
     OAUTH_EMAIL_VERIFICATION_FAILED(HttpStatus.BAD_REQUEST, "이메일 인증번호가 올바르지 않거나 만료되었습니다."),
     OAUTH_EMAIL_DELIVERY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "인증 이메일을 발송하지 못했습니다."),
+    GOOGLE_ONE_TAP_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Google 로그인 정보가 올바르지 않거나 만료되었습니다."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
     LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
     CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "현재 비밀번호가 올바르지 않습니다."),

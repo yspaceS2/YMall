@@ -96,3 +96,14 @@ export interface TokenResponse {
   tokenType: string
   expiresIn: number
 }
+
+export interface GoogleOneTapNonceResponse {
+  clientId: string
+  nonce: string
+  expiresIn: number
+}
+
+export interface GoogleOneTapLoginResponse {
+  signupRequired: boolean
+  token: TokenResponse | null
+}

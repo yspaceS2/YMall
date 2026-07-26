@@ -5,6 +5,8 @@ import { useAuth } from '../auth/useAuth'
 import { clearAccessToken } from '../auth/tokenStorage'
 import { getOAuthAuthorizationUrl } from '../api/auth'
 import { AuthField } from '../components/auth/AuthField'
+import { cancelGoogleOneTap } from '../api/googleIdentity'
+import { GoogleOneTapPrompt } from '../components/auth/GoogleOneTapPrompt'
 import { AuthMessage } from '../components/auth/AuthMessage'
 import { AuthPageLayout } from '../components/auth/AuthPageLayout'
 
@@ -41,7 +43,7 @@ function NaverLogo() {
 }
 
 export function LoginPage() {
-    const { isAuthenticated, login } = useAuth()
+    const { isAuthenticated, login, completeOAuthLogin } = useAuth()
     const location = useLocation()
     const navigate = useNavigate()
     const [email, setEmail] = useState('')
@@ -81,11 +83,30 @@ export function LoginPage() {
             asideTitle={<>YOUR TASTE,<br />STILL HERE.</>}
             contentClassName="max-w-115"
         >
+                <GoogleOneTapPrompt
+                    onAuthenticated={(token) => {
+                        completeOAuthLogin(token.accessToken)
+                        navigate(destination, { replace: true })
+                    }}
+                    onSignupRequired={() => {
+                        navigate('/oauth2/signup', {
+                            replace: true,
+                            state: { provider: 'GOOGLE' },
+                        })
+                    }}
+                    onError={(error) => {
+                        setErrorMessage(
+                            error instanceof ApiError
+                                ? error.message
+                                : 'Google 간편 로그인을 사용할 수 없습니다. 다른 로그인 방법을 이용해 주세요.',
+                        )
+                    }}
+                />
                 {state?.signupCompleted && <div className="mb-6"><AuthMessage tone="success">회원가입이 완료되었습니다. 새 계정으로 로그인해 주세요.</AuthMessage></div>}
 
                 <form className="grid gap-6" onSubmit={handleSubmit}>
-                    <AuthField id="login-email" label="이메일" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required />
-                    <AuthField id="login-password" label="비밀번호" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="비밀번호를 입력하세요" required />
+                    <AuthField id="login-email" label="이메일" type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={cancelGoogleOneTap} autoComplete="email" placeholder="you@example.com" required />
+                    <AuthField id="login-password" label="비밀번호" type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={cancelGoogleOneTap} autoComplete="current-password" placeholder="비밀번호를 입력하세요" required />
                     <div className="-mt-2 text-right">
                         <Link className="text-sm font-bold text-muted underline underline-offset-4" to="/password-reset">
                             비밀번호를 잊으셨나요?

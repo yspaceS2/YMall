@@ -1,5 +1,7 @@
 package com.ymall.backend.global.security;
 
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,16 @@ public class OAuthMemberService {
 
     private final MemberRepository memberRepository;
     private final OAuthAccountRepository oAuthAccountRepository;
+
+    @Transactional(readOnly = true)
+    public Optional<Member> findExistingMember(
+        OAuthProvider provider,
+        String providerUserId
+    ) {
+        return oAuthAccountRepository
+            .findByProviderAndProviderUserId(provider, providerUserId)
+            .map(OAuthAccount::getMember);
+    }
 
     @Transactional
     public OAuthLoginResult resolve(

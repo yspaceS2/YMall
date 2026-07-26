@@ -33,6 +33,10 @@ spring:
             scope: openid, profile, email
 
 ymall:
+  oauth2:
+    google-one-tap:
+      client-id: test-client-id
+      nonce-ttl: 5m
   jwt:
     secret: test-jwt-secret-key-for-ymall-that-is-at-least-32-bytes-long
     access-token-expiration: 30m
