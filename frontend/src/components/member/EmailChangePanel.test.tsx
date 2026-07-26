@@ -2,17 +2,19 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
     changeMemberEmail,
-    confirmEmailChangeReauthentication,
     requestNewEmailVerification,
-    startEmailChangeReauthentication,
+    startEmailChangeOAuthReauthentication,
+    startEmailChangeReauthentication
 } from '../../api/auth'
 import { EmailChangePanel } from './EmailChangePanel'
 
 const navigate = vi.fn()
 const logout = vi.fn()
+let locationState: Record<string, unknown> | null = null
 
 vi.mock('react-router-dom', () => ({
     useNavigate: () => navigate,
+    useLocation: () => ({ pathname: '/mypage', state: locationState }),
 }))
 
 vi.mock('../../auth/useAuth', () => ({
@@ -21,7 +23,8 @@ vi.mock('../../auth/useAuth', () => ({
 
 vi.mock('../../api/auth', () => ({
     startEmailChangeReauthentication: vi.fn(),
-    confirmEmailChangeReauthentication: vi.fn(),
+    startEmailChangeOAuthReauthentication: vi.fn(),
+    getOAuthAuthorizationUrl: vi.fn(),
     requestNewEmailVerification: vi.fn(),
     changeMemberEmail: vi.fn(),
 }))
@@ -29,6 +32,7 @@ vi.mock('../../api/auth', () => ({
 describe('EmailChangePanel', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        locationState = null
         logout.mockResolvedValue(undefined)
     })
 
@@ -45,7 +49,13 @@ describe('EmailChangePanel', () => {
         })
         vi.mocked(changeMemberEmail).mockResolvedValue(undefined)
 
-        render(<EmailChangePanel currentEmail="old@example.com" hasPassword />)
+        render(
+            <EmailChangePanel
+                currentEmail="old@example.com"
+                hasPassword
+                linkedProviders={[]}
+            />,
+        )
 
         fireEvent.change(screen.getByLabelText('현재 비밀번호'), {
             target: { value: 'password123' },
@@ -78,29 +88,34 @@ describe('EmailChangePanel', () => {
         })
     })
 
-    it('소셜 회원은 현재 등록 이메일 인증을 먼저 완료한다', async () => {
-        vi.mocked(startEmailChangeReauthentication).mockResolvedValue({
-            verificationRequired: true,
-            requestId: 'current-email-request',
-            maskedEmail: 's***@example.com',
-            expiresIn: 300,
-        })
-        vi.mocked(confirmEmailChangeReauthentication).mockResolvedValue(undefined)
-
-        render(<EmailChangePanel currentEmail="social@example.com" hasPassword={false} />)
-
-        fireEvent.click(screen.getByRole('button', { name: '현재 이메일로 인증번호 받기' }))
-        await screen.findByLabelText('s***@example.com 인증번호')
-
-        fireEvent.change(screen.getByLabelText('s***@example.com 인증번호'), {
-            target: { value: '654321' },
-        })
-        fireEvent.click(screen.getByRole('button', { name: '본인 확인 완료' }))
-
-        await screen.findByLabelText('새 이메일')
-        expect(confirmEmailChangeReauthentication).toHaveBeenCalledWith(
-            'current-email-request',
-            '654321',
+    it('소셜 회원에게 연결된 계정 재로그인 선택지를 표시한다', () => {
+        render(
+            <EmailChangePanel
+                currentEmail="social@example.com"
+                hasPassword={false}
+                linkedProviders={['GOOGLE', 'KAKAO']}
+            />,
         )
+
+        expect(screen.getByRole('button', { name: 'Google로 본인 확인' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: '카카오로 본인 확인' })).toBeInTheDocument()
+        expect(screen.queryByText('현재 이메일로 인증번호 받기')).not.toBeInTheDocument()
+        expect(startEmailChangeOAuthReauthentication).not.toHaveBeenCalled()
+    })
+
+    it('소셜 계정 재인증 콜백 후 새 이메일 인증 단계로 이동한다', () => {
+        locationState = { emailChangeReauthenticated: true }
+
+        render(
+            <EmailChangePanel
+                currentEmail="social@example.com"
+                hasPassword={false}
+                linkedProviders={['NAVER']}
+            />,
+        )
+
+        expect(screen.getByLabelText('새 이메일')).toBeInTheDocument()
+        expect(screen.getByText('소셜 계정 본인 확인이 완료되었습니다.')).toBeInTheDocument()
+        expect(navigate).toHaveBeenCalledWith('/mypage', { replace: true, state: null })
     })
 })

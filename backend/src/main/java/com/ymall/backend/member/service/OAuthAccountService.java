@@ -7,6 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
+import com.ymall.backend.global.exception.BusinessException;
+import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.dto.OAuthAccountResponse;
 import com.ymall.backend.member.entity.OAuthProvider;
 import com.ymall.backend.member.repository.OAuthAccountRepository;
@@ -31,6 +33,12 @@ public class OAuthAccountService {
             throw new com.ymall.backend.global.exception.BusinessException(
                 com.ymall.backend.global.exception.ErrorCode.INVALID_REQUEST
             );
+        }
+    }
+
+    public void requireLinkedProvider(Long memberId, OAuthProvider provider) {
+        if (!oAuthAccountRepository.existsByMemberIdAndProvider(memberId, provider)) {
+            throw new BusinessException(ErrorCode.EMAIL_CHANGE_OAUTH_ACCOUNT_MISMATCH);
         }
     }
 }

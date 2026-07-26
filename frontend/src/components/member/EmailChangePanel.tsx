@@ -1,36 +1,64 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
     changeMemberEmail,
-    confirmEmailChangeReauthentication,
+    getOAuthAuthorizationUrl,
     requestNewEmailVerification,
+    startEmailChangeOAuthReauthentication,
     startEmailChangeReauthentication,
 } from '../../api/auth'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
+import type { OAuthProvider } from '../../types/auth'
 import { FeedbackMessage } from '../ui/FeedbackMessage'
 
-type Stage = 'reauthentication' | 'currentCode' | 'newEmail' | 'newCode'
+type Stage = 'reauthentication' | 'newEmail' | 'newCode'
 
 interface EmailChangePanelProps {
     currentEmail: string
     hasPassword: boolean
+    linkedProviders: OAuthProvider[]
 }
 
-export function EmailChangePanel({ currentEmail, hasPassword }: EmailChangePanelProps) {
+interface EmailChangeLocationState {
+    emailChangeReauthenticated?: boolean
+    emailChangeReauthenticationError?: string
+}
+
+export function EmailChangePanel({
+    currentEmail,
+    hasPassword,
+    linkedProviders,
+}: EmailChangePanelProps) {
     const navigate = useNavigate()
+    const location = useLocation()
     const { logout } = useAuth()
-    const [stage, setStage] = useState<Stage>('reauthentication')
+    const locationState = location.state as EmailChangeLocationState | null
+    const [stage, setStage] = useState<Stage>(
+        locationState?.emailChangeReauthenticated ? 'newEmail' : 'reauthentication',
+    )
     const [currentPassword, setCurrentPassword] = useState('')
-    const [currentRequestId, setCurrentRequestId] = useState('')
-    const [currentCode, setCurrentCode] = useState('')
-    const [maskedEmail, setMaskedEmail] = useState('')
     const [newEmail, setNewEmail] = useState('')
     const [newRequestId, setNewRequestId] = useState('')
     const [newCode, setNewCode] = useState('')
-    const [message, setMessage] = useState('')
-    const [error, setError] = useState('')
+    const [message, setMessage] = useState(
+        locationState?.emailChangeReauthenticated ? '소셜 계정 본인 확인이 완료되었습니다.' : '',
+    )
+    const [error, setError] = useState(locationState?.emailChangeReauthenticationError ?? '')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [reauthenticatingProvider, setReauthenticatingProvider] =
+        useState<OAuthProvider | null>(null)
+
+    useEffect(() => {
+        if (locationState?.emailChangeReauthenticated
+            || locationState?.emailChangeReauthenticationError) {
+            navigate('/mypage', { replace: true, state: null })
+        }
+    }, [
+        locationState?.emailChangeReauthenticated,
+        locationState?.emailChangeReauthenticationError,
+        navigate,
+    ])
 
     function reportError(value: unknown, fallback: string) {
         setError(value instanceof ApiError ? value.message : fallback)
@@ -41,18 +69,9 @@ export function EmailChangePanel({ currentEmail, hasPassword }: EmailChangePanel
         setMessage('')
         setIsSubmitting(true)
         try {
-            const response = await startEmailChangeReauthentication(
-                hasPassword ? currentPassword : undefined,
-            )
-            if (response.verificationRequired && response.requestId) {
-                setCurrentRequestId(response.requestId)
-                setMaskedEmail(response.maskedEmail ?? currentEmail)
-                setStage('currentCode')
-                setMessage(`${response.maskedEmail ?? '현재 이메일'}로 인증번호를 발송했습니다.`)
-            } else {
-                setStage('newEmail')
-                setMessage('본인 확인이 완료되었습니다.')
-            }
+            await startEmailChangeReauthentication(currentPassword)
+            setStage('newEmail')
+            setMessage('본인 확인이 완료되었습니다.')
         } catch (value) {
             reportError(value, '본인 확인을 시작하지 못했습니다.')
         } finally {
@@ -60,18 +79,17 @@ export function EmailChangePanel({ currentEmail, hasPassword }: EmailChangePanel
         }
     }
 
-    async function confirmCurrentCode(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault()
+    async function startOAuthReauthentication(provider: OAuthProvider) {
         setError('')
         setMessage('')
+        setReauthenticatingProvider(provider)
         setIsSubmitting(true)
         try {
-            await confirmEmailChangeReauthentication(currentRequestId, currentCode)
-            setStage('newEmail')
-            setMessage('본인 확인이 완료되었습니다.')
+            await startEmailChangeOAuthReauthentication(provider)
+            window.location.assign(getOAuthAuthorizationUrl(provider))
         } catch (value) {
-            reportError(value, '인증번호를 확인하지 못했습니다.')
-        } finally {
+            reportError(value, '소셜 계정 본인 확인을 시작하지 못했습니다.')
+            setReauthenticatingProvider(null)
             setIsSubmitting(false)
         }
     }
@@ -138,43 +156,42 @@ export function EmailChangePanel({ currentEmail, hasPassword }: EmailChangePanel
                             />
                         </label>
                     ) : (
-                        <p className="text-sm leading-6 text-muted">
-                            비밀번호가 없는 소셜 회원은 현재 등록 이메일 인증으로 본인 여부를 확인합니다.
-                        </p>
+                        <>
+                            <p className="text-sm leading-6 text-muted">
+                                이메일 변경 전, 현재 회원에 연결된 소셜 계정으로 다시 로그인해 본인 여부를 확인합니다.
+                            </p>
+                            <div className="grid gap-3 min-[601px]:grid-cols-3">
+                                {linkedProviders.map((provider) => (
+                                    <button
+                                        className="h-12 border border-line bg-surface px-3 text-sm font-bold text-ink disabled:opacity-60"
+                                        type="button"
+                                        key={provider}
+                                        onClick={() => startOAuthReauthentication(provider)}
+                                        disabled={isSubmitting}
+                                    >
+                                        {reauthenticatingProvider === provider
+                                            ? '이동 중...'
+                                            : `${provider === 'GOOGLE'
+                                                ? 'Google'
+                                                : provider === 'KAKAO'
+                                                    ? '카카오'
+                                                    : '네이버'}로 본인 확인`}
+                                    </button>
+                                ))}
+                            </div>
+                        </>
                     )}
-                    <button
-                        className="h-12 border border-ink bg-ink font-extrabold text-white disabled:opacity-60"
-                        type="button"
-                        onClick={startReauthentication}
-                        disabled={isSubmitting || (hasPassword && currentPassword.length === 0)}
-                    >
-                        {isSubmitting
-                            ? '확인 중...'
-                            : hasPassword
-                                ? '현재 비밀번호로 본인 확인'
-                                : '현재 이메일로 인증번호 받기'}
-                    </button>
+                    {hasPassword && (
+                        <button
+                            className="h-12 border border-ink bg-ink font-extrabold text-white disabled:opacity-60"
+                            type="button"
+                            onClick={startReauthentication}
+                            disabled={isSubmitting || currentPassword.length === 0}
+                        >
+                            {isSubmitting ? '확인 중...' : '현재 비밀번호로 본인 확인'}
+                        </button>
+                    )}
                 </div>
-            )}
-
-            {stage === 'currentCode' && (
-                <form className="grid gap-4" onSubmit={confirmCurrentCode}>
-                    <label className="grid gap-2 text-xs font-bold text-muted">
-                        <span>{maskedEmail} 인증번호</span>
-                        <input
-                            className="border-0 border-b border-line bg-transparent px-0.5 py-3.5 text-ink outline-0 focus:border-ink"
-                            value={currentCode}
-                            onChange={(event) => setCurrentCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                            inputMode="numeric"
-                            pattern="\d{6}"
-                            maxLength={6}
-                            required
-                        />
-                    </label>
-                    <button className="h-12 border border-ink bg-ink font-extrabold text-white disabled:opacity-60" type="submit" disabled={isSubmitting || currentCode.length !== 6}>
-                        {isSubmitting ? '확인 중...' : '본인 확인 완료'}
-                    </button>
-                </form>
             )}
 
             {stage === 'newEmail' && (

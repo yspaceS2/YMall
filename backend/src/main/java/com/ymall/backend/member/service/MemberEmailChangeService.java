@@ -39,38 +39,12 @@ import com.ymall.backend.member.repository.MemberRepository;
 public class MemberEmailChangeService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    private static final String CURRENT_CHALLENGE_PREFIX = "email-change:current:";
     private static final String NEW_CHALLENGE_PREFIX = "email-change:new:";
     private static final String REAUTHENTICATION_PREFIX = "email-change:reauthenticated:";
     private static final String RATE_PREFIX = "email-change:rate:";
     private static final String COOLDOWN_PREFIX = "email-change:cooldown:";
     private static final String PASSWORD_ATTEMPT_PREFIX = "email-change:password-attempt:";
     private static final int MAX_PASSWORD_ATTEMPTS = 10;
-    private static final DefaultRedisScript<String> VERIFY_CURRENT_SCRIPT = new DefaultRedisScript<>(
-        """
-        local storedMemberId = redis.call('HGET', KEYS[1], 'memberId')
-        local storedDigest = redis.call('HGET', KEYS[1], 'codeDigest')
-        local emailDigest = redis.call('HGET', KEYS[1], 'emailDigest')
-        if not storedMemberId or storedMemberId ~= ARGV[2] or not storedDigest or not emailDigest then
-            return nil
-        end
-        local attempts = redis.call('HINCRBY', KEYS[1], 'attempts', 1)
-        if attempts > tonumber(ARGV[3]) then
-            redis.call('DEL', KEYS[1])
-            return nil
-        end
-        if storedDigest ~= ARGV[1] then
-            if attempts >= tonumber(ARGV[3]) then
-                redis.call('DEL', KEYS[1])
-            end
-            return nil
-        end
-        redis.call('DEL', KEYS[1])
-        redis.call('SET', KEYS[2], emailDigest, 'EX', ARGV[4])
-        return 'verified'
-        """,
-        String.class
-    );
     private static final DefaultRedisScript<String> VERIFY_NEW_SCRIPT = new DefaultRedisScript<>(
         """
         local storedMemberId = redis.call('HGET', KEYS[1], 'memberId')
@@ -130,47 +104,17 @@ public class MemberEmailChangeService {
                 properties.getReauthenticationTtl().toSeconds()
             );
         }
-
-        enforceEmailRequestLimits("current", memberId, digest(member.getEmail()));
-        String requestId = generateToken();
-        String code = generateCode();
-        String challengeKey = CURRENT_CHALLENGE_PREFIX + digest(requestId);
-        redisTemplate.opsForHash().putAll(challengeKey, Map.of(
-            "memberId", memberId.toString(),
-            "emailDigest", digest(member.getEmail()),
-            "codeDigest", digest(requestId + ":" + code),
-            "attempts", "0"
-        ));
-        redisTemplate.expire(challengeKey, properties.getCodeTtl());
-        try {
-            sendCode(member.getEmail(), code, "본인 확인");
-        } catch (BusinessException exception) {
-            redisTemplate.delete(challengeKey);
-            throw exception;
-        }
-        return new EmailChangeReauthenticationResponse(
-            true,
-            requestId,
-            mask(member.getEmail()),
-            properties.getCodeTtl().toSeconds()
-        );
+        throw new BusinessException(ErrorCode.EMAIL_CHANGE_REAUTHENTICATION_REQUIRED);
     }
 
-    public void confirmReauthentication(Long memberId, String requestId, String code) {
-        String result = redisTemplate.execute(
-            VERIFY_CURRENT_SCRIPT,
-            List.of(
-                CURRENT_CHALLENGE_PREFIX + digest(requestId),
-                reauthenticationKey(memberId)
-            ),
-            digest(requestId + ":" + code),
-            memberId.toString(),
-            Integer.toString(properties.getMaxAttempts()),
-            Long.toString(properties.getReauthenticationTtl().toSeconds())
-        );
-        if (result == null) {
-            throw new BusinessException(ErrorCode.EMAIL_CHANGE_VERIFICATION_FAILED);
+    public void requireOAuthReauthentication(Long memberId) {
+        if (findMember(memberId).hasPassword()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
+    }
+
+    public void markOAuthReauthenticated(Long memberId) {
+        markReauthenticated(findMember(memberId));
     }
 
     public EmailChangeVerificationResponse sendNewEmailVerification(
@@ -334,14 +278,6 @@ public class MemberEmailChangeService {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
-    }
-
-    private String mask(String email) {
-        int separator = email.indexOf('@');
-        if (separator <= 0) {
-            return "***";
-        }
-        return email.charAt(0) + "***" + email.substring(separator);
     }
 
     private String reauthenticationKey(Long memberId) {

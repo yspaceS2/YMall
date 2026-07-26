@@ -72,11 +72,11 @@ export function startEmailChangeReauthentication(currentPassword?: string) {
     })
 }
 
-export function confirmEmailChangeReauthentication(requestId: string, code: string) {
-    return apiRequest<void>('/members/me/email-change/reauthentications/confirm', {
-        method: 'POST',
-        body: { requestId, code },
-    })
+export function startEmailChangeOAuthReauthentication(provider: OAuthProvider) {
+    return apiRequest<OAuthLinkResponse>(
+        `/members/me/email-change/oauth-reauthentications/${provider.toLowerCase()}`,
+        { method: 'POST' },
+    )
 }
 
 export function requestNewEmailVerification(email: string) {

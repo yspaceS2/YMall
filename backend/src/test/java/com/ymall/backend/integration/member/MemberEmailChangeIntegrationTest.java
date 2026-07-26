@@ -41,6 +41,7 @@ import com.ymall.backend.member.entity.OAuthAccount;
 import com.ymall.backend.member.entity.OAuthProvider;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.member.repository.OAuthAccountRepository;
+import com.ymall.backend.member.service.MemberEmailChangeService;
 
 @SpringBootTest(properties = "management.health.mail.enabled=false")
 @AutoConfigureMockMvc
@@ -56,6 +57,7 @@ class MemberEmailChangeIntegrationTest {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
     @Autowired private StringRedisTemplate redisTemplate;
+    @Autowired private MemberEmailChangeService emailChangeService;
 
     @MockitoBean
     private JavaMailSender mailSender;
@@ -111,7 +113,8 @@ class MemberEmailChangeIntegrationTest {
     }
 
     @Test
-    void socialMemberVerifiesCurrentEmailAndKeepsProviderConnection() throws Exception {
+    void socialMemberChangesEmailAfterOAuthReauthenticationAndKeepsProviderConnection()
+        throws Exception {
         Member member = memberRepository.save(new Member(
             "social-old@example.com",
             null,
@@ -121,20 +124,14 @@ class MemberEmailChangeIntegrationTest {
         oAuthAccountRepository.save(new OAuthAccount(member, OAuthProvider.GOOGLE, "google-sub-123"));
         String authorization = authorization(member);
 
-        MvcResult reauthenticationResult = reauthenticate(authorization, null)
+        mockMvc.perform(post(
+                "/api/members/me/email-change/oauth-reauthentications/google"
+            )
+                .header(HttpHeaders.AUTHORIZATION, authorization))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.verificationRequired").value(true))
-            .andExpect(jsonPath("$.data.maskedEmail").value("s***@example.com"))
-            .andReturn();
-        String currentRequestId = responseValue(reauthenticationResult, "requestId");
-        String currentCode = capturedVerificationCode();
-        clearInvocations(mailSender);
-
-        mockMvc.perform(post("/api/members/me/email-change/reauthentications/confirm")
-                .header(HttpHeaders.AUTHORIZATION, authorization)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(codeJson(currentRequestId, currentCode)))
-            .andExpect(status().isOk());
+            .andExpect(jsonPath("$.data.authorizationUrl")
+                .value("/oauth2/authorization/google"));
+        emailChangeService.markOAuthReauthenticated(member.getId());
 
         String newRequestId = requestNewEmail(authorization, "social-new@example.com");
         String newCode = capturedVerificationCode();
@@ -205,6 +202,29 @@ class MemberEmailChangeIntegrationTest {
             .andExpect(jsonPath("$.error.code").value("EMAIL_CHANGE_REAUTHENTICATION_REQUIRED"));
     }
 
+    @Test
+    void socialReauthenticationRejectsProviderNotLinkedToCurrentMember() throws Exception {
+        Member member = memberRepository.save(new Member(
+            "social@example.com",
+            null,
+            "Social User",
+            MemberRole.ROLE_USER
+        ));
+        oAuthAccountRepository.save(new OAuthAccount(
+            member,
+            OAuthProvider.GOOGLE,
+            "google-sub-123"
+        ));
+
+        mockMvc.perform(post(
+                "/api/members/me/email-change/oauth-reauthentications/kakao"
+            )
+                .header(HttpHeaders.AUTHORIZATION, authorization(member)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code")
+                .value("EMAIL_CHANGE_OAUTH_ACCOUNT_MISMATCH"));
+    }
+
     private org.springframework.test.web.servlet.ResultActions reauthenticate(
         String authorization,
         String currentPassword
@@ -261,12 +281,6 @@ class MemberEmailChangeIntegrationTest {
         return """
             {"email":"%s","password":"%s"}
             """.formatted(email, password);
-    }
-
-    private String codeJson(String requestId, String code) {
-        return """
-            {"requestId":"%s","code":"%s"}
-            """.formatted(requestId, code);
     }
 
     private String changeJson(String requestId, String email, String code) {

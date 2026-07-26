@@ -195,7 +195,11 @@ export function MyPage() {
                 </div>}
             </div>
             <div className="mt-8">
-                <EmailChangePanel currentEmail={profile.email} hasPassword={profile.hasPassword} />
+                <EmailChangePanel
+                    currentEmail={profile.email}
+                    hasPassword={profile.hasPassword}
+                    linkedProviders={linkedProviders}
+                />
             </div>
             <div className="mt-8 scroll-mt-24 border border-line bg-surface p-6 min-[601px]:p-8" id="social-accounts">
                 <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">SOCIAL LOGIN</p>

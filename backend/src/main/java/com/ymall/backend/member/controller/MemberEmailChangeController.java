@@ -2,6 +2,7 @@ package com.ymall.backend.member.controller;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,14 +16,17 @@ import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.common.ApiResponse;
 import com.ymall.backend.global.security.MemberPrincipal;
+import com.ymall.backend.global.security.OAuthFlowContext;
 import com.ymall.backend.global.security.RefreshTokenCookieManager;
-import com.ymall.backend.member.dto.EmailChangeCodeConfirmRequest;
 import com.ymall.backend.member.dto.EmailChangeReauthenticationRequest;
 import com.ymall.backend.member.dto.EmailChangeReauthenticationResponse;
 import com.ymall.backend.member.dto.EmailChangeVerificationRequest;
 import com.ymall.backend.member.dto.EmailChangeVerificationResponse;
 import com.ymall.backend.member.dto.MemberEmailChangeRequest;
+import com.ymall.backend.member.dto.OAuthLinkResponse;
+import com.ymall.backend.member.entity.OAuthProvider;
 import com.ymall.backend.member.service.MemberEmailChangeService;
+import com.ymall.backend.member.service.OAuthAccountService;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,6 +34,8 @@ import com.ymall.backend.member.service.MemberEmailChangeService;
 public class MemberEmailChangeController {
 
     private final MemberEmailChangeService emailChangeService;
+    private final OAuthAccountService oAuthAccountService;
+    private final OAuthFlowContext oAuthFlowContext;
     private final RefreshTokenCookieManager refreshTokenCookieManager;
 
     @PostMapping("/reauthentications")
@@ -43,17 +49,24 @@ public class MemberEmailChangeController {
         );
     }
 
-    @PostMapping("/reauthentications/confirm")
-    public ApiResponse<Void> confirmReauthentication(
+    @PostMapping("/oauth-reauthentications/{provider}")
+    public ApiResponse<OAuthLinkResponse> startOAuthReauthentication(
         @AuthenticationPrincipal MemberPrincipal principal,
-        @Valid @RequestBody EmailChangeCodeConfirmRequest request
+        @PathVariable String provider,
+        HttpServletRequest request
     ) {
-        emailChangeService.confirmReauthentication(
+        OAuthProvider oAuthProvider = oAuthAccountService.getProvider(provider);
+        emailChangeService.requireOAuthReauthentication(principal.memberId());
+        oAuthAccountService.requireLinkedProvider(principal.memberId(), oAuthProvider);
+        oAuthFlowContext.startEmailChangeReauthentication(
+            request,
             principal.memberId(),
-            request.requestId(),
-            request.code()
+            oAuthProvider
         );
-        return ApiResponse.success(null, "본인 확인이 완료되었습니다.");
+        return ApiResponse.success(
+            new OAuthLinkResponse("/oauth2/authorization/" + provider.toLowerCase()),
+            "연결된 소셜 계정으로 본인 확인을 시작합니다."
+        );
     }
 
     @PostMapping("/verifications")

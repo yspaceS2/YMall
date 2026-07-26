@@ -27,6 +27,10 @@ public enum ErrorCode {
     OAUTH_EMAIL_DELIVERY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "인증 이메일을 발송하지 못했습니다."),
     GOOGLE_ONE_TAP_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Google 로그인 정보가 올바르지 않거나 만료되었습니다."),
     EMAIL_CHANGE_REAUTHENTICATION_REQUIRED(HttpStatus.FORBIDDEN, "이메일 변경을 위해 본인 확인이 필요합니다."),
+    EMAIL_CHANGE_OAUTH_ACCOUNT_MISMATCH(
+        HttpStatus.FORBIDDEN,
+        "현재 회원에 연결된 동일한 소셜 계정으로 다시 로그인해 주세요."
+    ),
     EMAIL_CHANGE_VERIFICATION_FAILED(HttpStatus.BAD_REQUEST, "인증번호가 올바르지 않거나 만료되었습니다."),
     EMAIL_CHANGE_REQUEST_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "잠시 후 다시 요청해 주세요."),
     EMAIL_CHANGE_DELIVERY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "인증 이메일을 발송하지 못했습니다."),
