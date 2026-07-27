@@ -1,4 +1,10 @@
-export type ProductStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'SOLD_OUT'
+export type ProductStatus =
+  | 'DRAFT'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'SOLD_OUT'
+  | 'DELETED'
 
 export interface Category {
   categoryId: number

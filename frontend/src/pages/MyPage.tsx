@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, ClipboardList, MapPin, MessageSquareText, UserRound } from 'lucide-react'
+import { Bell, ClipboardList, Heart, MapPin, MessageSquareText, UserRound } from 'lucide-react'
 import { changeMemberPassword, getMemberProfile, getOAuthAccounts, getOAuthAuthorizationUrl, startOAuthAccountLink, updateMemberProfile } from '../api/auth'
 import { ApiError } from '../api/client'
 import type { MemberProfile, OAuthProvider } from '../types/auth'
@@ -8,6 +8,7 @@ import { AddressManager } from '../components/AddressManager'
 import { EmailChangePanel } from '../components/member/EmailChangePanel'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
+import { WishlistPanel } from '../components/wishlist/WishlistPanel'
 
 export function MyPage() {
     const [profile, setProfile] = useState<MemberProfile | null>(null)
@@ -110,6 +111,7 @@ export function MyPage() {
     const isPasswordMatched = passwordConfirmationVisible && newPassword === newPasswordConfirmation
     const quickLinks = [
         { label: '프로필', description: '회원 정보와 보안 설정', href: '#profile', icon: UserRound },
+        { label: '찜', description: '관심 상품과 판매 상태', href: '#wishlist', icon: Heart },
         { label: '배송지', description: '받는 주소 추가·수정', href: '#addresses', icon: MapPin },
         { label: '주문', description: '주문 및 배송 현황', href: '/orders', icon: ClipboardList },
         { label: '리뷰', description: '구매 상품 리뷰 관리', href: '/orders', icon: MessageSquareText },
@@ -122,7 +124,7 @@ export function MyPage() {
             <h1 className="font-serif text-[clamp(38px,5vw,62px)] leading-none font-medium tracking-[-.05em]">내 정보 관리</h1>
             <p className="mt-5 text-sm leading-7 text-muted">회원 정보부터 배송지, 주문과 알림까지 한곳에서 관리하세요.</p>
 
-            <nav className="mt-10 grid grid-cols-2 gap-3 min-[701px]:grid-cols-5" aria-label="마이페이지 바로가기">
+            <nav className="mt-10 grid grid-cols-2 gap-3 min-[701px]:grid-cols-3 min-[901px]:grid-cols-6" aria-label="마이페이지 바로가기">
                 {quickLinks.map(({ label, description, href, icon: Icon }) => {
                     const className = 'group flex min-h-28 flex-col justify-between border border-line bg-surface p-4 text-left transition-colors hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
                     const content = <>
@@ -225,6 +227,7 @@ export function MyPage() {
                     })}
                 </div>
             </div>
+            <WishlistPanel />
             <AddressManager
                 key={`${profile.name}:${profile.phone ?? ''}`}
                 defaultRecipientName={profile.name}

@@ -1,4 +1,4 @@
-import { ChevronLeft, Heart, Minus, Plus, ShieldCheck, Star, Truck } from 'lucide-react'
+import { ChevronLeft, Minus, Plus, ShieldCheck, Star, Truck } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { addCartItem } from '../api/cart'
@@ -9,6 +9,7 @@ import { useAuth } from '../auth/useAuth'
 import { ReviewSummaryPanel } from '../components/review/ReviewSummaryPanel'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
+import { ProductWishlistButton } from '../components/wishlist/ProductWishlistButton'
 import type { ProductDetail } from '../types/product'
 import type { Review, ReviewSummary } from '../types/review'
 import { formatKoreanDate } from '../utils/dateTime'
@@ -26,6 +27,7 @@ export function ProductDetailPage() {
     const [quantity, setQuantity] = useState(1)
     const [selectedImage, setSelectedImage] = useState('')
     const [cartError, setCartError] = useState('')
+    const [wishlistError, setWishlistError] = useState('')
     const [isAddingToCart, setIsAddingToCart] = useState(false)
     const [reviews, setReviews] = useState<Review[]>([])
     const [reviewCount, setReviewCount] = useState(0)
@@ -202,8 +204,18 @@ export function ProductDetailPage() {
                     <p className="border-b border-line pb-7 text-sm leading-7 text-[#676761]">{product.description}</p>
                     <dl className="m-0 border-b border-line py-4.5 text-[13px]"><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">배송</dt><dd className="m-0">무료배송 · 평균 2–3일 소요</dd></div><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">재고</dt><dd className="m-0">{product.stock > 0 ? `${product.stock}개 남음` : '품절'}</dd></div></dl>
                     <div className="flex items-center justify-between py-6 text-[13px]"><span>수량</span><div className="flex items-center border border-line"><button className="grid h-9 w-9.5 place-items-center border-0 bg-transparent" onClick={() => setQuantity((value) => Math.max(1, value - 1))} type="button"><Minus className="size-3.5" /></button><b className="min-w-8.5 text-center">{quantity}</b><button className="grid h-9 w-9.5 place-items-center border-0 bg-transparent disabled:opacity-35" onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))} disabled={product.stock === 0} type="button"><Plus className="size-3.5" /></button></div></div>
-                    {cartError && <FeedbackMessage className="mb-4.5" tone="error">{cartError}</FeedbackMessage>}
-                    <div className="grid grid-cols-1 gap-2 min-[601px]:grid-cols-[120px_1fr]"><button className="h-13.5 border border-ink bg-transparent font-extrabold" type="button"><Heart className="inline size-4" /> 찜하기</button><button className="h-13.5 border border-ink bg-ink font-extrabold text-white disabled:border-[#ddd] disabled:bg-[#ddd] disabled:text-[#888]" disabled={isAddingToCart || product.stock === 0 || product.status !== 'APPROVED'} onClick={handleAddToCart} type="button">{product.stock === 0 || product.status === 'SOLD_OUT' ? '품절된 상품입니다' : product.status !== 'APPROVED' ? '구매할 수 없는 상품입니다' : isAddingToCart ? '장바구니에 담는 중...' : `${formatPrice(discountedPrice * quantity)} · 장바구니 담기`}</button></div>
+                    {(cartError || wishlistError) && <FeedbackMessage className="mb-4.5" tone="error">{cartError || wishlistError}</FeedbackMessage>}
+                    <div className="grid grid-cols-1 gap-2 min-[601px]:grid-cols-[120px_1fr]">
+                        <ProductWishlistButton
+                            productId={product.productId}
+                            isAuthenticated={isAuthenticated}
+                            onError={setWishlistError}
+                            onLoginRequired={() => navigate('/login', {
+                                state: { from: `${location.pathname}${location.search}` },
+                            })}
+                        />
+                        <button className="h-13.5 border border-ink bg-ink font-extrabold text-white disabled:border-[#ddd] disabled:bg-[#ddd] disabled:text-[#888]" disabled={isAddingToCart || product.stock === 0 || product.status !== 'APPROVED'} onClick={handleAddToCart} type="button">{product.stock === 0 || product.status === 'SOLD_OUT' ? '품절된 상품입니다' : product.status !== 'APPROVED' ? '구매할 수 없는 상품입니다' : isAddingToCart ? '장바구니에 담는 중...' : `${formatPrice(discountedPrice * quantity)} · 장바구니 담기`}</button>
+                    </div>
                     <div className="mt-5.5 flex gap-6.5 text-[11px] text-muted"><span className="flex items-center gap-1.5"><Truck className="size-4" /> 무료 배송</span><span className="flex items-center gap-1.5"><ShieldCheck className="size-4" /> 안전 결제</span></div>
                 </div>
             </div>

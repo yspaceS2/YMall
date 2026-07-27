@@ -1,4 +1,3 @@
-import { Heart } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ProductSummary } from '../types/product'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
@@ -16,9 +15,6 @@ export function ProductCard({ product }: { product: ProductSummary }) {
                 )}
                 {product.status === 'SOLD_OUT' && <span className="absolute inset-0 grid place-items-center bg-black/45 text-xs font-extrabold tracking-[.14em] text-white">SOLD OUT</span>}
             </Link>
-            <button className="absolute top-3 right-3 grid size-9 place-items-center rounded-full border-0 bg-white/80" type="button" aria-label={`${product.name} 찜하기`}>
-                <Heart className="size-4" aria-hidden="true" />
-            </button>
             <Link className="block pt-4" to={`/products/${product.productId}`}>
                 <span className="mb-1.5 block text-[11px] font-extrabold tracking-[.08em] text-muted uppercase">{product.brand}</span>
                 <h2 className="mb-2.5 truncate text-[13px] font-medium min-[601px]:text-sm">{product.name}</h2>
