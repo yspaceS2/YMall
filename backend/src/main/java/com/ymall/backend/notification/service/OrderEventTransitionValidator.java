@@ -27,7 +27,7 @@ public class OrderEventTransitionValidator {
             case PAYMENT_COMPLETED -> current == OrderEventType.ORDER_PREPARING;
             case ORDER_PREPARING -> current == OrderEventType.ORDER_SHIPPED;
             case ORDER_SHIPPED -> current == OrderEventType.ORDER_DELIVERED;
-            case ORDER_CANCELED, ORDER_DELIVERED -> false;
+            case ORDER_CANCELED, ORDER_DELIVERED, REFUND_COMPLETED -> false;
         };
     }
 }
