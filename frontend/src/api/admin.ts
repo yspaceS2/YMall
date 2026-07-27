@@ -4,6 +4,9 @@ import type {
     AdminProduct,
     AdminProductPage,
     AdminSellerPage,
+    AdminSettlementRequest,
+    AdminSettlementRequestPage,
+    SettlementRequestStatus,
 } from '../types/admin'
 import { apiRequest } from './client'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
@@ -57,4 +60,39 @@ export function requestAdminRefund(orderId: number, request: PaymentRefundReques
 
 export function getAdminRefunds(orderId: number, signal?: AbortSignal) {
     return apiRequest<PaymentRefund[]>(`/admin/orders/${orderId}/refunds`, { signal })
+}
+
+export function getAdminSettlementRequests(
+    status?: SettlementRequestStatus,
+    signal?: AbortSignal,
+) {
+    const query = status ? `?status=${status}&page=1&size=50` : '?page=1&size=50'
+    return apiRequest<AdminSettlementRequestPage>(
+        `/admin/settlement-requests${query}`,
+        { signal },
+    )
+}
+
+export function approveAdminSettlementRequest(settlementRequestId: number) {
+    return apiRequest<AdminSettlementRequest>(
+        `/admin/settlement-requests/${settlementRequestId}/approval`,
+        { method: 'PATCH' },
+    )
+}
+
+export function rejectAdminSettlementRequest(
+    settlementRequestId: number,
+    reason: string,
+) {
+    return apiRequest<AdminSettlementRequest>(
+        `/admin/settlement-requests/${settlementRequestId}/rejection`,
+        { method: 'PATCH', body: { reason } },
+    )
+}
+
+export function completeAdminMockSettlementPayment(settlementRequestId: number) {
+    return apiRequest<AdminSettlementRequest>(
+        `/admin/settlement-requests/${settlementRequestId}/mock-payments`,
+        { method: 'POST' },
+    )
 }

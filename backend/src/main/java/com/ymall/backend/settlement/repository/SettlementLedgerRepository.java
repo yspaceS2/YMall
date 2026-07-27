@@ -7,12 +7,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.ymall.backend.settlement.entity.SettlementEntryType;
 import com.ymall.backend.settlement.entity.SettlementLedgerEntry;
 import com.ymall.backend.settlement.entity.SettlementStatus;
+import jakarta.persistence.LockModeType;
 
 public interface SettlementLedgerRepository extends JpaRepository<SettlementLedgerEntry, Long> {
 
@@ -27,6 +29,12 @@ public interface SettlementLedgerRepository extends JpaRepository<SettlementLedg
         Long orderItemId,
         SettlementEntryType entryType,
         SettlementStatus status
+    );
+
+    boolean existsByOrderItemIdAndEntryTypeAndStatusIn(
+        Long orderItemId,
+        SettlementEntryType entryType,
+        List<SettlementStatus> statuses
     );
 
     @EntityGraph(attributePaths = {"order", "orderItem"})
@@ -45,4 +53,35 @@ public interface SettlementLedgerRepository extends JpaRepository<SettlementLedg
         @Param("to") Instant to,
         Pageable pageable
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select entry from SettlementLedgerEntry entry
+        where entry.sellerProfile.id = :sellerProfileId
+          and entry.status = com.ymall.backend.settlement.entity.SettlementStatus.AVAILABLE
+          and entry.occurredAt >= :from
+          and entry.occurredAt < :to
+        order by entry.id
+        """)
+    List<SettlementLedgerEntry> findAvailableForPeriodForUpdate(
+        @Param("sellerProfileId") Long sellerProfileId,
+        @Param("from") Instant from,
+        @Param("to") Instant to
+    );
+
+    @Query("""
+        select entry from SettlementLedgerEntry entry
+        where entry.sellerProfile.id = :sellerProfileId
+          and entry.status = com.ymall.backend.settlement.entity.SettlementStatus.AVAILABLE
+          and entry.occurredAt >= :from
+          and entry.occurredAt < :to
+        order by entry.id
+        """)
+    List<SettlementLedgerEntry> findAvailableForPeriod(
+        @Param("sellerProfileId") Long sellerProfileId,
+        @Param("from") Instant from,
+        @Param("to") Instant to
+    );
+
+    List<SettlementLedgerEntry> findAllBySettlementRequestId(Long settlementRequestId);
 }

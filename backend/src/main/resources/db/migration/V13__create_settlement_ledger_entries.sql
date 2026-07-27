@@ -1,4 +1,4 @@
-CREATE TABLE settlement_ledger_entries (
+CREATE TABLE IF NOT EXISTS settlement_ledger_entries (
     id BIGSERIAL PRIMARY KEY,
     seller_profile_id BIGINT NOT NULL,
     order_id BIGINT NOT NULL,
@@ -24,8 +24,8 @@ CREATE TABLE settlement_ledger_entries (
         FOREIGN KEY (payment_refund_id) REFERENCES payment_refunds(id)
 );
 
-CREATE INDEX idx_settlement_ledger_seller_status_occurred
+CREATE INDEX IF NOT EXISTS idx_settlement_ledger_seller_status_occurred
     ON settlement_ledger_entries (seller_profile_id, status, occurred_at DESC);
 
-CREATE INDEX idx_settlement_ledger_order
+CREATE INDEX IF NOT EXISTS idx_settlement_ledger_order
     ON settlement_ledger_entries (order_id);

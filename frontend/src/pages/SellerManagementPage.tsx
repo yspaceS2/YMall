@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { RefundDialog } from '../components/RefundDialog'
 import { SettlementAccountPanel } from '../components/seller/SettlementAccountPanel'
+import { SettlementRequestPanel } from '../components/seller/SettlementRequestPanel'
 import {
     createSellerProduct,
     createSellerProfile,
@@ -327,6 +328,7 @@ export function SellerManagementPage() {
 
                 {profile && <>
                     <SettlementAccountPanel />
+                    <SettlementRequestPanel />
                     <Panel icon={<PackageCheck />} title="상품 관리">
                         <form className="mb-8 grid gap-4 border-b border-line pb-8 min-[701px]:grid-cols-2" onSubmit={saveProduct}>
                             <label className="grid gap-2 text-xs font-bold">카테고리<select className="h-11 border border-line bg-white px-3 font-normal" value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: Number(event.target.value) })}>{categories.map((category) => <option key={category.categoryId} value={category.categoryId}>{category.name}</option>)}</select></label>

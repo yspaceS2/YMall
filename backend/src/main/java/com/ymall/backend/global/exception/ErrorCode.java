@@ -85,6 +85,11 @@ public enum ErrorCode {
         HttpStatus.INTERNAL_SERVER_ERROR,
         "정산 계좌 정보를 안전하게 처리하지 못했습니다."
     ),
+    SETTLEMENT_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "정산 신청을 찾을 수 없습니다."),
+    SETTLEMENT_REQUEST_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "종료된 월의 정산만 신청할 수 있습니다."),
+    SETTLEMENT_REQUEST_AMOUNT_INVALID(HttpStatus.CONFLICT, "신청 가능한 정산 금액이 없습니다."),
+    SETTLEMENT_REQUEST_DUPLICATED(HttpStatus.CONFLICT, "이미 처리 중인 월별 정산 신청이 있습니다."),
+    SETTLEMENT_REQUEST_STATUS_INVALID(HttpStatus.CONFLICT, "현재 상태에서는 정산 요청을 처리할 수 없습니다."),
     SELLER_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "판매자의 상품을 찾을 수 없습니다."),
     SELLER_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "판매자의 주문을 찾을 수 없습니다."),
     ORDER_FULFILLMENT_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 배송 상태를 변경할 수 없습니다."),
