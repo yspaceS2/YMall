@@ -86,6 +86,8 @@ ymall:
   cache:
     product-detail-ttl: ${PRODUCT_DETAIL_CACHE_TTL:10m}
     review-summary-ttl: ${REVIEW_SUMMARY_CACHE_TTL:30m}
+  settlement-account:
+    encryption-key: ${SELLER_SETTLEMENT_ACCOUNT_ENCRYPTION_KEY:}
   ai:
     review-summary:
       enabled: ${AI_REVIEW_ENABLED:false}

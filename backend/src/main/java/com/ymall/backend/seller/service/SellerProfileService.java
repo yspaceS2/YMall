@@ -64,4 +64,10 @@ public class SellerProfileService {
         return sellerProfileRepository.findByMemberId(memberId)
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_PROFILE_NOT_FOUND));
     }
+
+    @Transactional
+    public SellerProfile getProfileEntityForUpdate(Long memberId) {
+        return sellerProfileRepository.findForUpdateByMemberId(memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_PROFILE_NOT_FOUND));
+    }
 }
