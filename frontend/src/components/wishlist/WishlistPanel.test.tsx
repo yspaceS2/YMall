@@ -43,15 +43,9 @@ describe('WishlistPanel', () => {
     })
 
     it('찜 상품의 판매 상태를 표시하고 선택한 상품을 해제한다', async () => {
-        vi.mocked(getWishlist).mockResolvedValue({
-            content: wishlistProducts,
-            page: 1,
-            size: 8,
-            totalElements: 2,
-            totalPages: 1,
-            hasNext: false,
-            hasPrevious: false,
-        })
+        vi.mocked(getWishlist)
+            .mockResolvedValueOnce(wishlistPage(wishlistProducts, 1))
+            .mockResolvedValueOnce(wishlistPage([wishlistProducts[1]], 1))
         vi.mocked(removeWishlistProduct).mockResolvedValue(undefined)
 
         render(
@@ -68,7 +62,51 @@ describe('WishlistPanel', () => {
 
         await waitFor(() => {
             expect(removeWishlistProduct).toHaveBeenCalledWith(1)
+            expect(getWishlist).toHaveBeenCalledTimes(2)
             expect(screen.queryByText('판매 중지 상품')).not.toBeInTheDocument()
         })
     })
+
+    it('여러 페이지를 불러온 뒤 상품을 해제하면 첫 페이지부터 다시 조회한다', async () => {
+        vi.mocked(getWishlist)
+            .mockResolvedValueOnce(wishlistPage([wishlistProducts[0]], 1, true))
+            .mockResolvedValueOnce(wishlistPage([wishlistProducts[1]], 2))
+            .mockResolvedValueOnce(wishlistPage([wishlistProducts[1]], 1))
+        vi.mocked(removeWishlistProduct).mockResolvedValue(undefined)
+
+        render(
+            <MemoryRouter>
+                <WishlistPanel />
+            </MemoryRouter>,
+        )
+
+        expect(await screen.findByText('판매 중지 상품')).toBeInTheDocument()
+        fireEvent.click(screen.getByRole('button', { name: '찜 상품 더 보기' }))
+        expect(await screen.findByText('품절 상품')).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('button', { name: '판매 중지 상품 찜 해제' }))
+
+        await waitFor(() => {
+            expect(getWishlist).toHaveBeenCalledTimes(3)
+            expect(vi.mocked(getWishlist).mock.calls[2]?.[0]).toBe(1)
+            expect(screen.queryByText('판매 중지 상품')).not.toBeInTheDocument()
+            expect(screen.getByText('품절 상품')).toBeInTheDocument()
+        })
+    })
 })
+
+function wishlistPage(
+    content: typeof wishlistProducts,
+    page: number,
+    hasNext = false,
+) {
+    return {
+        content,
+        page,
+        size: 8,
+        totalElements: content.length,
+        totalPages: hasNext ? page + 1 : page,
+        hasNext,
+        hasPrevious: page > 1,
+    }
+}

@@ -24,6 +24,7 @@ function availability(product: WishlistProduct) {
 export function WishlistPanel() {
     const [products, setProducts] = useState<WishlistProduct[]>([])
     const [page, setPage] = useState(1)
+    const [reloadKey, setReloadKey] = useState(0)
     const [hasNext, setHasNext] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [removingId, setRemovingId] = useState<number | null>(null)
@@ -49,16 +50,18 @@ export function WishlistPanel() {
                 if (!controller.signal.aborted) setIsLoading(false)
             })
         return () => controller.abort()
-    }, [page])
+    }, [page, reloadKey])
 
     async function remove(productId: number) {
         setRemovingId(productId)
         setErrorMessage('')
         try {
             await removeWishlistProduct(productId)
-            setProducts((current) => current.filter(
-                (product) => product.productId !== productId,
-            ))
+            setProducts([])
+            setPage(1)
+            setHasNext(false)
+            setIsLoading(true)
+            setReloadKey((current) => current + 1)
         } catch (error) {
             setErrorMessage(error instanceof ApiError
                 ? error.message
