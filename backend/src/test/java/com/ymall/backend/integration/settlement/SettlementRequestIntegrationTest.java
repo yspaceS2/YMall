@@ -261,6 +261,20 @@ class SettlementRequestIntegrationTest {
             .andExpect(jsonPath("$.error.code").value("SETTLEMENT_REQUEST_PERIOD_INVALID"));
     }
 
+    @Test
+    void availabilityRequiresSettlementAccount() throws Exception {
+        settlementAccountRepository.deleteAll();
+        settlementAccountRepository.flush();
+
+        mockMvc.perform(get("/api/seller/settlement-requests/availability")
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                .param("period", targetPeriod))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.hasSettlementAccount").value(false))
+            .andExpect(jsonPath("$.data.canRequest").value(false))
+            .andExpect(jsonPath("$.data.settlementAmount").value(19400.0));
+    }
+
     private OrderEventEnvelope event(OrderEventType type) {
         return new OrderEventEnvelope(
             java.util.UUID.randomUUID(),

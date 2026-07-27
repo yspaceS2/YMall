@@ -147,6 +147,8 @@ export function AdminSettlementPanel() {
                                             onClick={() => {
                                                 if (rejectingId !== request.settlementRequestId) {
                                                     setRejectingId(request.settlementRequestId)
+                                                    setRejectionReason('')
+                                                    setErrorMessage('')
                                                     return
                                                 }
                                                 if (!rejectionReason.trim()) {

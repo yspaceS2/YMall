@@ -130,7 +130,9 @@ export function SettlementRequestPanel() {
                     >
                         {isSubmitting ? '신청 중...' : availability.canRequest
                             ? `${period} 정산 신청`
-                            : '신청 가능한 금액이 없습니다'}
+                            : availability.hasSettlementAccount
+                                ? '신청 가능한 금액이 없습니다'
+                                : '정산 계좌를 먼저 등록해 주세요'}
                     </button>
                 </div>
             )}

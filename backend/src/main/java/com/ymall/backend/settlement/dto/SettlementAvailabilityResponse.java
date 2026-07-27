@@ -10,6 +10,7 @@ public record SettlementAvailabilityResponse(
     BigDecimal grossAmount,
     BigDecimal feeAmount,
     BigDecimal settlementAmount,
+    boolean hasSettlementAccount,
     boolean canRequest
 ) {
 }

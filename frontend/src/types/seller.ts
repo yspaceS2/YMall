@@ -50,6 +50,7 @@ export interface SettlementAvailability {
     grossAmount: number
     feeAmount: number
     settlementAmount: number
+    hasSettlementAccount: boolean
     canRequest: boolean
 }
 

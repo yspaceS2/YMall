@@ -63,6 +63,9 @@ public class SettlementRequestService {
             .findBySellerProfileIdAndPeriodStart(seller.getId(), period.start())
             .map(request -> request.getStatus() == SettlementRequestStatus.REJECTED)
             .orElse(true);
+        boolean hasSettlementAccount = settlementAccountRepository
+            .findBySellerProfileId(seller.getId())
+            .isPresent();
         return new SettlementAvailabilityResponse(
             period.start(),
             period.end(),
@@ -70,7 +73,10 @@ public class SettlementRequestService {
             amounts.gross(),
             amounts.fee(),
             amounts.settlement(),
-            requestOpen && amounts.settlement().compareTo(BigDecimal.ZERO) > 0
+            hasSettlementAccount,
+            hasSettlementAccount
+                && requestOpen
+                && amounts.settlement().compareTo(BigDecimal.ZERO) > 0
         );
     }
 
