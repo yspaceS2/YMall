@@ -103,7 +103,7 @@ export function MyPage() {
     }
 
     if (!profile) {
-        return <PageState variant="error" title="회원 정보를 불러오지 못했습니다" description={errorMessage || '잠시 후 다시 시도해 주세요.'} action={<button className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" type="button" onClick={() => { setErrorMessage(''); setIsLoading(true); setRetryKey((value) => value + 1) }}>다시 시도</button>} />
+        return <PageState variant="error" title="회원 정보를 불러오지 못했습니다" description={errorMessage || '잠시 후 다시 시도해 주세요.'} action={<button className="border border-ink bg-surface px-5 py-2.5 text-xs font-bold text-ink" type="button" onClick={() => { setErrorMessage(''); setIsLoading(true); setRetryKey((value) => value + 1) }}>다시 시도</button>} />
     }
 
     const passwordConfirmationVisible = newPasswordConfirmation.length > 0
@@ -124,7 +124,7 @@ export function MyPage() {
 
             <nav className="mt-10 grid grid-cols-2 gap-3 min-[701px]:grid-cols-5" aria-label="마이페이지 바로가기">
                 {quickLinks.map(({ label, description, href, icon: Icon }) => {
-                    const className = 'group flex min-h-28 flex-col justify-between border border-line bg-white p-4 text-left transition-colors hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+                    const className = 'group flex min-h-28 flex-col justify-between border border-line bg-surface p-4 text-left transition-colors hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
                     const content = <>
                         <Icon className="size-5 text-[#71801e]" aria-hidden="true" />
                         <span>
@@ -141,14 +141,14 @@ export function MyPage() {
             {errorMessage && <FeedbackMessage className="mt-8" tone="error">{errorMessage}</FeedbackMessage>}
 
             <div className="mt-8 grid scroll-mt-24 gap-8 min-[901px]:grid-cols-2" id="profile">
-                <form className="grid content-start gap-5 border border-line bg-white p-6 min-[601px]:p-8" onSubmit={handleProfileSubmit}>
+                <form className="grid content-start gap-5 border border-line bg-surface p-6 min-[601px]:p-8" onSubmit={handleProfileSubmit}>
                     <div>
                         <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">PROFILE</p>
                         <h2 className="mt-2 font-serif text-3xl">기본 정보</h2>
                     </div>
                     <label className="grid gap-2 text-xs font-bold text-muted">
                         <span>이메일</span>
-                        <input className="border-0 border-b border-line bg-[#f4f4ef] px-2 py-3.5 text-muted" value={profile.email} disabled />
+                        <input className="border-0 border-b border-line bg-surface px-2 py-3.5 text-muted" value={profile.email} disabled />
                     </label>
                     <label className="grid gap-2 text-xs font-bold text-muted">
                         <span>이름</span>
@@ -164,7 +164,7 @@ export function MyPage() {
                     </button>
                 </form>
 
-                {profile.hasPassword ? <form className="grid content-start gap-5 border border-line bg-white p-6 min-[601px]:p-8" onSubmit={handlePasswordSubmit}>
+                {profile.hasPassword ? <form className="grid content-start gap-5 border border-line bg-surface p-6 min-[601px]:p-8" onSubmit={handlePasswordSubmit}>
                     <div>
                         <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">SECURITY</p>
                         <h2 className="mt-2 font-serif text-3xl">비밀번호 변경</h2>

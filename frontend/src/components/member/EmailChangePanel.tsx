@@ -132,7 +132,7 @@ export function EmailChangePanel({
     }
 
     return (
-        <section className="grid content-start gap-5 border border-line bg-white p-6 min-[601px]:p-8" aria-labelledby="email-change-title">
+        <section className="grid content-start gap-5 border border-line bg-surface p-6 min-[601px]:p-8" aria-labelledby="email-change-title">
             <div>
                 <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">LOGIN EMAIL</p>
                 <h2 className="mt-2 font-serif text-3xl" id="email-change-title">이메일 변경</h2>

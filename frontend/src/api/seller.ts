@@ -7,6 +7,8 @@ import type {
     SellerProfile,
     SellerProfileCreateRequest,
     SellerProfileUpdateRequest,
+    SellerSettlementAccount,
+    SellerSettlementAccountUpsertRequest,
     FulfillmentStatus,
 } from '../types/seller'
 import { apiRequest } from './client'
@@ -22,6 +24,19 @@ export function createSellerProfile(request: SellerProfileCreateRequest) {
 
 export function updateSellerProfile(request: SellerProfileUpdateRequest) {
     return apiRequest<SellerProfile>('/seller/profile', { method: 'PUT', body: request })
+}
+
+export function getSellerSettlementAccount(signal?: AbortSignal) {
+    return apiRequest<SellerSettlementAccount>('/seller/settlement-account', { signal })
+}
+
+export function upsertSellerSettlementAccount(
+    request: SellerSettlementAccountUpsertRequest,
+) {
+    return apiRequest<SellerSettlementAccount>('/seller/settlement-account', {
+        method: 'PUT',
+        body: request,
+    })
 }
 
 const SELLER_PAGE_SIZE = 20

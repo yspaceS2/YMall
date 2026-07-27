@@ -5,6 +5,7 @@ import { getCategories } from '../api/products'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { RefundDialog } from '../components/RefundDialog'
+import { SettlementAccountPanel } from '../components/seller/SettlementAccountPanel'
 import {
     createSellerProduct,
     createSellerProfile,
@@ -325,6 +326,7 @@ export function SellerManagementPage() {
                 </Panel>
 
                 {profile && <>
+                    <SettlementAccountPanel />
                     <Panel icon={<PackageCheck />} title="상품 관리">
                         <form className="mb-8 grid gap-4 border-b border-line pb-8 min-[701px]:grid-cols-2" onSubmit={saveProduct}>
                             <label className="grid gap-2 text-xs font-bold">카테고리<select className="h-11 border border-line bg-white px-3 font-normal" value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: Number(event.target.value) })}>{categories.map((category) => <option key={category.categoryId} value={category.categoryId}>{category.name}</option>)}</select></label>
@@ -454,7 +456,7 @@ function Panel({ icon, title, children }: { icon: ReactNode; title: string; chil
 }
 
 function Field({ label, value, onChange, required = false, disabled = false }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; disabled?: boolean }) {
-    return <label className="grid gap-2 text-xs font-bold">{label}<input className="h-11 border border-line px-3 font-normal disabled:bg-[#f4f4f0]" value={value} onChange={(event) => onChange(event.target.value)} required={required} disabled={disabled} /></label>
+    return <label className="grid gap-2 text-xs font-bold">{label}<input className="h-11 border border-line bg-surface px-3 font-normal text-ink disabled:bg-surface disabled:text-muted" value={value} onChange={(event) => onChange(event.target.value)} required={required} disabled={disabled} /></label>
 }
 
 function NumberField({ label, value, onChange, min, max }: { label: string; value: number; onChange: (value: number) => void; min: number; max?: number }) {

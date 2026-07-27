@@ -21,6 +21,26 @@ export interface SellerProfileUpdateRequest {
     description: string
 }
 
+export type SettlementAccountVerificationStatus = 'UNVERIFIED' | 'VERIFIED'
+
+export interface SellerSettlementAccount {
+    settlementAccountId: number
+    bankCode: string
+    bankName: string
+    accountHolder: string
+    maskedAccountNumber: string
+    verificationStatus: SettlementAccountVerificationStatus
+    verifiedAt: string | null
+    updatedAt: string
+}
+
+export interface SellerSettlementAccountUpsertRequest {
+    bankCode: string
+    accountHolder: string
+    accountNumber: string
+    currentPassword: string
+}
+
 export interface SellerProductRequest {
     categoryId: number
     name: string

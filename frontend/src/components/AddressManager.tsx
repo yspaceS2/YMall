@@ -101,7 +101,7 @@ export function AddressManager({ defaultRecipientName, defaultRecipientPhone }: 
     )
 
     return (
-        <div className="mt-8 scroll-mt-24 border border-line bg-white p-6 min-[601px]:p-8" id="addresses">
+        <div className="mt-8 scroll-mt-24 border border-line bg-surface p-6 min-[601px]:p-8" id="addresses">
             <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">DELIVERY ADDRESS</p>
             <h2 className="mt-2 font-serif text-3xl">배송지 관리</h2>
             {error && <p className="mt-4 text-sm text-[#b23b2f]" role="alert">{error}</p>}
@@ -131,10 +131,10 @@ export function AddressManager({ defaultRecipientName, defaultRecipientPhone }: 
                     {field('recipientName', '받는 분', { maxLength: 50 })}
                     {field('recipientPhone', '연락처', { maxLength: 13, pattern: '01[016789]-?[0-9]{3,4}-?[0-9]{4}' })}
                     <div className="grid grid-cols-[1fr_auto] items-end gap-2">
-                        <label className="grid gap-2 text-xs font-bold text-muted"><span>우편번호</span><input className="border-0 border-b border-line bg-[#f4f4ef] px-0.5 py-3 text-ink" value={form.postalCode} readOnly required /></label>
+                        <label className="grid gap-2 text-xs font-bold text-muted"><span>우편번호</span><input className="border-0 border-b border-line bg-surface px-0.5 py-3 text-ink" value={form.postalCode} readOnly required /></label>
                         <button className="h-11 border border-ink px-4 text-xs font-bold" type="button" onClick={() => setIsPostcodeOpen(true)}>주소 찾기</button>
                     </div>
-                    <label className="grid gap-2 text-xs font-bold text-muted"><span>도로명 주소</span><input className="border-0 border-b border-line bg-[#f4f4ef] px-0.5 py-3 text-ink" value={form.roadAddress} readOnly required /></label>
+                    <label className="grid gap-2 text-xs font-bold text-muted"><span>도로명 주소</span><input className="border-0 border-b border-line bg-surface px-0.5 py-3 text-ink" value={form.roadAddress} readOnly required /></label>
                     {field('detailAddress', '상세 주소', { maxLength: 255 })}
                     <label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={form.isDefault} onChange={(event) => setForm({ ...form, isDefault: event.target.checked })} />기본 배송지로 설정</label>
                     {message && <p className="text-xs text-[#657617]" role="status">{message}</p>}
@@ -146,7 +146,7 @@ export function AddressManager({ defaultRecipientName, defaultRecipientPhone }: 
             </div>
             {isPostcodeOpen && (
                 <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="주소 검색">
-                    <div className="w-full max-w-130 bg-white p-3 shadow-xl">
+                    <div className="w-full max-w-130 bg-surface p-3 shadow-xl">
                         <div className="mb-2 flex items-center justify-between px-1">
                             <strong className="text-sm">주소 검색</strong>
                             <button className="px-2 py-1 text-xs underline" type="button" onClick={() => setIsPostcodeOpen(false)}>닫기</button>
