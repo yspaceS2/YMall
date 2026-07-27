@@ -52,6 +52,10 @@ public class SettlementLedgerEntry {
     @JoinColumn(name = "payment_refund_id", updatable = false)
     private PaymentRefund paymentRefund;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "settlement_request_id")
+    private SettlementRequest settlementRequest;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "entry_type", nullable = false, length = 20, updatable = false)
     private SettlementEntryType entryType;
@@ -170,11 +174,20 @@ public class SettlementLedgerEntry {
         }
     }
 
-    public void requestSettlement() {
+    public void requestSettlement(SettlementRequest request) {
         if (status != SettlementStatus.AVAILABLE) {
             throw new IllegalStateException("Only available ledger entries can be requested.");
         }
+        settlementRequest = request;
         status = SettlementStatus.REQUESTED;
+    }
+
+    public void releaseSettlementRequest() {
+        if (status != SettlementStatus.REQUESTED) {
+            throw new IllegalStateException("Only requested ledger entries can be released.");
+        }
+        settlementRequest = null;
+        status = SettlementStatus.AVAILABLE;
     }
 
     public void markPaid() {

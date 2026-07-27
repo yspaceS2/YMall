@@ -11,6 +11,7 @@ import {
 } from '../api/admin'
 import { ApiError } from '../api/client'
 import { RefundDialog } from '../components/RefundDialog'
+import { AdminSettlementPanel } from '../components/admin/AdminSettlementPanel'
 import type { AdminMember, AdminOrder, AdminProduct, AdminSeller } from '../types/admin'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 import { formatKoreanDateTime } from '../utils/dateTime'
@@ -188,6 +189,7 @@ export function AdminManagementPage() {
             </div>
 
             <div className="grid gap-10">
+                <AdminSettlementPanel />
                 <Panel icon={<PackageSearch />} title="상품 승인 대기">
                     {products.length === 0 ? (
                         <Empty>승인을 기다리는 상품이 없습니다.</Empty>

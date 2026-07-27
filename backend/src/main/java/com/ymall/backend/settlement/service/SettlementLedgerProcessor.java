@@ -108,10 +108,14 @@ public class SettlementLedgerProcessor {
             event.eventId(),
             event.occurredAt()
         );
-        if (ledgerRepository.existsByOrderItemIdAndEntryTypeAndStatus(
+        if (ledgerRepository.existsByOrderItemIdAndEntryTypeAndStatusIn(
             orderItem.getId(),
             SettlementEntryType.SALE,
-            SettlementStatus.AVAILABLE
+            java.util.List.of(
+                SettlementStatus.AVAILABLE,
+                SettlementStatus.REQUESTED,
+                SettlementStatus.PAID
+            )
         )) {
             entry.makeAvailable();
         }

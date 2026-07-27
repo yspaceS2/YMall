@@ -9,6 +9,9 @@ import type {
     SellerProfileUpdateRequest,
     SellerSettlementAccount,
     SellerSettlementAccountUpsertRequest,
+    SettlementAvailability,
+    SettlementRequest,
+    SettlementRequestPage,
     FulfillmentStatus,
 } from '../types/seller'
 import { apiRequest } from './client'
@@ -36,6 +39,27 @@ export function upsertSellerSettlementAccount(
     return apiRequest<SellerSettlementAccount>('/seller/settlement-account', {
         method: 'PUT',
         body: request,
+    })
+}
+
+export function getSettlementAvailability(period: string, signal?: AbortSignal) {
+    return apiRequest<SettlementAvailability>(
+        `/seller/settlement-requests/availability?period=${encodeURIComponent(period)}`,
+        { signal },
+    )
+}
+
+export function getSettlementRequests(signal?: AbortSignal) {
+    return apiRequest<SettlementRequestPage>(
+        '/seller/settlement-requests?page=1&size=24',
+        { signal },
+    )
+}
+
+export function createSettlementRequest(period: string) {
+    return apiRequest<SettlementRequest>('/seller/settlement-requests', {
+        method: 'POST',
+        body: { period },
     })
 }
 

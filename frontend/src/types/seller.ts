@@ -41,6 +41,36 @@ export interface SellerSettlementAccountUpsertRequest {
     currentPassword: string
 }
 
+export type SettlementRequestStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'PAID'
+
+export interface SettlementAvailability {
+    periodStart: string
+    periodEnd: string
+    entryCount: number
+    grossAmount: number
+    feeAmount: number
+    settlementAmount: number
+    canRequest: boolean
+}
+
+export interface SettlementRequest {
+    settlementRequestId: number
+    sellerProfileId: number
+    storeName: string
+    periodStart: string
+    periodEnd: string
+    status: SettlementRequestStatus
+    grossAmount: number
+    feeAmount: number
+    settlementAmount: number
+    rejectionReason: string | null
+    mockPaymentReference: string | null
+    reviewedAt: string | null
+    paidAt: string | null
+    createdAt: string
+    updatedAt: string
+}
+
 export interface SellerProductRequest {
     categoryId: number
     name: string
@@ -83,4 +113,5 @@ export interface SellerOrder {
 
 export type SellerProductPage = PageResponse<ProductSummary>
 export type SellerOrderPage = PageResponse<SellerOrder>
+export type SettlementRequestPage = PageResponse<SettlementRequest>
 export type SellerProductDetail = ProductDetail

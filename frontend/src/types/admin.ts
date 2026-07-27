@@ -1,7 +1,12 @@
 import type { MemberRole } from './auth'
 import type { OrderStatus } from './order'
 import type { ProductStatus } from './product'
-import type { FulfillmentStatus } from './seller'
+import type {
+    FulfillmentStatus,
+    SettlementRequest,
+    SettlementRequestPage,
+    SettlementRequestStatus,
+} from './seller'
 import type { PageResponse } from './api'
 
 export interface AdminProduct {
@@ -63,3 +68,8 @@ export type AdminProductPage = PageResponse<AdminProduct>
 export type AdminMemberPage = PageResponse<AdminMember>
 export type AdminSellerPage = PageResponse<AdminSeller>
 export type AdminOrderPage = PageResponse<AdminOrder>
+export type {
+    SettlementRequest as AdminSettlementRequest,
+    SettlementRequestPage as AdminSettlementRequestPage,
+    SettlementRequestStatus,
+}
