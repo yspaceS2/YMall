@@ -32,6 +32,8 @@ public class OrderNotificationEventMapper {
             case ORDER_DELIVERED -> fulfillmentChanged(
                 event, OrderItemFulfillmentStatus.DELIVERED
             );
+            case REFUND_COMPLETED ->
+                throw new IllegalArgumentException("Refund events do not create notifications.");
         };
     }
 

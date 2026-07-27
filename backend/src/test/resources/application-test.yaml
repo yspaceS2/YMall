@@ -63,6 +63,8 @@ ymall:
     thumbnail-height: 300
   mail:
     from: test@ymall.local
+  settlement:
+    fee-rate: 0.03
   cache:
     product-detail-ttl: 10m
     review-summary-ttl: 30m
@@ -104,6 +106,9 @@ ymall:
     notification-consumer:
       enabled: false
       group-id: ymall-notification-test
+    settlement-consumer:
+      enabled: false
+      group-id: ymall-settlement-test
     review-summary:
       name: ymall.review-summary.refresh.v1
       partitions: 1

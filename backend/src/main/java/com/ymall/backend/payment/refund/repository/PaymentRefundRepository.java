@@ -30,6 +30,16 @@ public interface PaymentRefundRepository extends JpaRepository<PaymentRefund, Lo
     @Query("select refund from PaymentRefund refund where refund.id = :refundId")
     Optional<PaymentRefund> findByIdForUpdate(@Param("refundId") Long refundId);
 
+    @EntityGraph(attributePaths = {
+        "items",
+        "items.orderItem",
+        "items.orderItem.order",
+        "items.orderItem.product",
+        "items.orderItem.product.sellerProfile"
+    })
+    @Query("select refund from PaymentRefund refund where refund.id = :refundId")
+    Optional<PaymentRefund> findByIdForSettlement(@Param("refundId") Long refundId);
+
     boolean existsByOrderIdAndStatusIn(
         Long orderId,
         List<PaymentRefundStatus> statuses

@@ -26,6 +26,9 @@ public class OrderNotificationEventProcessor {
 
     @Transactional
     public void process(OrderEventEnvelope event) {
+        if (event.eventType() == OrderEventType.REFUND_COMPLETED) {
+            return;
+        }
         if (processedEventRepository.existsByEventId(event.eventId())) {
             return;
         }

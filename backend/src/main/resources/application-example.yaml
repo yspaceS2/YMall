@@ -137,6 +137,8 @@ ymall:
     review-summary-ttl: ${REVIEW_SUMMARY_CACHE_TTL:30m}
   settlement-account:
     encryption-key: ${SELLER_SETTLEMENT_ACCOUNT_ENCRYPTION_KEY}
+  settlement:
+    fee-rate: ${SETTLEMENT_FEE_RATE:0.03}
   ai:
     review-summary:
       enabled: ${AI_REVIEW_ENABLED:false}
@@ -182,6 +184,9 @@ ymall:
     notification-consumer:
       enabled: ${KAFKA_NOTIFICATION_CONSUMER_ENABLED:true}
       group-id: ${KAFKA_NOTIFICATION_CONSUMER_GROUP:ymall-notification}
+    settlement-consumer:
+      enabled: ${KAFKA_SETTLEMENT_CONSUMER_ENABLED:true}
+      group-id: ${KAFKA_SETTLEMENT_CONSUMER_GROUP:ymall-settlement}
     review-summary:
       name: ${KAFKA_REVIEW_SUMMARY_TOPIC:ymall.review-summary.refresh.v1}
       partitions: ${KAFKA_REVIEW_SUMMARY_PARTITIONS:3}

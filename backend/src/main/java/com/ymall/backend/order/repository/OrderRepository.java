@@ -26,6 +26,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @EntityGraph(attributePaths = {"items", "items.product"})
     Optional<Order> findByIdAndMemberId(Long orderId, Long memberId);
 
+    @EntityGraph(attributePaths = {"items", "items.product", "items.product.sellerProfile"})
+    @Query("select orders from Order orders where orders.id = :orderId")
+    Optional<Order> findByIdForSettlement(@Param("orderId") Long orderId);
+
     Page<Order> findByMemberIdOrderByCreatedAtDesc(Long memberId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

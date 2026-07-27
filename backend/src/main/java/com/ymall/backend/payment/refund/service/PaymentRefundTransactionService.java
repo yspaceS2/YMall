@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.messaging.OrderEventType;
+import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
@@ -54,6 +56,7 @@ public class PaymentRefundTransactionService {
     private final ProductRepository productRepository;
     private final ProductCacheInvalidator productCacheInvalidator;
     private final SellerProfileRepository sellerProfileRepository;
+    private final OrderOutboxService orderOutboxService;
 
     @Transactional
     public PaymentRefundPreparation prepareUser(
@@ -223,6 +226,16 @@ public class PaymentRefundTransactionService {
         order.applyRefund(fullyRefunded);
         refund.getPayment().synchronizeProviderStatus(gatewayResult.status());
         refund.succeed(gatewayResult.status(), gatewayResult.balanceAmount());
+        orderOutboxService.save(
+            OrderEventType.REFUND_COMPLETED,
+            order.getId(),
+            order.getMember().getId(),
+            Map.of(
+                "refundId", refund.getId(),
+                "refundType", refund.getType().name(),
+                "refundAmount", refund.getAmount()
+            )
+        );
         return toResponse(refund);
     }
 
