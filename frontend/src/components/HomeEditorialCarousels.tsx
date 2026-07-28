@@ -1,6 +1,7 @@
-import { ArrowRight, ChevronLeft, ChevronRight, ShoppingBasket, Sparkles } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play, ShoppingBasket, Sparkles } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useCarouselPause } from '../hooks/useCarouselPause'
 
 interface EditorialSlide {
     eyebrow: string
@@ -34,7 +35,7 @@ function HomeEditorialCarousel({
     controlClassName = '',
 }: HomeEditorialCarouselProps) {
     const [activeIndex, setActiveIndex] = useState(0)
-    const [isPaused, setIsPaused] = useState(false)
+    const { isPaused, isUserPaused, toggleUserPaused, interactionProps } = useCarouselPause()
 
     useEffect(() => {
         if (isPaused || slides.length < 2) {
@@ -61,10 +62,7 @@ function HomeEditorialCarousel({
             className={`overflow-hidden py-16 min-[601px]:py-24 ${sectionClassName}`}
             aria-roledescription="carousel"
             aria-label={ariaLabel}
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-            onFocusCapture={() => setIsPaused(true)}
-            onBlurCapture={() => setIsPaused(false)}
+            {...interactionProps}
         >
             <div className="mx-auto max-w-360 px-4 min-[601px]:px-[clamp(24px,6vw,88px)]">
                 <header className="mb-9 flex items-end justify-between gap-6">
@@ -82,12 +80,21 @@ function HomeEditorialCarousel({
                         <button className={`inline-grid size-11 place-items-center rounded-full border disabled:opacity-35 ${controlClassName}`} type="button" aria-label={`다음 ${ariaLabel}`} onClick={showNext}>
                             <ChevronRight className="size-4" aria-hidden="true" />
                         </button>
+                        <button
+                            className={`inline-grid size-11 place-items-center rounded-full border ${controlClassName}`}
+                            type="button"
+                            aria-label={isUserPaused ? `${ariaLabel} 자동 재생` : `${ariaLabel} 자동 재생 일시 정지`}
+                            aria-pressed={isUserPaused}
+                            onClick={toggleUserPaused}
+                        >
+                            {isUserPaused ? <Play className="size-4" aria-hidden="true" /> : <Pause className="size-4" aria-hidden="true" />}
+                        </button>
                     </div>
                 </header>
 
                 <div className="overflow-hidden rounded-[26px]">
                     <div
-                        className="flex transition-transform duration-700 ease-[cubic-bezier(.22,.61,.36,1)]"
+                        className="flex transition-transform duration-700 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none"
                         style={{ transform: `translateX(-${activeIndex * 100}%)` }}
                     >
                         {slides.map((slide, index) => (

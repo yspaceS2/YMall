@@ -1,13 +1,14 @@
-import { ArrowUpRight, ChevronLeft, ChevronRight, Gift } from 'lucide-react'
+import { ArrowUpRight, ChevronLeft, ChevronRight, Gift, Pause, Play } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useCarouselPause } from '../hooks/useCarouselPause'
 import type { ProductSummary } from '../types/product'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
 
 export function TodayRecommendationCarousel({ products }: { products: ProductSummary[] }) {
     const recommendedProducts = products.slice(0, 3)
     const [activeIndex, setActiveIndex] = useState(0)
-    const [isPaused, setIsPaused] = useState(false)
+    const { isPaused, isUserPaused, toggleUserPaused, interactionProps } = useCarouselPause()
 
     useEffect(() => {
         if (isPaused || recommendedProducts.length < 2) {
@@ -35,10 +36,7 @@ export function TodayRecommendationCarousel({ products }: { products: ProductSum
             className="overflow-hidden bg-[#f0f1eb] py-16 text-[#171717] min-[601px]:py-24"
             aria-roledescription="carousel"
             aria-label="오늘의 추천 아이템"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-            onFocusCapture={() => setIsPaused(true)}
-            onBlurCapture={() => setIsPaused(false)}
+            {...interactionProps}
         >
             <div className="mx-auto max-w-360 px-4 min-[601px]:px-[clamp(24px,6vw,88px)]">
                 <div className="mb-9 flex items-end justify-between">
@@ -54,12 +52,21 @@ export function TodayRecommendationCarousel({ products }: { products: ProductSum
                         <button className="inline-grid size-11 place-items-center rounded-full border border-[#171717]/20 disabled:opacity-35" type="button" aria-label="다음 추천 상품" disabled={recommendedProducts.length < 2} onClick={showNext}>
                             <ChevronRight className="size-4" aria-hidden="true" />
                         </button>
+                        <button
+                            className="inline-grid size-11 place-items-center rounded-full border border-[#171717]/20"
+                            type="button"
+                            aria-label={isUserPaused ? '추천 상품 자동 재생' : '추천 상품 자동 재생 일시 정지'}
+                            aria-pressed={isUserPaused}
+                            onClick={toggleUserPaused}
+                        >
+                            {isUserPaused ? <Play className="size-4" aria-hidden="true" /> : <Pause className="size-4" aria-hidden="true" />}
+                        </button>
                     </div>
                 </div>
 
                 <div className="overflow-hidden">
                     <div
-                        className="flex transition-transform duration-600 ease-[cubic-bezier(.22,.61,.36,1)]"
+                        className="flex transition-transform duration-600 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none"
                         style={{ transform: `translateX(-${(activeIndex % recommendedProducts.length) * 100}%)` }}
                     >
                         {recommendedProducts.map((product, index) => {

@@ -224,7 +224,7 @@ export function ProductDetailPage() {
                     <div className="mt-5.5 flex gap-6.5 text-[11px] text-muted"><span className="flex items-center gap-1.5"><Truck className="size-4" /> 무료 배송</span><span className="flex items-center gap-1.5"><ShieldCheck className="size-4" /> 안전 결제</span></div>
                 </div>
             </div>
-            <div className="sticky top-0 z-30 mt-20 grid grid-cols-3 border-y border-line bg-paper" role="tablist" aria-label="상품 상세 메뉴">
+            <div className="mt-20 grid grid-cols-3 border-y border-line bg-paper" role="tablist" aria-label="상품 상세 메뉴">
                 <button className={`h-16 border-r border-line text-sm font-extrabold ${activeTab === 'information' ? 'bg-ink text-surface' : 'bg-paper text-ink'}`} id="product-information-tab" type="button" role="tab" aria-selected={activeTab === 'information'} aria-controls="product-information-panel" onClick={() => setActiveTab('information')}>상품정보</button>
                 <button className={`h-16 border-r border-line text-sm font-extrabold ${activeTab === 'reviews' ? 'bg-ink text-surface' : 'bg-paper text-ink'}`} id="product-reviews-tab" type="button" role="tab" aria-selected={activeTab === 'reviews'} aria-controls="product-reviews-panel" onClick={() => setActiveTab('reviews')}>리뷰 <span className="font-normal opacity-65">({reviewCount})</span></button>
                 <button className={`h-16 text-sm font-extrabold ${activeTab === 'qna' ? 'bg-ink text-surface' : 'bg-paper text-ink'}`} id="product-qna-tab" type="button" role="tab" aria-selected={activeTab === 'qna'} aria-controls="product-qna-panel" onClick={() => setActiveTab('qna')}>Q&amp;A</button>

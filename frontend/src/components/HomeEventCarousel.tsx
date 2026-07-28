@@ -1,6 +1,7 @@
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useCarouselPause } from '../hooks/useCarouselPause'
 
 const eventSlides = [
     {
@@ -53,7 +54,7 @@ const eventSlides = [
 
 export function HomeEventCarousel() {
     const [activeIndex, setActiveIndex] = useState(0)
-    const [isPaused, setIsPaused] = useState(false)
+    const { isPaused, isUserPaused, toggleUserPaused, interactionProps } = useCarouselPause()
 
     useEffect(() => {
         if (isPaused) {
@@ -78,13 +79,10 @@ export function HomeEventCarousel() {
             className="relative min-h-100 overflow-hidden min-[901px]:min-h-130"
             aria-roledescription="carousel"
             aria-label="이벤트 프로모션"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-            onFocusCapture={() => setIsPaused(true)}
-            onBlurCapture={() => setIsPaused(false)}
+            {...interactionProps}
         >
             <div
-                className="flex transition-transform duration-700 ease-[cubic-bezier(.22,.61,.36,1)]"
+                className="flex transition-transform duration-700 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none"
                 style={{ transform: `translateX(-${activeIndex * 100}%)` }}
             >
                 {eventSlides.map((slide, index) => (
@@ -120,6 +118,15 @@ export function HomeEventCarousel() {
                 <span className="min-w-14 text-center text-xs font-extrabold">{activeIndex + 1} / {eventSlides.length}</span>
                 <button className="inline-grid size-10 place-items-center rounded-full border border-[#171717]/35 bg-white/25 backdrop-blur-sm" type="button" aria-label="다음 이벤트" onClick={showNext}>
                     <ChevronRight className="size-4" aria-hidden="true" />
+                </button>
+                <button
+                    className="inline-grid size-10 place-items-center rounded-full border border-[#171717]/35 bg-white/25 backdrop-blur-sm"
+                    type="button"
+                    aria-label={isUserPaused ? '이벤트 자동 재생' : '이벤트 자동 재생 일시 정지'}
+                    aria-pressed={isUserPaused}
+                    onClick={toggleUserPaused}
+                >
+                    {isUserPaused ? <Play className="size-4" aria-hidden="true" /> : <Pause className="size-4" aria-hidden="true" />}
                 </button>
             </div>
         </section>
