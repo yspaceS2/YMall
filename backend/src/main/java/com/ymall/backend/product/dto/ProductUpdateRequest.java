@@ -39,6 +39,9 @@ public record ProductUpdateRequest(
     String thumbnailUrl,
 
     @Valid
-    List<ProductImageCreateRequest> images
+    List<ProductImageCreateRequest> images,
+
+    @Valid
+    List<ProductDetailImageCreateRequest> detailImages
 ) {
 }

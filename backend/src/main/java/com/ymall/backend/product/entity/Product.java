@@ -75,6 +75,9 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> images = new ArrayList<>();
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProductDetailImage> detailImages = new ArrayList<>();
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -108,6 +111,11 @@ public class Product {
     public void addImage(ProductImage image) {
         images.add(image);
         image.assignProduct(this);
+    }
+
+    public void addDetailImage(ProductDetailImage detailImage) {
+        detailImages.add(detailImage);
+        detailImage.assignProduct(this);
     }
 
     public void assignSellerProfile(SellerProfile sellerProfile) {
@@ -161,6 +169,11 @@ public class Product {
     public void replaceImages(List<ProductImage> newImages) {
         images.clear();
         newImages.forEach(this::addImage);
+    }
+
+    public void replaceDetailImages(List<ProductDetailImage> newDetailImages) {
+        detailImages.clear();
+        newDetailImages.forEach(this::addDetailImage);
     }
 
     /**

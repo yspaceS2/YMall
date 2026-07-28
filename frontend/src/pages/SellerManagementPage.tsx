@@ -42,6 +42,7 @@ const emptyProduct: SellerProductRequest = {
     stock: 0,
     thumbnailUrl: '',
     images: [],
+    detailImages: [],
 }
 
 const nextStatus: Partial<Record<FulfillmentStatus, FulfillmentStatus>> = {
@@ -191,6 +192,11 @@ export function SellerManagementPage() {
                     imageUrl: image.imageUrl,
                     sortOrder: image.sortOrder,
                 })),
+                detailImages: (product.detailImages ?? []).map((image) => ({
+                    originalUrl: image.originalUrl,
+                    imageUrl: image.imageUrl,
+                    sortOrder: image.sortOrder,
+                })),
             })
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '상품 정보를 불러오지 못했습니다.')
@@ -335,6 +341,18 @@ export function SellerManagementPage() {
                             <Field label="상품명" value={productForm.name} onChange={(value) => setProductForm({ ...productForm, name: value })} required />
                             <Field label="브랜드" value={productForm.brand} onChange={(value) => setProductForm({ ...productForm, brand: value })} />
                             <Field label="대표 이미지 URL" value={productForm.thumbnailUrl} onChange={(value) => setProductForm({ ...productForm, thumbnailUrl: value })} />
+                            <ImageUrlListField
+                                label="상단 갤러리 이미지 URL"
+                                description="한 줄에 하나씩 입력하면 상품 상단의 작은 썸네일 순서로 표시됩니다."
+                                images={productForm.images}
+                                onChange={(images) => setProductForm({ ...productForm, images })}
+                            />
+                            <ImageUrlListField
+                                label="상세 설명 이미지 URL"
+                                description="한 줄에 하나씩 입력한 순서대로 상품정보 탭에 세로로 이어집니다."
+                                images={productForm.detailImages}
+                                onChange={(detailImages) => setProductForm({ ...productForm, detailImages })}
+                            />
                             <NumberField label="가격" value={productForm.price} onChange={(value) => setProductForm({ ...productForm, price: value })} min={1} />
                             <NumberField label="재고" value={productForm.stock} onChange={(value) => setProductForm({ ...productForm, stock: value })} min={0} />
                             <NumberField label="할인율" value={productForm.discountPercentage} onChange={(value) => setProductForm({ ...productForm, discountPercentage: value })} min={0} max={100} />
@@ -463,4 +481,48 @@ function Field({ label, value, onChange, required = false, disabled = false }: {
 
 function NumberField({ label, value, onChange, min, max }: { label: string; value: number; onChange: (value: number) => void; min: number; max?: number }) {
     return <label className="grid gap-2 text-xs font-bold">{label}<input className="h-11 border border-line px-3 font-normal" type="number" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} required /></label>
+}
+
+function ImageUrlListField({
+    label,
+    description,
+    images,
+    onChange,
+}: {
+    label: string
+    description: string
+    images: SellerProductRequest['images']
+    onChange: (images: SellerProductRequest['images']) => void
+}) {
+    const value = images.map((image) => image.imageUrl).join('\n')
+
+    const updateImages = (nextValue: string) => {
+        onChange(
+            nextValue
+                .split('\n')
+                .map((imageUrl) => imageUrl.trim())
+                .filter(Boolean)
+                .map((imageUrl, sortOrder) => ({
+                    originalUrl: imageUrl,
+                    imageUrl,
+                    sortOrder,
+                })),
+        )
+    }
+
+    return (
+        <label className="grid gap-2 text-xs font-bold min-[701px]:col-span-2">
+            {label}
+            <span className="font-normal text-muted">{description}</span>
+            <textarea
+                className="min-h-28 resize-y border border-line bg-surface p-3 font-mono text-xs font-normal text-ink"
+                value={value}
+                placeholder={'https://example.com/image-01.jpg\nhttps://example.com/image-02.jpg'}
+                onChange={(event) => updateImages(event.target.value)}
+            />
+            {images.length > 0 && (
+                <span className="font-normal text-muted">현재 {images.length}개 · 입력한 줄 순서대로 저장됩니다.</span>
+            )}
+        </label>
+    )
 }

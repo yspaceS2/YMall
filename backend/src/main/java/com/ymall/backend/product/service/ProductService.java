@@ -127,6 +127,7 @@ public class ProductService {
             request.thumbnailUrl()
         );
         product.replaceImages(productMapper.toImageEntities(request));
+        product.replaceDetailImages(productMapper.toDetailImageEntities(request));
 
         productCacheInvalidator.evictDetail(productId);
 

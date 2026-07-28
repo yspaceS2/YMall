@@ -56,12 +56,15 @@ class ProductApiIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.name").value("iPhone 15"))
-            .andExpect(jsonPath("$.data.images[0].imageUrl").value("image"));
+            .andExpect(jsonPath("$.data.images[0].imageUrl").value("image"))
+            .andExpect(jsonPath("$.data.detailImages[0].imageUrl").value("detail-image-01"))
+            .andExpect(jsonPath("$.data.detailImages[1].imageUrl").value("detail-image-02"));
 
         assertThat(productRepository.findAll()).hasSize(1);
         Product savedProduct = productRepository.findAll().get(0);
         assertThat(savedProduct.getName()).isEqualTo("iPhone 15");
         assertThat(savedProduct.getImages()).hasSize(1);
+        assertThat(savedProduct.getDetailImages()).hasSize(2);
     }
 
     /**
@@ -99,11 +102,13 @@ class ProductApiIntegrationTest {
                 .content(productUpdateJson(category.getId())))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.name").value("Updated Product"));
+            .andExpect(jsonPath("$.data.name").value("Updated Product"))
+            .andExpect(jsonPath("$.data.detailImages[0].imageUrl").value("updated-detail-image"));
 
         Product updatedProduct = productRepository.findById(product.getId()).orElseThrow();
         assertThat(updatedProduct.getName()).isEqualTo("Updated Product");
         assertThat(updatedProduct.getImages()).hasSize(1);
+        assertThat(updatedProduct.getDetailImages()).hasSize(1);
     }
 
     /**
@@ -155,6 +160,18 @@ class ProductApiIntegrationTest {
                   "imageUrl": "image",
                   "sortOrder": 0
                 }
+              ],
+              "detailImages": [
+                {
+                  "originalUrl": "detail-original-02",
+                  "imageUrl": "detail-image-02",
+                  "sortOrder": 1
+                },
+                {
+                  "originalUrl": "detail-original-01",
+                  "imageUrl": "detail-image-01",
+                  "sortOrder": 0
+                }
               ]
             }
             """.formatted(categoryId);
@@ -175,6 +192,13 @@ class ProductApiIntegrationTest {
                 {
                   "originalUrl": "updated-original",
                   "imageUrl": "updated-image",
+                  "sortOrder": 0
+                }
+              ],
+              "detailImages": [
+                {
+                  "originalUrl": "updated-detail-original",
+                  "imageUrl": "updated-detail-image",
                   "sortOrder": 0
                 }
               ]

@@ -89,6 +89,7 @@ class ProductCacheIntegrationTest {
             BigDecimal.ZERO,
             5,
             null,
+            List.of(),
             List.of()
         ));
 
