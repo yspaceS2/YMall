@@ -82,6 +82,7 @@ export interface SellerProductRequest {
     stock: number
     thumbnailUrl: string
     images: SellerProductImageRequest[]
+    detailImages: SellerProductImageRequest[]
 }
 
 export interface SellerProductImageRequest {

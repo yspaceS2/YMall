@@ -21,11 +21,13 @@ import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.product.dto.CategoryResponse;
 import com.ymall.backend.product.dto.ProductCreateRequest;
+import com.ymall.backend.product.dto.ProductDetailImageCreateRequest;
 import com.ymall.backend.product.dto.ProductDetailResponse;
 import com.ymall.backend.product.dto.ProductImageCreateRequest;
 import com.ymall.backend.product.dto.ProductUpdateRequest;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
+import com.ymall.backend.product.entity.ProductDetailImage;
 import com.ymall.backend.product.entity.ProductImage;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.mapper.ProductMapper;
@@ -119,11 +121,17 @@ class ProductServiceTest {
         Product product = createProduct(oldCategory);
         ProductUpdateRequest request = updateRequest();
         ProductImage newImage = new ProductImage("original", "updated-image", 0);
+        ProductDetailImage newDetailImage = new ProductDetailImage(
+            "detail-original",
+            "updated-detail-image",
+            0
+        );
         ProductDetailResponse response = createUpdatedDetailResponse();
 
         given(productRepository.findWithCategoryAndImagesById(1L)).willReturn(Optional.of(product));
         given(categoryRepository.findById(2L)).willReturn(Optional.of(newCategory));
         given(productMapper.toImageEntities(request)).willReturn(List.of(newImage));
+        given(productMapper.toDetailImageEntities(request)).willReturn(List.of(newDetailImage));
         given(productMapper.toProductDetailResponse(product)).willReturn(response);
 
         ProductDetailResponse result = productService.updateProduct(1L, request);
@@ -131,6 +139,7 @@ class ProductServiceTest {
         assertThat(result.name()).isEqualTo("Updated Product");
         assertThat(product.getName()).isEqualTo("Updated Product");
         assertThat(product.getImages()).hasSize(1);
+        assertThat(product.getDetailImages()).hasSize(1);
     }
 
     /**
@@ -185,7 +194,8 @@ class ProductServiceTest {
             BigDecimal.valueOf(10),
             20,
             "thumbnail",
-            List.of(new ProductImageCreateRequest("original", "image", 0))
+            List.of(new ProductImageCreateRequest("original", "image", 0)),
+            List.of()
         );
     }
 
@@ -199,7 +209,12 @@ class ProductServiceTest {
             BigDecimal.valueOf(5),
             10,
             "updated-thumbnail",
-            List.of(new ProductImageCreateRequest("original", "updated-image", 0))
+            List.of(new ProductImageCreateRequest("original", "updated-image", 0)),
+            List.of(new ProductDetailImageCreateRequest(
+                "detail-original",
+                "updated-detail-image",
+                0
+            ))
         );
     }
 
@@ -234,6 +249,7 @@ class ProductServiceTest {
             20,
             "thumbnail",
             ProductStatus.APPROVED,
+            List.of(),
             List.of()
         );
     }
@@ -251,6 +267,7 @@ class ProductServiceTest {
             10,
             "updated-thumbnail",
             ProductStatus.APPROVED,
+            List.of(),
             List.of()
         );
     }

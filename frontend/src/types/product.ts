@@ -33,10 +33,18 @@ export interface ProductImage {
   sortOrder: number
 }
 
+export interface ProductDetailImage {
+  detailImageId: number
+  originalUrl: string | null
+  imageUrl: string
+  sortOrder: number
+}
+
 export interface ProductDetail extends Omit<ProductSummary, 'categoryId' | 'categoryName'> {
   category: Category
   description: string
   images: ProductImage[]
+  detailImages: ProductDetailImage[]
 }
 
 export interface PageResponse<T> {

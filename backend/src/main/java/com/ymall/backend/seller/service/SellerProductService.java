@@ -86,6 +86,7 @@ public class SellerProductService {
             request.thumbnailUrl()
         );
         product.replaceImages(productMapper.toImageEntities(request));
+        product.replaceDetailImages(productMapper.toDetailImageEntities(request));
         product.requestApproval();
         productCacheInvalidator.evictDetail(productId);
         return productMapper.toProductDetailResponse(product);

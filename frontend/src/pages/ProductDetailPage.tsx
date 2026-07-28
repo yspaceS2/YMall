@@ -15,6 +15,8 @@ import type { Review, ReviewSummary } from '../types/review'
 import { formatKoreanDate } from '../utils/dateTime'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
 
+type ProductDetailTab = 'information' | 'reviews' | 'qna'
+
 export function ProductDetailPage() {
     const { productId } = useParams()
     const { isAuthenticated } = useAuth()
@@ -48,6 +50,7 @@ export function ProductDetailPage() {
     })
     const [reviewSummaryRetryKey, setReviewSummaryRetryKey] = useState(0)
     const [retryKey, setRetryKey] = useState(0)
+    const [activeTab, setActiveTab] = useState<ProductDetailTab>('information')
     const reviewLoadMoreControllerRef = useRef<AbortController | null>(null)
 
     useEffect(() => {
@@ -187,13 +190,15 @@ export function ProductDetailPage() {
     if (error) return <PageState variant="error" title="상품을 불러오지 못했습니다" description={error} action={<button className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" type="button" onClick={() => { setError(''); setProduct(null); setRetryKey((value) => value + 1) }}>다시 시도</button>} />
     if (!product) return <PageState variant="loading" title="상품 정보를 불러오는 중입니다" description="잠시만 기다려 주세요." />
 
+    const detailImages = product.detailImages ?? []
+
     return (
         <section className="mx-auto max-w-360 px-4 pt-12 pb-20 min-[601px]:px-[clamp(20px,5vw,72px)] min-[601px]:pt-18 min-[601px]:pb-27.5">
             <Link className="mb-7 inline-flex items-center gap-1 text-xs" to="/"><ChevronLeft className="size-4" /> 상품 목록</Link>
             <div className="grid grid-cols-1 gap-10 min-[901px]:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)] min-[901px]:gap-[clamp(40px,7vw,110px)]">
                 <div className="min-w-0">
                     <div className="aspect-square overflow-hidden bg-[#e9e9e3]">{selectedImage ? <img className="size-full object-cover" src={resolveImageUrl(selectedImage)} alt={product.name} /> : <div className="grid size-full place-items-center bg-linear-to-br from-[#ebeae4] to-[#d8d9cf] font-serif text-lg font-bold tracking-[.2em] text-[#a2a298]">YMALL</div>}</div>
-                    {product.images.length > 0 && <div className="mt-3 flex gap-2.5 overflow-x-auto">{product.images.map((image) => <button className={`size-18.5 shrink-0 border p-0 ${selectedImage === image.imageUrl ? 'border-ink' : 'border-transparent'}`} onClick={() => setSelectedImage(image.imageUrl)} key={image.imageId} type="button"><img className="size-full object-cover" src={resolveImageUrl(image.imageUrl)} alt="" /></button>)}</div>}
+                    {product.images.length > 0 && <div className="mt-3 flex gap-2.5 overflow-x-auto" aria-label="상품 이미지 선택">{product.images.map((image, index) => <button className={`size-18.5 shrink-0 border p-0 ${selectedImage === image.imageUrl ? 'border-ink' : 'border-transparent'}`} aria-label={`${index + 1}번 상품 이미지 보기`} aria-current={selectedImage === image.imageUrl ? 'true' : undefined} onClick={() => setSelectedImage(image.imageUrl)} key={image.imageId} type="button"><img className="size-full object-cover" src={resolveImageUrl(image.imageUrl)} alt="" /></button>)}</div>}
                 </div>
                 <div className="pt-3">
                     <div className="inline-block bg-lime px-2.5 py-1 text-[10px] font-extrabold tracking-[.08em]">{product.category.name}</div>
@@ -219,7 +224,38 @@ export function ProductDetailPage() {
                     <div className="mt-5.5 flex gap-6.5 text-[11px] text-muted"><span className="flex items-center gap-1.5"><Truck className="size-4" /> 무료 배송</span><span className="flex items-center gap-1.5"><ShieldCheck className="size-4" /> 안전 결제</span></div>
                 </div>
             </div>
-            <div className="mt-20 border-t border-ink pt-9">
+            <div className="mt-20 grid grid-cols-3 border-y border-line bg-paper" role="tablist" aria-label="상품 상세 메뉴">
+                <button className={`h-16 border-r border-line text-sm font-extrabold ${activeTab === 'information' ? 'bg-ink text-surface' : 'bg-paper text-ink'}`} id="product-information-tab" type="button" role="tab" aria-selected={activeTab === 'information'} aria-controls="product-information-panel" onClick={() => setActiveTab('information')}>상품정보</button>
+                <button className={`h-16 border-r border-line text-sm font-extrabold ${activeTab === 'reviews' ? 'bg-ink text-surface' : 'bg-paper text-ink'}`} id="product-reviews-tab" type="button" role="tab" aria-selected={activeTab === 'reviews'} aria-controls="product-reviews-panel" onClick={() => setActiveTab('reviews')}>리뷰 <span className="font-normal opacity-65">({reviewCount})</span></button>
+                <button className={`h-16 text-sm font-extrabold ${activeTab === 'qna' ? 'bg-ink text-surface' : 'bg-paper text-ink'}`} id="product-qna-tab" type="button" role="tab" aria-selected={activeTab === 'qna'} aria-controls="product-qna-panel" onClick={() => setActiveTab('qna')}>Q&amp;A</button>
+            </div>
+
+            {activeTab === 'information' && (
+                <div className="pt-10" id="product-information-panel" role="tabpanel" aria-labelledby="product-information-tab">
+                    <div className="mx-auto mb-10 max-w-215 border-b border-line pb-8">
+                        <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">PRODUCT INFORMATION</p>
+                        <h2 className="font-serif text-4xl tracking-tight">상품정보</h2>
+                        {product.description && <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-muted">{product.description}</p>}
+                    </div>
+                    {detailImages.length > 0 ? (
+                        <div className="mx-auto max-w-215 overflow-hidden bg-white">
+                            {detailImages.map((image, index) => (
+                                <img
+                                    className="block h-auto w-full"
+                                    src={resolveImageUrl(image.imageUrl)}
+                                    alt={`${product.name} 상세 이미지 ${index + 1}`}
+                                    loading="lazy"
+                                    key={image.detailImageId}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <PageState variant="empty" title="등록된 상세 이미지가 없습니다" description="상품 설명과 상단 이미지를 참고해 주세요." compact />
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'reviews' && <div className="border-t border-ink pt-9" id="product-reviews-panel" role="tabpanel" aria-labelledby="product-reviews-tab">
                 <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
                     <div>
                         <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">REVIEWS</p>
@@ -268,7 +304,17 @@ export function ProductDetailPage() {
                         {isLoadingReviews ? '불러오는 중...' : '리뷰 더 보기'}
                     </button>
                 )}
-            </div>
+            </div>}
+
+            {activeTab === 'qna' && (
+                <div className="pt-10" id="product-qna-panel" role="tabpanel" aria-labelledby="product-qna-tab">
+                    <div className="mb-8">
+                        <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">PRODUCT Q&amp;A</p>
+                        <h2 className="font-serif text-4xl tracking-tight">상품 Q&amp;A</h2>
+                    </div>
+                    <PageState variant="empty" title="등록된 상품 문의가 없습니다" description="상품 문의 작성과 판매자 답변 기능은 다음 단계에서 연결할 예정입니다." compact />
+                </div>
+            )}
         </section>
     )
 }

@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.ymall.backend.product.entity.Product;
+import com.ymall.backend.product.entity.ProductDetailImage;
 import com.ymall.backend.product.entity.ProductImage;
 import com.ymall.backend.product.entity.ProductStatus;
 
@@ -20,7 +21,8 @@ public record ProductDetailResponse(
     Integer stock,
     String thumbnailUrl,
     ProductStatus status,
-    List<ProductImageResponse> images
+    List<ProductImageResponse> images,
+    List<ProductDetailImageResponse> detailImages
 ) {
 
     public static ProductDetailResponse from(Product product) {
@@ -40,6 +42,16 @@ public record ProductDetailResponse(
                 .stream()
                 .sorted(Comparator.comparing(ProductImage::getSortOrder))
                 .map(ProductImageResponse::from)
+                .toList(),
+            product.getDetailImages()
+                .stream()
+                .sorted(Comparator.comparing(ProductDetailImage::getSortOrder))
+                .map(image -> new ProductDetailImageResponse(
+                    image.getId(),
+                    image.getOriginalUrl(),
+                    image.getImageUrl(),
+                    image.getSortOrder()
+                ))
                 .toList()
         );
     }

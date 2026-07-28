@@ -29,14 +29,18 @@ test('일반 사용자는 판매자와 관리자 메뉴를 볼 수 없다', asyn
     await installMockApi(page)
     await loginThroughUi(page)
 
-    await expect(page.getByRole('link', { name: '판매자 관리' })).toHaveCount(0)
-    await expect(page.getByRole('link', { name: '관리자 운영' })).toHaveCount(0)
+    await page.getByRole('button', { name: '내 정보 메뉴' }).click()
+
+    await expect(page.getByRole('menuitem', { name: '판매자 센터' })).toHaveCount(0)
+    await expect(page.getByRole('menuitem', { name: '관리자 콘솔' })).toHaveCount(0)
 })
 
 test('판매자와 관리자는 역할에 맞는 메뉴를 볼 수 있다', async ({ page }) => {
     await installMockApi(page)
     await loginThroughUi(page, 'admin@example.test')
 
-    await expect(page.getByRole('link', { name: '판매자 관리' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '관리자 운영' })).toBeVisible()
+    await page.getByRole('button', { name: '내 정보 메뉴' }).click()
+
+    await expect(page.getByRole('menuitem', { name: '판매자 센터' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '관리자 콘솔' })).toBeVisible()
 })

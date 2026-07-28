@@ -222,6 +222,7 @@ class ProductControllerTest {
             20,
             "thumbnail",
             ProductStatus.APPROVED,
+            List.of(),
             List.of()
         );
     }

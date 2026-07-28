@@ -8,6 +8,8 @@ import org.mapstruct.Mapping;
 
 import com.ymall.backend.product.dto.CategoryResponse;
 import com.ymall.backend.product.dto.ProductCreateRequest;
+import com.ymall.backend.product.dto.ProductDetailImageCreateRequest;
+import com.ymall.backend.product.dto.ProductDetailImageResponse;
 import com.ymall.backend.product.dto.ProductDetailResponse;
 import com.ymall.backend.product.dto.ProductImageCreateRequest;
 import com.ymall.backend.product.dto.ProductImageResponse;
@@ -15,6 +17,7 @@ import com.ymall.backend.product.dto.ProductListResponse;
 import com.ymall.backend.product.dto.ProductUpdateRequest;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
+import com.ymall.backend.product.entity.ProductDetailImage;
 import com.ymall.backend.product.entity.ProductImage;
 import com.ymall.backend.product.entity.ProductStatus;
 
@@ -27,6 +30,9 @@ public interface ProductMapper {
     @Mapping(source = "id", target = "imageId")
     ProductImageResponse toProductImageResponse(ProductImage productImage);
 
+    @Mapping(source = "id", target = "detailImageId")
+    ProductDetailImageResponse toProductDetailImageResponse(ProductDetailImage productDetailImage);
+
     @Mapping(source = "id", target = "productId")
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "category.name", target = "categoryName")
@@ -35,12 +41,22 @@ public interface ProductMapper {
     @Mapping(source = "id", target = "productId")
     @Mapping(source = "category", target = "category")
     @Mapping(target = "images", expression = "java(toSortedProductImageResponses(product.getImages()))")
+    @Mapping(target = "detailImages", expression = "java(toSortedProductDetailImageResponses(product.getDetailImages()))")
     ProductDetailResponse toProductDetailResponse(Product product);
 
     default List<ProductImageResponse> toSortedProductImageResponses(List<ProductImage> productImages) {
         return productImages.stream()
             .sorted(Comparator.comparing(ProductImage::getSortOrder))
             .map(this::toProductImageResponse)
+            .toList();
+    }
+
+    default List<ProductDetailImageResponse> toSortedProductDetailImageResponses(
+        List<ProductDetailImage> productDetailImages
+    ) {
+        return productDetailImages.stream()
+            .sorted(Comparator.comparing(ProductDetailImage::getSortOrder))
+            .map(this::toProductDetailImageResponse)
             .toList();
     }
 
@@ -69,6 +85,13 @@ public interface ProductMapper {
                 .forEach(product::addImage);
         }
 
+        if (request.detailImages() != null) {
+            request.detailImages()
+                .stream()
+                .map(this::toEntity)
+                .forEach(product::addDetailImage);
+        }
+
         return product;
     }
 
@@ -78,6 +101,14 @@ public interface ProductMapper {
      */
     default ProductImage toEntity(ProductImageCreateRequest request) {
         return new ProductImage(
+            request.originalUrl(),
+            request.imageUrl(),
+            request.sortOrder()
+        );
+    }
+
+    default ProductDetailImage toEntity(ProductDetailImageCreateRequest request) {
+        return new ProductDetailImage(
             request.originalUrl(),
             request.imageUrl(),
             request.sortOrder()
@@ -94,6 +125,17 @@ public interface ProductMapper {
         }
 
         return request.images()
+            .stream()
+            .map(this::toEntity)
+            .toList();
+    }
+
+    default List<ProductDetailImage> toDetailImageEntities(ProductUpdateRequest request) {
+        if (request.detailImages() == null) {
+            return List.of();
+        }
+
+        return request.detailImages()
             .stream()
             .map(this::toEntity)
             .toList();
