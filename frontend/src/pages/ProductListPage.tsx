@@ -1,5 +1,6 @@
 import { Search, SlidersHorizontal } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { getCategories, getProducts } from '../api/products'
 import { ProductCard } from '../components/ProductCard'
 import { PageState } from '../components/ui/PageState'
@@ -8,11 +9,15 @@ import type { Category, PageResponse, ProductSummary } from '../types/product'
 const PAGE_SIZE = 12
 
 export function ProductListPage() {
+    const [searchParams, setSearchParams] = useSearchParams()
+    const query = searchParams.get('keyword')?.trim() ?? ''
+    const categoryIdParameter = Number(searchParams.get('categoryId'))
+    const categoryId = Number.isSafeInteger(categoryIdParameter) && categoryIdParameter > 0
+        ? categoryIdParameter
+        : undefined
+    const pageParameter = Number(searchParams.get('page'))
+    const page = Number.isSafeInteger(pageParameter) && pageParameter > 0 ? pageParameter : 1
     const [categories, setCategories] = useState<Category[]>([])
-    const [categoryId, setCategoryId] = useState<number>()
-    const [keyword, setKeyword] = useState('')
-    const [query, setQuery] = useState('')
-    const [page, setPage] = useState(1)
     const [retryKey, setRetryKey] = useState(0)
     const requestKey = `${page}:${categoryId ?? 'all'}:${query}:${retryKey}`
     const [result, setResult] = useState<{
@@ -44,10 +49,39 @@ export function ProductListPage() {
     }, [categoryId, page, query, requestKey])
 
     function selectCategory(nextCategoryId?: number) {
-        setCategoryId(nextCategoryId)
-        setQuery('')
-        setKeyword('')
-        setPage(1)
+        const nextSearchParams = new URLSearchParams(searchParams)
+        nextSearchParams.delete('keyword')
+        nextSearchParams.delete('page')
+        if (nextCategoryId) {
+            nextSearchParams.set('categoryId', String(nextCategoryId))
+        } else {
+            nextSearchParams.delete('categoryId')
+        }
+        setSearchParams(nextSearchParams)
+    }
+
+    function submitSearch(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault()
+        const nextSearchParams = new URLSearchParams(searchParams)
+        const nextKeyword = String(new FormData(event.currentTarget).get('keyword') ?? '').trim()
+        nextSearchParams.delete('categoryId')
+        nextSearchParams.delete('page')
+        if (nextKeyword) {
+            nextSearchParams.set('keyword', nextKeyword)
+        } else {
+            nextSearchParams.delete('keyword')
+        }
+        setSearchParams(nextSearchParams)
+    }
+
+    function selectPage(nextPage: number) {
+        const nextSearchParams = new URLSearchParams(searchParams)
+        if (nextPage > 1) {
+            nextSearchParams.set('page', String(nextPage))
+        } else {
+            nextSearchParams.delete('page')
+        }
+        setSearchParams(nextSearchParams)
     }
 
     return (
@@ -61,8 +95,8 @@ export function ProductListPage() {
             <section className="mx-auto max-w-360 px-4 pt-12 pb-20 min-[601px]:px-[clamp(20px,5vw,72px)] min-[601px]:pt-18 min-[601px]:pb-27.5">
                 <div className="flex flex-col items-start justify-between gap-6 min-[601px]:flex-row min-[601px]:items-end">
                     <div><span className="text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">SHOP</span><h2 className="mt-2 mr-3 inline font-serif text-[34px] leading-tight font-semibold">전체 상품</h2><p className="inline text-[13px] text-muted">{products?.totalElements ?? 0}개의 상품</p></div>
-                    <form className="flex w-full border-b border-ink min-[601px]:max-w-97.5" onSubmit={(event) => { event.preventDefault(); setQuery(keyword.trim()); setCategoryId(undefined); setPage(1) }}>
-                        <input className="w-full border-0 bg-transparent px-1 py-3 text-[13px] outline-0" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="찾고 있는 상품을 검색해보세요" aria-label="상품 검색" />
+                    <form className="flex w-full border-b border-ink min-[601px]:max-w-97.5" onSubmit={submitSearch}>
+                        <input className="w-full border-0 bg-transparent px-1 py-3 text-[13px] outline-0" defaultValue={query} key={query} name="keyword" placeholder="찾고 있는 상품을 검색해보세요" aria-label="상품 검색" />
                         <button className="border-0 bg-transparent" type="submit" aria-label="검색"><Search className="size-5" /></button>
                     </form>
                 </div>
@@ -93,11 +127,11 @@ export function ProductListPage() {
 
                 {products && products.totalPages > 1 && (
                     <nav className="mt-17 flex justify-center gap-1" aria-label="상품 페이지">
-                        <button className="h-9.5 min-w-9.5 border border-line bg-transparent disabled:opacity-35" disabled={!products.hasPrevious} onClick={() => setPage((value) => value - 1)} type="button">이전</button>
+                        <button className="h-9.5 min-w-9.5 border border-line bg-transparent disabled:opacity-35" disabled={!products.hasPrevious} onClick={() => selectPage(page - 1)} type="button">이전</button>
                         {Array.from({ length: products.totalPages }, (_, index) => index + 1).slice(Math.max(0, page - 3), page + 2).map((number) => (
-                            <button className={`h-9.5 min-w-9.5 border border-line ${page === number ? 'bg-ink text-white' : 'bg-transparent'}`} onClick={() => setPage(number)} key={number} type="button">{number}</button>
+                            <button className={`h-9.5 min-w-9.5 border border-line ${page === number ? 'bg-ink text-white' : 'bg-transparent'}`} onClick={() => selectPage(number)} key={number} type="button">{number}</button>
                         ))}
-                        <button className="h-9.5 min-w-9.5 border border-line bg-transparent disabled:opacity-35" disabled={!products.hasNext} onClick={() => setPage((value) => value + 1)} type="button">다음</button>
+                        <button className="h-9.5 min-w-9.5 border border-line bg-transparent disabled:opacity-35" disabled={!products.hasNext} onClick={() => selectPage(page + 1)} type="button">다음</button>
                     </nav>
                 )}
             </section>
