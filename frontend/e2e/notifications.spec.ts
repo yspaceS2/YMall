@@ -5,8 +5,10 @@ test('알림 배지와 개별·전체 읽음 처리를 확인한다', async ({ p
     await installMockApi(page)
     await loginThroughUi(page)
 
-    await expect(page.getByRole('link', { name: '알림 2개' })).toBeVisible()
-    await page.getByRole('link', { name: '알림 2개' }).click()
+    await page.getByRole('button', { name: '내 정보 메뉴' }).click()
+    const notificationLink = page.getByRole('menuitem', { name: /^알림\s+2$/ })
+    await expect(notificationLink).toBeVisible()
+    await notificationLink.click()
     await expect(page.getByRole('heading', { name: '알림' })).toBeVisible()
 
     await page.getByRole('button', { name: /주문이 생성되었습니다/ }).click()
