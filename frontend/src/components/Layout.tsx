@@ -4,6 +4,7 @@ import { getUnreadNotificationCount, NOTIFICATIONS_CHANGED_EVENT } from '../api/
 import ymallSymbolLight from '../assets/brand/ymall-symbol-light.svg'
 import { useAuth } from '../auth/useAuth'
 import { StoreHeader } from './StoreHeader'
+import { ScrollToTopButton } from './ui/ScrollToTopButton'
 
 export function Layout({ children }: { children: ReactNode }) {
     const { isAuthenticated, role, logout } = useAuth()
@@ -48,6 +49,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 onLogout={handleLogout}
             />
             <main className="flex-1">{children}</main>
+            <ScrollToTopButton />
             <footer className="flex flex-col items-start gap-6 bg-[#1d1d1b] px-5 py-10 text-xs text-[#bcbcb5] min-[601px]:px-[clamp(24px,5vw,80px)] min-[601px]:py-12 min-[901px]:flex-row min-[901px]:items-end min-[901px]:justify-between">
                 <div>
                     <div className="flex items-center gap-2">

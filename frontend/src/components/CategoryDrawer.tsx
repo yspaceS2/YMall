@@ -163,7 +163,7 @@ export function CategoryDrawer({ categories, isAuthenticated, onClose }: Categor
                             : 'grid-cols-1'
                 }`}>
                     <nav className="overflow-y-auto border-r border-line bg-paper py-3" aria-label="대분류">
-                        <Link className="flex items-center justify-between px-3 py-3 text-xs font-extrabold min-[601px]:px-6 min-[601px]:text-sm" to="/" onClick={onClose}>
+                        <Link className="flex items-center justify-between px-3 py-3 text-xs font-extrabold min-[601px]:px-6 min-[601px]:text-sm" to="/?view=all" onClick={onClose}>
                             전체 상품
                         </Link>
                         {storeCategories.map((category, index) => (
