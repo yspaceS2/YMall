@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -83,13 +83,31 @@ describe('SellerOrderManagementPage', () => {
 
     it('배송 상태 필터를 판매자 주문 목록 요청에 반영한다', async () => {
         const user = userEvent.setup()
+        mocks.getSellerOrders.mockResolvedValue({
+            ...pageResponse(),
+            content: [{
+                ...order,
+                items: [
+                    order.items[0],
+                    {
+                        ...order.items[0],
+                        orderItemId: 1002,
+                        productName: '아직 준비하지 않은 상품',
+                        fulfillmentStatus: 'PENDING',
+                    },
+                ],
+            }],
+        })
         render(
             <MemoryRouter>
                 <SellerOrderListPage />
             </MemoryRouter>,
         )
 
-        expect(await screen.findByText('개별 출고 스니커즈')).toBeInTheDocument()
+        expect(await screen.findByText('개별 출고 스니커즈 외 1개')).toBeInTheDocument()
+        const orderTable = within(screen.getByRole('table'))
+        expect(orderTable.getByText('상품 준비 중')).toBeInTheDocument()
+        expect(orderTable.getByText('처리 대기')).toBeInTheDocument()
         await user.selectOptions(screen.getByLabelText('배송 상태'), 'SHIPPED')
 
         await waitFor(() => {
@@ -129,5 +147,33 @@ describe('SellerOrderManagementPage', () => {
                 },
             )
         })
+    })
+
+    it('판매자 환불 다이얼로그를 판매 취소 업무 문구로 표시한다', async () => {
+        const user = userEvent.setup()
+        mocks.getSellerOrder.mockResolvedValue({
+            ...order,
+            items: [{
+                ...order.items[0],
+                fulfillmentStatus: 'PENDING',
+            }],
+        })
+        render(
+            <MemoryRouter initialEntries={['/seller/orders/101']}>
+                <Routes>
+                    <Route
+                        path="/seller/orders/:orderId"
+                        element={<SellerOrderDetailPage />}
+                    />
+                </Routes>
+            </MemoryRouter>,
+        )
+
+        await user.click(await screen.findByRole('button', { name: '판매 취소' }))
+
+        expect(await screen.findByRole('heading', {
+            name: '판매 취소 및 환불 처리',
+        })).toBeInTheDocument()
+        expect(screen.getByText('판매 취소할 상품')).toBeInTheDocument()
     })
 })

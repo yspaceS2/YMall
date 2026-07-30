@@ -130,6 +130,11 @@ export function SellerOrderListPage() {
                         <tbody className="divide-y divide-line">
                             {orders.map((order) => {
                                 const firstItem = order.items[0]
+                                const activeStatuses = Array.from(new Set(
+                                    order.items
+                                        .filter((item) => item.quantity > item.refundedQuantity)
+                                        .map((item) => item.fulfillmentStatus),
+                                ))
                                 return (
                                     <tr
                                         className="cursor-pointer bg-surface transition-colors hover:bg-paper"
@@ -160,7 +165,20 @@ export function SellerOrderListPage() {
                                         </td>
                                         <td className="px-4 py-4 text-sm">{formatPrice(order.sellerAmount)}</td>
                                         <td className="px-4 py-4">
-                                            <StatusBadge status={firstItem?.fulfillmentStatus ?? 'PENDING'} />
+                                            {activeStatuses.length === 0 ? (
+                                                <span className="text-xs font-bold text-muted">
+                                                    판매 취소
+                                                </span>
+                                            ) : (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {activeStatuses.map((itemStatus) => (
+                                                        <StatusBadge
+                                                            key={itemStatus}
+                                                            status={itemStatus}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-4 py-4 text-xs text-muted">
                                             {formatKoreanDateTime(order.createdAt)}
@@ -511,6 +529,7 @@ export function SellerOrderDetailPage() {
                 isLoadingHistory={isLoadingRefunds}
                 isSubmitting={isRefunding}
                 errorMessage={refundError}
+                mode="sellerCancel"
                 onClose={() => {
                     if (!isRefunding) setRefundItem(null)
                 }}
