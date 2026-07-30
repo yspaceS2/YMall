@@ -39,9 +39,17 @@ public class AdminController {
     public ApiResponse<PageResponse<AdminProductResponse>> getProducts(
         @RequestParam(defaultValue = "PENDING") ProductStatus status,
         @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int size
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "") String keyword
     ) {
-        return ApiResponse.success(adminService.getProducts(status, page, size));
+        return ApiResponse.success(adminService.getProducts(status, page, size, keyword));
+    }
+
+    @GetMapping("/products/{productId}")
+    public ApiResponse<AdminProductResponse> getProduct(
+        @PathVariable Long productId
+    ) {
+        return ApiResponse.success(adminService.getProduct(productId));
     }
 
     @PatchMapping("/products/{productId}/status")

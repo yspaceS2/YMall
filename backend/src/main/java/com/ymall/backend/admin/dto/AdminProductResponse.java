@@ -2,7 +2,10 @@ package com.ymall.backend.admin.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
+import com.ymall.backend.product.dto.ProductDetailImageResponse;
+import com.ymall.backend.product.dto.ProductImageResponse;
 import com.ymall.backend.product.entity.ProductStatus;
 
 public record AdminProductResponse(
@@ -11,11 +14,16 @@ public record AdminProductResponse(
     String storeName,
     String categoryName,
     String name,
+    String description,
     String brand,
     BigDecimal price,
+    BigDecimal discountPercentage,
     Integer stock,
     String thumbnailUrl,
+    List<ProductImageResponse> images,
+    List<ProductDetailImageResponse> detailImages,
     ProductStatus status,
+    String rejectionReason,
     LocalDateTime createdAt
 ) {
 }

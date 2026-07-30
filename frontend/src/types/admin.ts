@@ -1,6 +1,6 @@
 import type { MemberRole } from './auth'
 import type { OrderStatus } from './order'
-import type { ProductStatus } from './product'
+import type { ProductDetailImage, ProductImage, ProductStatus } from './product'
 import type {
     FulfillmentStatus,
     SettlementRequest,
@@ -15,11 +15,16 @@ export interface AdminProduct {
     storeName: string | null
     categoryName: string
     name: string
+    description: string | null
     brand: string | null
     price: number
+    discountPercentage: number
     stock: number
     thumbnailUrl: string | null
+    images: ProductImage[]
+    detailImages: ProductDetailImage[]
     status: ProductStatus
+    rejectionReason: string | null
     createdAt: string
 }
 

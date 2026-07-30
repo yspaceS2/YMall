@@ -91,6 +91,10 @@ export interface SellerProductImageRequest {
     sortOrder: number
 }
 
+export interface SellerProductSummary extends ProductSummary {
+    rejectionReason: string | null
+}
+
 export type FulfillmentStatus = 'PENDING' | 'PREPARING' | 'SHIPPED' | 'DELIVERED'
 
 export interface SellerOrderItem {
@@ -113,7 +117,7 @@ export interface SellerOrder {
     items: SellerOrderItem[]
 }
 
-export type SellerProductPage = PageResponse<ProductSummary>
+export type SellerProductPage = PageResponse<SellerProductSummary>
 export type SellerOrderPage = PageResponse<SellerOrder>
 export type SettlementRequestPage = PageResponse<SettlementRequest>
 export type SellerProductDetail = ProductDetail

@@ -12,6 +12,7 @@ import type {
 } from '../types/admin'
 import { apiRequest } from './client'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
+import type { ProductStatus } from '../types/product'
 
 const ADMIN_PAGE_SIZE = 20
 
@@ -43,21 +44,41 @@ interface AdminPageOptions {
     signal?: AbortSignal
 }
 
-export function getPendingProducts(options: AdminPageOptions = {}) {
-    const { page = 1, signal } = options
+interface AdminProductPageOptions extends AdminPageOptions {
+    status?: Extract<ProductStatus, 'PENDING' | 'APPROVED' | 'REJECTED'>
+    keyword?: string
+}
+
+export function getAdminProducts(options: AdminProductPageOptions = {}) {
+    const { page = 1, signal, status = 'PENDING', keyword = '' } = options
+    const query = new URLSearchParams({
+        status,
+        keyword,
+        page: String(page),
+        size: String(ADMIN_PAGE_SIZE),
+    })
     return apiRequest<AdminProductPage>(
-        `/admin/products?status=PENDING&page=${page}&size=${ADMIN_PAGE_SIZE}`,
+        `/admin/products?${query.toString()}`,
         { signal },
     )
+}
+
+export function getPendingProducts(options: AdminPageOptions = {}) {
+    return getAdminProducts({ ...options, status: 'PENDING' })
+}
+
+export function getAdminProduct(productId: number, signal?: AbortSignal) {
+    return apiRequest<AdminProduct>(`/admin/products/${productId}`, { signal })
 }
 
 export function updateAdminProductStatus(
     productId: number,
     status: 'APPROVED' | 'REJECTED',
+    rejectionReason?: string,
 ) {
     return apiRequest<AdminProduct>(`/admin/products/${productId}/status`, {
         method: 'PATCH',
-        body: { status },
+        body: { status, rejectionReason },
     })
 }
 

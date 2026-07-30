@@ -27,6 +27,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @EntityGraph(attributePaths = {"category", "sellerProfile"})
     Page<Product> findByStatus(ProductStatus status, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"category", "sellerProfile"})
+    @Query("""
+        select product from Product product
+        where product.status = :status
+          and (
+              lower(product.name) like lower(concat('%', :keyword, '%'))
+              or lower(coalesce(product.brand, '')) like lower(concat('%', :keyword, '%'))
+              or lower(coalesce(product.sellerProfile.storeName, ''))
+                  like lower(concat('%', :keyword, '%'))
+          )
+        """)
+    Page<Product> searchAdminProducts(
+        @Param("status") ProductStatus status,
+        @Param("keyword") String keyword,
+        Pageable pageable
+    );
+
     @EntityGraph(attributePaths = "category")
     Page<Product> findByCategoryAndStatus(Category category, ProductStatus status, Pageable pageable);
 
@@ -65,6 +82,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @EntityGraph(attributePaths = {"category", "sellerProfile"})
     @Query("select product from Product product where product.id = :productId")
     Optional<Product> findByIdForReview(@Param("productId") Long productId);
+
+    @EntityGraph(attributePaths = {"category", "sellerProfile"})
+    @Query("select product from Product product where product.id = :productId")
+    Optional<Product> findByIdForAdminView(@Param("productId") Long productId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select product from Product product where product.id = :productId")

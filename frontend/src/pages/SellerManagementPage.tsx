@@ -23,10 +23,11 @@ import {
     updateSellerProfile,
 } from '../api/seller'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
-import type { Category, ProductSummary } from '../types/product'
+import type { Category } from '../types/product'
 import type {
     FulfillmentStatus,
     SellerOrder,
+    SellerProductSummary,
     SellerProductRequest,
     SellerProfile,
 } from '../types/seller'
@@ -63,7 +64,7 @@ const statusLabel: Record<FulfillmentStatus, string> = {
 export function SellerManagementPage() {
     const [profile, setProfile] = useState<SellerProfile | null>(null)
     const [profileForm, setProfileForm] = useState({ storeName: '', businessNumber: '', description: '' })
-    const [products, setProducts] = useState<ProductSummary[]>([])
+    const [products, setProducts] = useState<SellerProductSummary[]>([])
     const [orders, setOrders] = useState<SellerOrder[]>([])
     const [categories, setCategories] = useState<Category[]>([])
     const [productForm, setProductForm] = useState<SellerProductRequest>(emptyProduct)
@@ -78,7 +79,7 @@ export function SellerManagementPage() {
     const [hasMoreOrders, setHasMoreOrders] = useState(false)
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
-    const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null)
+    const [productToDelete, setProductToDelete] = useState<SellerProductSummary | null>(null)
     const [refundOrder, setRefundOrder] = useState<SellerOrder | null>(null)
     const [refunds, setRefunds] = useState<PaymentRefund[]>([])
     const [isLoadingRefunds, setIsLoadingRefunds] = useState(false)
@@ -377,7 +378,29 @@ export function SellerManagementPage() {
                                 {editingProductId && <button className="h-11 border border-line px-5 text-xs font-bold" type="button" onClick={() => { setEditingProductId(null); setProductForm({ ...emptyProduct, categoryId: findFirstLeafCategoryId(categories) }) }}>취소</button>}
                             </div>
                         </form>
-                        <div className="grid gap-3">{products.length === 0 ? <p className="text-sm text-muted">등록한 상품이 없습니다.</p> : products.map((product) => <div className="flex flex-wrap items-center justify-between gap-3 border border-line p-4" key={product.productId}><div><strong>{product.name}</strong><p className="mt-1 text-xs text-muted">{formatPrice(product.price)} · 재고 {product.stock} · {product.status}</p></div><div className="flex gap-2"><button className="p-2" type="button" aria-label="상품 수정" onClick={() => startEditing(product.productId)}><Pencil className="size-4" /></button><button className="p-2 text-[#a22e24]" type="button" aria-label="상품 삭제" onClick={() => setProductToDelete(product)}><Trash2 className="size-4" /></button></div></div>)}</div>
+                        <div className="grid gap-3">
+                            {products.length === 0 ? (
+                                <p className="text-sm text-muted">등록한 상품이 없습니다.</p>
+                            ) : products.map((product) => (
+                                <div className="flex flex-wrap items-center justify-between gap-3 border border-line p-4" key={product.productId}>
+                                    <div>
+                                        <strong>{product.name}</strong>
+                                        <p className="mt-1 text-xs text-muted">
+                                            {formatPrice(product.price)} · 재고 {product.stock} · {product.status}
+                                        </p>
+                                        {product.status === 'REJECTED' && product.rejectionReason && (
+                                            <p className="mt-2 text-xs font-bold text-[#a22e24]">
+                                                반려 사유: {product.rejectionReason}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button className="p-2" type="button" aria-label="상품 수정" onClick={() => startEditing(product.productId)}><Pencil className="size-4" /></button>
+                                        <button className="p-2 text-[#a22e24]" type="button" aria-label="상품 삭제" onClick={() => setProductToDelete(product)}><Trash2 className="size-4" /></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                         {hasMoreProducts && <button className="mx-auto mt-5 grid h-10 min-w-32 place-items-center border border-ink px-5 text-xs font-bold disabled:opacity-50" type="button" disabled={isLoadingMoreProducts} onClick={loadMoreProducts}>{isLoadingMoreProducts ? <LoaderCircle className="size-4 animate-spin" /> : '상품 더 보기'}</button>}
                     </Panel>
 

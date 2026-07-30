@@ -13,7 +13,6 @@ import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.product.dto.ProductCreateRequest;
 import com.ymall.backend.product.dto.ProductDetailResponse;
-import com.ymall.backend.product.dto.ProductListResponse;
 import com.ymall.backend.product.dto.ProductUpdateRequest;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
@@ -23,6 +22,7 @@ import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
 import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.seller.entity.SellerProfile;
+import com.ymall.backend.seller.dto.SellerProductResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -37,7 +37,7 @@ public class SellerProductService {
     private final ProductMapper productMapper;
     private final ProductCacheInvalidator productCacheInvalidator;
 
-    public PageResponse<ProductListResponse> getProducts(Long memberId, int page, int size) {
+    public PageResponse<SellerProductResponse> getProducts(Long memberId, int page, int size) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         Pageable pageable = PageRequest.of(
             Math.max(page - 1, 0),
@@ -49,7 +49,7 @@ public class SellerProductService {
                 profile.getId(),
                 ProductStatus.DELETED,
                 pageable
-            ).map(productMapper::toProductListResponse)
+            ).map(SellerProductResponse::from)
         );
     }
 
