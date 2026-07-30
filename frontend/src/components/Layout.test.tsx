@@ -89,7 +89,32 @@ describe('Layout 역할별 메뉴', () => {
 
     it('스토어 핵심 메뉴와 카테고리를 제공한다', async () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
-        getCategories.mockResolvedValue([{ categoryId: 1, name: '패션', slug: 'fashion' }])
+        getCategories.mockResolvedValue([
+            {
+                categoryId: 1,
+                name: '패션',
+                slug: 'fashion',
+                parentId: null,
+                depth: 1,
+                displayOrder: 1,
+            },
+            {
+                categoryId: 2,
+                name: '여성패션',
+                slug: 'women-fashion',
+                parentId: 1,
+                depth: 2,
+                displayOrder: 1,
+            },
+            {
+                categoryId: 3,
+                name: '아우터',
+                slug: 'women-outer',
+                parentId: 2,
+                depth: 3,
+                displayOrder: 1,
+            },
+        ])
         const user = userEvent.setup()
 
         renderLayout('ROLE_USER')

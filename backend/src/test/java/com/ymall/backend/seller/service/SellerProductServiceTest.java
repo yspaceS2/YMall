@@ -93,6 +93,7 @@ class SellerProductServiceTest {
             ProductStatus.DELETED
         )).willReturn(Optional.of(product));
         given(categoryRepository.findById(2L)).willReturn(Optional.of(category));
+        given(category.isActive()).willReturn(true);
         given(productMapper.toImageEntities(request)).willReturn(images);
         given(productMapper.toDetailImageEntities(request)).willReturn(detailImages);
         given(productMapper.toProductDetailResponse(product)).willReturn(response);

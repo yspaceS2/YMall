@@ -2,6 +2,7 @@ package com.ymall.backend.product.repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,11 +22,20 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     boolean existsByIdAndStatus(Long productId, ProductStatus status);
 
+    boolean existsByCategoryId(Long categoryId);
+
     @EntityGraph(attributePaths = {"category", "sellerProfile"})
     Page<Product> findByStatus(ProductStatus status, Pageable pageable);
 
     @EntityGraph(attributePaths = "category")
     Page<Product> findByCategoryAndStatus(Category category, ProductStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = "category")
+    Page<Product> findByCategoryIdInAndStatus(
+        Set<Long> categoryIds,
+        ProductStatus status,
+        Pageable pageable
+    );
 
     @EntityGraph(attributePaths = "category")
     Page<Product> findByNameContainingIgnoreCaseAndStatus(

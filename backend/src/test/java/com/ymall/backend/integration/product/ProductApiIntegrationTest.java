@@ -87,6 +87,75 @@ class ProductApiIntegrationTest {
             .andExpect(jsonPath("$.data.content[0].name").value("iPhone 15"));
     }
 
+    @Test
+    @DisplayName("상위 카테고리 조회는 활성 하위 카테고리의 승인 상품을 포함한다")
+    void getProductsByParentCategory() throws Exception {
+        Category fashion = categoryRepository.save(
+            new Category("패션", "fashion", null, 1, 1, true)
+        );
+        Category women = categoryRepository.save(
+            new Category("여성패션", "women-fashion", fashion, 2, 1, true)
+        );
+        Category dresses = categoryRepository.save(
+            new Category("원피스", "women-dresses", women, 3, 1, true)
+        );
+        Category inactive = categoryRepository.save(
+            new Category("숨김 카테고리", "inactive-fashion", fashion, 2, 2, false)
+        );
+        Category activeChildOfInactive = categoryRepository.save(
+            new Category(
+                "숨김 경로의 하위 카테고리",
+                "inactive-fashion-child",
+                inactive,
+                3,
+                1,
+                true
+            )
+        );
+        Category living = categoryRepository.save(
+            new Category("생활", "living", null, 1, 2, true)
+        );
+
+        productRepository.save(createProduct(
+            dresses,
+            "활성 하위 상품",
+            ProductStatus.APPROVED
+        ));
+        productRepository.save(createProduct(
+            dresses,
+            "승인 대기 상품",
+            ProductStatus.PENDING
+        ));
+        productRepository.save(createProduct(
+            inactive,
+            "숨김 카테고리 상품",
+            ProductStatus.APPROVED
+        ));
+        productRepository.save(createProduct(
+            activeChildOfInactive,
+            "숨김 경로의 하위 상품",
+            ProductStatus.APPROVED
+        ));
+        productRepository.save(createProduct(
+            living,
+            "다른 카테고리 상품",
+            ProductStatus.APPROVED
+        ));
+
+        mockMvc.perform(get("/api/categories/{categoryId}/products", fashion.getId())
+                .param("page", "1")
+                .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].name").value("활성 하위 상품"));
+
+        mockMvc.perform(get("/api/categories"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(
+                "$.data[?(@.slug == 'inactive-fashion-child')]"
+            ).isEmpty());
+    }
+
     /**
      * 상품 수정 API가 실제 DB에 저장된 상품의 기본 정보와 이미지 목록을
      * 요청 본문 기준으로 교체하는지 검증한다.

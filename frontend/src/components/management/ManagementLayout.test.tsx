@@ -91,6 +91,15 @@ describe('ManagementLayout', () => {
             .toHaveAttribute('aria-current', 'page')
     })
 
+    it('관리자에게 카테고리 관리 메뉴를 표시한다', () => {
+        renderManagementLayout('admin', '/admin/categories')
+
+        expect(screen.getByRole('link', { name: '카테고리 관리' }))
+            .toHaveAttribute('href', '/admin/categories')
+        expect(screen.getByRole('link', { name: '카테고리 관리' }))
+            .toHaveAttribute('aria-current', 'page')
+    })
+
     it('로그아웃 버튼으로 인증 로그아웃을 요청한다', async () => {
         const user = userEvent.setup()
         const { logout } = renderManagementLayout('admin')

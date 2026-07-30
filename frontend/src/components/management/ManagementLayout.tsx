@@ -7,6 +7,7 @@ import {
     LogOut,
     Menu,
     ReceiptText,
+    Tags,
     X,
     type LucideIcon,
 } from 'lucide-react'
@@ -42,6 +43,7 @@ const adminNavigation: NavigationItem[] = [
         href: '/admin/seller-applications',
         icon: ClipboardCheck,
     },
+    { label: '카테고리 관리', href: '/admin/categories', icon: Tags },
 ]
 
 export function ManagementLayout({

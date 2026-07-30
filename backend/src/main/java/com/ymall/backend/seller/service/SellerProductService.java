@@ -109,7 +109,23 @@ public class SellerProductService {
     }
 
     private Category getCategory(Long categoryId) {
-        return categoryRepository.findById(categoryId)
+        Category category = categoryRepository.findById(categoryId)
             .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+        if (!isCategoryPathActive(category)
+            || categoryRepository.existsByParentId(category.getId())) {
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_SELECTABLE);
+        }
+        return category;
+    }
+
+    private boolean isCategoryPathActive(Category category) {
+        Category cursor = category;
+        while (cursor != null) {
+            if (!cursor.isActive()) {
+                return false;
+            }
+            cursor = cursor.getParent();
+        }
+        return true;
     }
 }

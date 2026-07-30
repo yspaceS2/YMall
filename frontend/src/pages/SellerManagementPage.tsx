@@ -7,6 +7,7 @@ import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { RefundDialog } from '../components/RefundDialog'
 import { SettlementAccountPanel } from '../components/seller/SettlementAccountPanel'
 import { SettlementRequestPanel } from '../components/seller/SettlementRequestPanel'
+import { ProductCategorySelector } from '../components/seller/ProductCategorySelector'
 import {
     createSellerProduct,
     createSellerProfile,
@@ -31,6 +32,7 @@ import type {
 } from '../types/seller'
 import { formatKoreanDateTime } from '../utils/dateTime'
 import { formatPrice } from '../utils/product'
+import { findFirstLeafCategoryId } from '../utils/productCategory'
 
 const emptyProduct: SellerProductRequest = {
     categoryId: 0,
@@ -95,7 +97,7 @@ export function SellerManagementPage() {
             setCategories(categoryResponse)
             setProductForm((current) => ({
                 ...current,
-                categoryId: current.categoryId || categoryResponse[0]?.categoryId || 0,
+                categoryId: current.categoryId || findFirstLeafCategoryId(categoryResponse),
             }))
             if (!profileResponse) return
             setProfile(profileResponse)
@@ -161,7 +163,10 @@ export function SellerManagementPage() {
                 setMessage('상품이 등록되었으며 승인을 기다립니다.')
             }
             setEditingProductId(null)
-            setProductForm({ ...emptyProduct, categoryId: categories[0]?.categoryId ?? 0 })
+            setProductForm({
+                ...emptyProduct,
+                categoryId: findFirstLeafCategoryId(categories),
+            })
             const response = await getSellerProducts()
             setProducts(response.content)
             setHasMoreProducts(response.hasNext)
@@ -337,7 +342,17 @@ export function SellerManagementPage() {
                     <SettlementRequestPanel />
                     <Panel icon={<PackageCheck />} title="상품 관리">
                         <form className="mb-8 grid gap-4 border-b border-line pb-8 min-[701px]:grid-cols-2" onSubmit={saveProduct}>
-                            <label className="grid gap-2 text-xs font-bold">카테고리<select className="h-11 border border-line bg-white px-3 font-normal" value={productForm.categoryId} onChange={(event) => setProductForm({ ...productForm, categoryId: Number(event.target.value) })}>{categories.map((category) => <option key={category.categoryId} value={category.categoryId}>{category.name}</option>)}</select></label>
+                            <div className="grid gap-2 text-xs font-bold">
+                                <span>카테고리</span>
+                                <ProductCategorySelector
+                                    categories={categories}
+                                    value={productForm.categoryId}
+                                    onChange={(categoryId) => setProductForm({
+                                        ...productForm,
+                                        categoryId,
+                                    })}
+                                />
+                            </div>
                             <Field label="상품명" value={productForm.name} onChange={(value) => setProductForm({ ...productForm, name: value })} required />
                             <Field label="브랜드" value={productForm.brand} onChange={(value) => setProductForm({ ...productForm, brand: value })} />
                             <Field label="대표 이미지 URL" value={productForm.thumbnailUrl} onChange={(value) => setProductForm({ ...productForm, thumbnailUrl: value })} />
@@ -359,7 +374,7 @@ export function SellerManagementPage() {
                             <label className="grid gap-2 text-xs font-bold min-[701px]:col-span-2">설명<textarea className="min-h-24 border border-line p-3 font-normal" value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} /></label>
                             <div className="flex gap-2">
                                 <button className="h-11 bg-ink px-6 text-xs font-bold text-white disabled:opacity-50" disabled={isSaving} type="submit">{editingProductId ? '상품 수정' : '상품 등록'}</button>
-                                {editingProductId && <button className="h-11 border border-line px-5 text-xs font-bold" type="button" onClick={() => { setEditingProductId(null); setProductForm({ ...emptyProduct, categoryId: categories[0]?.categoryId ?? 0 }) }}>취소</button>}
+                                {editingProductId && <button className="h-11 border border-line px-5 text-xs font-bold" type="button" onClick={() => { setEditingProductId(null); setProductForm({ ...emptyProduct, categoryId: findFirstLeafCategoryId(categories) }) }}>취소</button>}
                             </div>
                         </form>
                         <div className="grid gap-3">{products.length === 0 ? <p className="text-sm text-muted">등록한 상품이 없습니다.</p> : products.map((product) => <div className="flex flex-wrap items-center justify-between gap-3 border border-line p-4" key={product.productId}><div><strong>{product.name}</strong><p className="mt-1 text-xs text-muted">{formatPrice(product.price)} · 재고 {product.stock} · {product.status}</p></div><div className="flex gap-2"><button className="p-2" type="button" aria-label="상품 수정" onClick={() => startEditing(product.productId)}><Pencil className="size-4" /></button><button className="p-2 text-[#a22e24]" type="button" aria-label="상품 삭제" onClick={() => setProductToDelete(product)}><Trash2 className="size-4" /></button></div></div>)}</div>

@@ -1,4 +1,6 @@
 import type {
+    AdminCategory,
+    AdminCategoryRequest,
     AdminMemberPage,
     AdminOrderPage,
     AdminProduct,
@@ -12,6 +14,29 @@ import { apiRequest } from './client'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 
 const ADMIN_PAGE_SIZE = 20
+
+export function getAdminCategories(keyword = '', signal?: AbortSignal) {
+    const query = new URLSearchParams({ keyword })
+    return apiRequest<AdminCategory[]>(`/admin/categories?${query.toString()}`, { signal })
+}
+
+export function createAdminCategory(request: AdminCategoryRequest) {
+    return apiRequest<AdminCategory>('/admin/categories', {
+        method: 'POST',
+        body: request,
+    })
+}
+
+export function updateAdminCategory(categoryId: number, request: AdminCategoryRequest) {
+    return apiRequest<AdminCategory>(`/admin/categories/${categoryId}`, {
+        method: 'PUT',
+        body: request,
+    })
+}
+
+export function deleteAdminCategory(categoryId: number) {
+    return apiRequest<void>(`/admin/categories/${categoryId}`, { method: 'DELETE' })
+}
 
 interface AdminPageOptions {
     page?: number

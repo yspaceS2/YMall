@@ -1,6 +1,8 @@
 package com.ymall.backend.product.service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -78,8 +80,15 @@ public class ProductService {
     }
 
     public List<CategoryResponse> getCategories() {
-        return categoryRepository.findAll(Sort.by(Sort.Direction.ASC, "name"))
+        return categoryRepository.findByActiveTrue(
+                Sort.by(
+                    Sort.Order.asc("depth"),
+                    Sort.Order.asc("displayOrder"),
+                    Sort.Order.asc("name")
+                )
+            )
             .stream()
+            .filter(this::isCategoryPathActive)
             .map(productMapper::toCategoryResponse)
             .toList();
     }
@@ -87,10 +96,14 @@ public class ProductService {
     public PageResponse<ProductListResponse> getProductsByCategory(Long categoryId, int page, int size) {
         Category category = categoryRepository.findById(categoryId)
             .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+        if (!isCategoryPathActive(category)) {
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
+        }
+        Set<Long> categoryIds = getActiveCategoryTreeIds(categoryId);
 
         return PageResponse.from(
-            productRepository.findByCategoryAndStatus(
-                    category,
+            productRepository.findByCategoryIdInAndStatus(
+                    categoryIds,
                     ProductStatus.APPROVED,
                     createPageable(page, size)
                 )
@@ -159,8 +172,49 @@ public class ProductService {
     }
 
     private Category getCategory(Long categoryId) {
-        return categoryRepository.findById(categoryId)
+        Category category = categoryRepository.findById(categoryId)
             .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+        validateSelectableCategory(category);
+        return category;
+    }
+
+    private Set<Long> getActiveCategoryTreeIds(Long rootCategoryId) {
+        List<Category> activeCategories = categoryRepository.findByActiveTrue(Sort.unsorted());
+        Set<Long> categoryIds = new HashSet<>();
+        categoryIds.add(rootCategoryId);
+
+        boolean categoryAdded;
+        do {
+            categoryAdded = false;
+            for (Category category : activeCategories) {
+                Category parent = category.getParent();
+                if (parent != null
+                    && categoryIds.contains(parent.getId())
+                    && categoryIds.add(category.getId())) {
+                    categoryAdded = true;
+                }
+            }
+        } while (categoryAdded);
+
+        return categoryIds;
+    }
+
+    private void validateSelectableCategory(Category category) {
+        if (!isCategoryPathActive(category)
+            || categoryRepository.existsByParentId(category.getId())) {
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_SELECTABLE);
+        }
+    }
+
+    private boolean isCategoryPathActive(Category category) {
+        Category cursor = category;
+        while (cursor != null) {
+            if (!cursor.isActive()) {
+                return false;
+            }
+            cursor = cursor.getParent();
+        }
+        return true;
     }
 
     /**
