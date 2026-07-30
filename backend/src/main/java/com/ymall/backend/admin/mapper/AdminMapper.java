@@ -32,6 +32,14 @@ public interface AdminMapper {
     @Mapping(target = "detailImages", expression = "java(toSortedDetailImageResponses(product.getDetailImages()))")
     AdminProductResponse toProductResponse(Product product);
 
+    @Mapping(source = "id", target = "productId")
+    @Mapping(source = "sellerProfile.id", target = "sellerProfileId")
+    @Mapping(source = "sellerProfile.storeName", target = "storeName")
+    @Mapping(source = "category.name", target = "categoryName")
+    @Mapping(target = "images", expression = "java(java.util.List.of())")
+    @Mapping(target = "detailImages", expression = "java(java.util.List.of())")
+    AdminProductResponse toProductListResponse(Product product);
+
     default List<ProductImageResponse> toSortedProductImageResponses(List<ProductImage> images) {
         return images.stream()
             .sorted(Comparator.comparing(ProductImage::getSortOrder))

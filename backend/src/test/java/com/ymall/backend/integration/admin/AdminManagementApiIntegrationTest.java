@@ -181,7 +181,9 @@ class AdminManagementApiIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.totalElements").value(1))
-            .andExpect(jsonPath("$.data.content[0].name").value("검색 대상 운동화"));
+            .andExpect(jsonPath("$.data.content[0].name").value("검색 대상 운동화"))
+            .andExpect(jsonPath("$.data.content[0].images").isEmpty())
+            .andExpect(jsonPath("$.data.content[0].detailImages").isEmpty());
     }
 
     @Test

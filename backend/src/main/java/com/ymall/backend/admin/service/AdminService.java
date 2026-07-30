@@ -59,7 +59,7 @@ public class AdminService {
             (normalizedKeyword.isEmpty()
                 ? productRepository.findByStatus(status, pageable)
                 : productRepository.searchAdminProducts(status, normalizedKeyword, pageable))
-                .map(adminMapper::toProductResponse)
+                .map(adminMapper::toProductListResponse)
         );
     }
 
