@@ -10,6 +10,9 @@ export interface Category {
   categoryId: number
   name: string
   slug: string
+  parentId?: number | null
+  depth?: number
+  displayOrder?: number
 }
 
 export interface ProductSummary {

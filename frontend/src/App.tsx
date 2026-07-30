@@ -24,6 +24,7 @@ import { TossPaymentSuccessPage } from './pages/TossPaymentSuccessPage'
 import { OAuth2CallbackPage } from './pages/OAuth2CallbackPage'
 import { OAuthSignupPage } from './pages/OAuthSignupPage'
 import { AdminManagementPage } from './pages/AdminManagementPage'
+import { AdminCategoryManagementPage } from './pages/AdminCategoryManagementPage'
 import { AccessDeniedPage } from './pages/AccessDeniedPage'
 
 function App() {
@@ -103,6 +104,12 @@ function AdminPortalRoutes() {
                         <AdminSellerApplicationPanel />
                     </PortalPage>
                 }
+            />
+            <Route path="categories" element={<AdminCategoryManagementPage mode="list" />} />
+            <Route path="categories/new" element={<AdminCategoryManagementPage mode="new" />} />
+            <Route
+                path="categories/:categoryId"
+                element={<AdminCategoryManagementPage mode="detail" />}
             />
             <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>

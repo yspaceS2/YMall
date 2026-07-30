@@ -3,6 +3,9 @@ package com.ymall.backend.integration.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -200,6 +203,93 @@ class AdminManagementApiIntegrationTest {
                 .content("{\"status\":\"REJECTED\"}"))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.error.code").value("PRODUCT_REVIEW_NOT_ALLOWED"));
+    }
+
+    @Test
+    void adminCreatesSearchesAndUpdatesCategory() throws Exception {
+        mockMvc.perform(post("/api/admin/categories")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "스마트폰",
+                        "slug": "smartphones",
+                        "parentId": %d,
+                        "displayOrder": 1,
+                        "active": true
+                    }
+                    """.formatted(category.getId())))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.data.parentId").value(category.getId()))
+            .andExpect(jsonPath("$.data.depth").value(2));
+
+        mockMvc.perform(get("/api/admin/categories")
+                .param("keyword", "smart")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].slug").value("smartphones"));
+
+        mockMvc.perform(put("/api/admin/categories/{categoryId}", category.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "디지털",
+                        "slug": "digital",
+                        "parentId": null,
+                        "displayOrder": 2,
+                        "active": false
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.name").value("디지털"))
+            .andExpect(jsonPath("$.data.active").value(false));
+    }
+
+    @Test
+    void adminCannotCreateCategoryBeyondThirdDepth() throws Exception {
+        Category secondDepth = categoryRepository.save(new Category(
+            "모바일",
+            "mobile",
+            category,
+            2,
+            0,
+            true
+        ));
+        Category thirdDepth = categoryRepository.save(new Category(
+            "스마트폰",
+            "smartphones",
+            secondDepth,
+            3,
+            0,
+            true
+        ));
+
+        mockMvc.perform(post("/api/admin/categories")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "안드로이드",
+                        "slug": "android",
+                        "parentId": %d,
+                        "displayOrder": 1,
+                        "active": true
+                    }
+                    """.formatted(thirdDepth.getId())))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("CATEGORY_DEPTH_EXCEEDED"));
+    }
+
+    @Test
+    void adminCannotDeleteCategoryWithConnectedProduct() throws Exception {
+        saveProduct("연결 상품", ProductStatus.PENDING);
+
+        mockMvc.perform(delete("/api/admin/categories/{categoryId}", category.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error.code").value("CATEGORY_DELETE_NOT_ALLOWED"));
     }
 
     private Member saveMember(String email, String name, MemberRole role) {

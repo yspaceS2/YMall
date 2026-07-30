@@ -23,6 +23,29 @@ export interface AdminProduct {
     createdAt: string
 }
 
+export interface AdminCategory {
+  categoryId: number
+  name: string
+  slug: string
+  parentId: number | null
+  parentName: string | null
+  depth: number
+  displayOrder: number
+  active: boolean
+  hasChildren: boolean
+  hasProducts: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminCategoryRequest {
+  name: string
+  slug: string
+  parentId: number | null
+  displayOrder: number
+  active: boolean
+}
+
 export interface AdminMember {
     memberId: number
     email: string

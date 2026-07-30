@@ -24,8 +24,9 @@ import com.ymall.backend.product.entity.ProductStatus;
 @Mapper(componentModel = "spring")
 public interface ProductMapper {
 
-    @Mapping(source = "id", target = "categoryId")
-    CategoryResponse toCategoryResponse(Category category);
+    default CategoryResponse toCategoryResponse(Category category) {
+        return CategoryResponse.from(category);
+    }
 
     @Mapping(source = "id", target = "imageId")
     ProductImageResponse toProductImageResponse(ProductImage productImage);

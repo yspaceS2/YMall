@@ -1,5 +1,5 @@
 import { Search, SlidersHorizontal } from 'lucide-react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getCategories, getProducts } from '../api/products'
 import { HomeEventCarousel } from '../components/HomeEventCarousel'
@@ -8,6 +8,7 @@ import { ProductCard } from '../components/ProductCard'
 import { TodayRecommendationCarousel } from '../components/TodayRecommendationCarousel'
 import { PageState } from '../components/ui/PageState'
 import type { Category, PageResponse, ProductSummary } from '../types/product'
+import { findCategoryPath, getCategoryChildren } from '../utils/productCategory'
 
 const PAGE_SIZE = 12
 
@@ -23,6 +24,34 @@ export function ProductListPage() {
     const showCatalog = Boolean(query || categoryId || searchParams.get('view') === 'all')
     const showHomeMerchandising = !showCatalog
     const [categories, setCategories] = useState<Category[]>([])
+    const rootCategories = useMemo(
+        () => categories.filter((category) => (category.parentId ?? null) === null),
+        [categories],
+    )
+    const categoryPath = useMemo(
+        () => categoryId ? findCategoryPath(categories, categoryId) : [],
+        [categories, categoryId],
+    )
+    const selectedCategory = categoryPath.at(-1) ?? null
+    const selectedCategoryChildren = useMemo(
+        () => selectedCategory
+            ? getCategoryChildren(categories, selectedCategory.categoryId)
+            : [],
+        [categories, selectedCategory],
+    )
+    const tabContextCategory = selectedCategory
+        ? selectedCategoryChildren.length > 0
+            ? selectedCategory
+            : categoryPath.at(-2) ?? selectedCategory
+        : null
+    const categoryTabs = useMemo(
+        () => tabContextCategory
+            ? getCategoryChildren(categories, tabContextCategory.categoryId)
+            : rootCategories,
+        [categories, rootCategories, tabContextCategory],
+    )
+    const catalogTitle = selectedCategory?.name
+        ?? (query ? `'${query}' 검색 결과` : '전체 상품')
     const [retryKey, setRetryKey] = useState(0)
     const requestKey = `${page}:${categoryId ?? 'all'}:${query}:${retryKey}`
     const [result, setResult] = useState<{
@@ -101,7 +130,43 @@ export function ProductListPage() {
 
             {showCatalog && <section className="mx-auto max-w-360 border-t border-line px-4 pt-12 pb-20 min-[601px]:px-[clamp(20px,5vw,72px)] min-[601px]:pt-18 min-[601px]:pb-27.5">
                 <div className="flex flex-col items-start justify-between gap-6 min-[601px]:flex-row min-[601px]:items-end">
-                    <div><span className="text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">SHOP</span><h2 className="mt-2 mr-3 inline font-serif text-[34px] leading-tight font-semibold">전체 상품</h2><p className="inline text-[13px] text-muted">{products?.totalElements ?? 0}개의 상품</p></div>
+                    <div>
+                        {categoryPath.length > 0 && (
+                            <nav
+                                className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted"
+                                aria-label="카테고리 경로"
+                            >
+                                {categoryPath.map((category, index) => (
+                                    <span
+                                        className="inline-flex items-center gap-2"
+                                        key={category.categoryId}
+                                    >
+                                        {index > 0 && <span aria-hidden="true">›</span>}
+                                        <button
+                                            className={`border-0 bg-transparent p-0 ${
+                                                index === categoryPath.length - 1
+                                                    ? 'font-bold text-ink'
+                                                    : 'hover:text-ink'
+                                            }`}
+                                            type="button"
+                                            onClick={() => selectCategory(category.categoryId)}
+                                        >
+                                            {category.name}
+                                        </button>
+                                    </span>
+                                ))}
+                            </nav>
+                        )}
+                        <span className="text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">
+                            SHOP
+                        </span>
+                        <h2 className="mt-2 mr-3 inline font-serif text-[34px] leading-tight font-semibold">
+                            {catalogTitle}
+                        </h2>
+                        <p className="inline text-[13px] text-muted">
+                            {products?.totalElements ?? 0}개의 상품
+                        </p>
+                    </div>
                     <form className="flex w-full border-b border-ink min-[601px]:max-w-97.5" onSubmit={submitSearch}>
                         <input className="w-full border-0 bg-transparent px-1 py-3 text-[13px] outline-0" defaultValue={query} key={query} name="keyword" placeholder="찾고 있는 상품을 검색해보세요" aria-label="상품 검색" />
                         <button className="border-0 bg-transparent" type="submit" aria-label="검색"><Search className="size-5" /></button>
@@ -110,8 +175,22 @@ export function ProductListPage() {
 
                 <div className="mt-9.5 mb-8 flex items-center justify-between border-b border-line">
                     <div className="flex gap-7 overflow-x-auto">
-                        <button className={`border-0 border-b-2 bg-transparent py-3.5 text-[13px] whitespace-nowrap ${!categoryId && !query ? 'border-ink font-extrabold text-ink' : 'border-transparent text-muted'}`} onClick={() => selectCategory()} type="button">ALL</button>
-                        {categories.map((category) => (
+                        <button
+                            className={`border-0 border-b-2 bg-transparent py-3.5 text-[13px] whitespace-nowrap ${
+                                tabContextCategory
+                                    ? categoryId === tabContextCategory.categoryId
+                                        ? 'border-ink font-extrabold text-ink'
+                                        : 'border-transparent text-muted'
+                                    : !categoryId && !query
+                                        ? 'border-ink font-extrabold text-ink'
+                                        : 'border-transparent text-muted'
+                            }`}
+                            onClick={() => selectCategory(tabContextCategory?.categoryId)}
+                            type="button"
+                        >
+                            {tabContextCategory ? `${tabContextCategory.name} 전체` : 'ALL'}
+                        </button>
+                        {categoryTabs.map((category) => (
                             <button className={`border-0 border-b-2 bg-transparent py-3.5 text-[13px] whitespace-nowrap ${categoryId === category.categoryId ? 'border-ink font-extrabold text-ink' : 'border-transparent text-muted'}`} onClick={() => selectCategory(category.categoryId)} key={category.categoryId} type="button">{category.name}</button>
                         ))}
                     </div>
