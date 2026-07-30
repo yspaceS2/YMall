@@ -50,12 +50,24 @@ public class AdminService {
     public PageResponse<AdminProductResponse> getProducts(
         ProductStatus status,
         int page,
-        int size
+        int size,
+        String keyword
     ) {
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        Pageable pageable = createPageable(page, size);
         return PageResponse.from(
-            productRepository.findByStatus(status, createPageable(page, size))
-                .map(adminMapper::toProductResponse)
+            (normalizedKeyword.isEmpty()
+                ? productRepository.findByStatus(status, pageable)
+                : productRepository.searchAdminProducts(status, normalizedKeyword, pageable))
+                .map(adminMapper::toProductListResponse)
         );
+    }
+
+    public AdminProductResponse getProduct(Long productId) {
+        Product product = productRepository.findByIdForAdminView(productId)
+            .filter(foundProduct -> foundProduct.getStatus() != ProductStatus.DELETED)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+        return adminMapper.toProductResponse(product);
     }
 
     @Transactional
@@ -78,7 +90,10 @@ public class AdminService {
         if (request.status() == ProductStatus.APPROVED) {
             product.approve();
         } else {
-            product.reject();
+            if (request.rejectionReason() == null || request.rejectionReason().isBlank()) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST);
+            }
+            product.reject(request.rejectionReason());
         }
         productCacheInvalidator.evictDetail(productId);
 

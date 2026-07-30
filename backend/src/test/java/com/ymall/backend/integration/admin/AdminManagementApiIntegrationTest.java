@@ -118,9 +118,23 @@ class AdminManagementApiIntegrationTest {
         mockMvc.perform(patch("/api/admin/products/{productId}/status", product.getId())
                 .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"status\":\"REJECTED\"}"))
+                .content("""
+                    {
+                      "status":"REJECTED",
+                      "rejectionReason":"상품 설명을 보완해 주세요."
+                    }
+                    """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.status").value("REJECTED"));
+            .andExpect(jsonPath("$.data.status").value("REJECTED"))
+            .andExpect(jsonPath("$.data.rejectionReason")
+                .value("상품 설명을 보완해 주세요."));
+
+        mockMvc.perform(get("/api/seller/products")
+                .header(HttpHeaders.AUTHORIZATION, bearer(sellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.content[0].status").value("REJECTED"))
+            .andExpect(jsonPath("$.data.content[0].rejectionReason")
+                .value("상품 설명을 보완해 주세요."));
 
         mockMvc.perform(get("/api/products/{productId}", product.getId()))
             .andExpect(status().isNotFound())
@@ -133,6 +147,43 @@ class AdminManagementApiIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(sellerToken)))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void rejectionRequiresReasonAndAdminCanReadReviewDetails() throws Exception {
+        Product product = saveProduct("검수 상세 상품", ProductStatus.PENDING);
+
+        mockMvc.perform(get("/api/admin/products/{productId}", product.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.productId").value(product.getId()))
+            .andExpect(jsonPath("$.data.description").value("상품 설명"))
+            .andExpect(jsonPath("$.data.price").value(10000))
+            .andExpect(jsonPath("$.data.images").isArray())
+            .andExpect(jsonPath("$.data.detailImages").isArray());
+
+        mockMvc.perform(patch("/api/admin/products/{productId}/status", product.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"REJECTED\",\"rejectionReason\":\"  \"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    void adminFiltersProductsByStatusAndKeyword() throws Exception {
+        saveProduct("검색 대상 운동화", ProductStatus.APPROVED);
+        saveProduct("검색 제외 상품", ProductStatus.PENDING);
+
+        mockMvc.perform(get("/api/admin/products")
+                .param("status", "APPROVED")
+                .param("keyword", "운동화")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].name").value("검색 대상 운동화"))
+            .andExpect(jsonPath("$.data.content[0].images").isEmpty())
+            .andExpect(jsonPath("$.data.content[0].detailImages").isEmpty());
     }
 
     @Test

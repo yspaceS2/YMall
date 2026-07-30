@@ -21,8 +21,8 @@ import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.global.security.MemberPrincipal;
 import com.ymall.backend.product.dto.ProductCreateRequest;
 import com.ymall.backend.product.dto.ProductDetailResponse;
-import com.ymall.backend.product.dto.ProductListResponse;
 import com.ymall.backend.product.dto.ProductUpdateRequest;
+import com.ymall.backend.seller.dto.SellerProductResponse;
 import com.ymall.backend.seller.service.SellerProductService;
 
 @RestController
@@ -33,7 +33,7 @@ public class SellerProductController {
     private final SellerProductService sellerProductService;
 
     @GetMapping
-    public ApiResponse<PageResponse<ProductListResponse>> getProducts(
+    public ApiResponse<PageResponse<SellerProductResponse>> getProducts(
         @AuthenticationPrincipal MemberPrincipal principal,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size

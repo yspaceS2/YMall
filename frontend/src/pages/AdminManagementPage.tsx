@@ -1,5 +1,6 @@
-import { Check, LoaderCircle, PackageSearch, ReceiptText, Store, Users, X } from 'lucide-react'
+import { LoaderCircle, PackageSearch, ReceiptText, Store, Users } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import {
     getAdminMembers,
     getAdminOrders,
@@ -7,7 +8,6 @@ import {
     getAdminSellers,
     getPendingProducts,
     requestAdminRefund,
-    updateAdminProductStatus,
 } from '../api/admin'
 import { ApiError } from '../api/client'
 import { RefundDialog } from '../components/RefundDialog'
@@ -29,7 +29,6 @@ export function AdminManagementPage() {
     const [hasMore, setHasMore] = useState({ products: false, members: false, sellers: false, orders: false })
     const [isLoading, setIsLoading] = useState(true)
     const [loadingSection, setLoadingSection] = useState<AdminSection | null>(null)
-    const [processingProductId, setProcessingProductId] = useState<number | null>(null)
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
     const [refundOrder, setRefundOrder] = useState<AdminOrder | null>(null)
@@ -71,28 +70,6 @@ export function AdminManagementPage() {
 
         return () => controller.abort()
     }, [])
-
-    async function changeProductStatus(
-        product: AdminProduct,
-        status: 'APPROVED' | 'REJECTED',
-    ) {
-        setProcessingProductId(product.productId)
-        setMessage('')
-        setErrorMessage('')
-        try {
-            await updateAdminProductStatus(product.productId, status)
-            const productPage = await getPendingProducts()
-            setProducts(productPage.content)
-            setTotals((current) => ({ ...current, products: productPage.totalElements }))
-            setHasMore((current) => ({ ...current, products: productPage.hasNext }))
-            setNextPages((current) => ({ ...current, products: 2 }))
-            setMessage(`'${product.name}' 상품을 ${status === 'APPROVED' ? '승인' : '반려'}했습니다.`)
-        } catch (error) {
-            setErrorMessage(error instanceof ApiError ? error.message : '상품 상태를 변경하지 못했습니다.')
-        } finally {
-            setProcessingProductId(null)
-        }
-    }
 
     async function loadMore(section: AdminSection) {
         if (!hasMore[section] || loadingSection !== null) return
@@ -203,14 +180,12 @@ export function AdminManagementPage() {
                                             {product.storeName ?? '관리자 등록'} · {product.categoryName} · {formatPrice(product.price)} · 재고 {product.stock}
                                         </p>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button className="flex h-10 items-center gap-1.5 bg-ink px-4 text-xs font-bold text-white disabled:opacity-50" type="button" disabled={processingProductId === product.productId} onClick={() => changeProductStatus(product, 'APPROVED')}>
-                                            <Check className="size-4" />승인
-                                        </button>
-                                        <button className="flex h-10 items-center gap-1.5 border border-[#a22e24] px-4 text-xs font-bold text-[#a22e24] disabled:opacity-50" type="button" disabled={processingProductId === product.productId} onClick={() => changeProductStatus(product, 'REJECTED')}>
-                                            <X className="size-4" />반려
-                                        </button>
-                                    </div>
+                                    <Link
+                                        className="flex h-10 items-center bg-ink px-4 text-xs font-bold text-white"
+                                        to={`/admin/products/${product.productId}`}
+                                    >
+                                        검수하기
+                                    </Link>
                                 </article>
                             ))}
                         </div>

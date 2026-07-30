@@ -72,6 +72,9 @@ public class Product {
     @Column(nullable = false, length = 30)
     private ProductStatus status;
 
+    @Column(length = 500)
+    private String rejectionReason;
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> images = new ArrayList<>();
 
@@ -124,14 +127,17 @@ public class Product {
 
     public void requestApproval() {
         this.status = ProductStatus.PENDING;
+        this.rejectionReason = null;
     }
 
     public void approve() {
         this.status = ProductStatus.APPROVED;
+        this.rejectionReason = null;
     }
 
-    public void reject() {
+    public void reject(String rejectionReason) {
         this.status = ProductStatus.REJECTED;
+        this.rejectionReason = rejectionReason;
     }
 
     public void updateRating(BigDecimal rating) {

@@ -6,6 +6,7 @@ import {
     LayoutDashboard,
     LogOut,
     Menu,
+    PackageSearch,
     ReceiptText,
     Tags,
     X,
@@ -43,6 +44,7 @@ const adminNavigation: NavigationItem[] = [
         href: '/admin/seller-applications',
         icon: ClipboardCheck,
     },
+    { label: '상품 승인 관리', href: '/admin/products', icon: PackageSearch },
     { label: '카테고리 관리', href: '/admin/categories', icon: Tags },
 ]
 

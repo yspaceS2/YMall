@@ -25,6 +25,10 @@ import { OAuth2CallbackPage } from './pages/OAuth2CallbackPage'
 import { OAuthSignupPage } from './pages/OAuthSignupPage'
 import { AdminManagementPage } from './pages/AdminManagementPage'
 import { AdminCategoryManagementPage } from './pages/AdminCategoryManagementPage'
+import {
+    AdminProductReviewDetailPage,
+    AdminProductReviewListPage,
+} from './pages/AdminProductReviewPage'
 import { AccessDeniedPage } from './pages/AccessDeniedPage'
 
 function App() {
@@ -111,6 +115,8 @@ function AdminPortalRoutes() {
                 path="categories/:categoryId"
                 element={<AdminCategoryManagementPage mode="detail" />}
             />
+            <Route path="products" element={<AdminProductReviewListPage />} />
+            <Route path="products/:productId" element={<AdminProductReviewDetailPage />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
     )
