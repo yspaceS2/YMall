@@ -21,10 +21,10 @@
 
     :root[data-theme="dark"] {
         --color-ink: #f1f1eb;
-        --color-muted: #aaa9a1;
-        --color-line: #3c3d38;
-        --color-paper: #11120f;
-        --color-surface: #1b1c18;
+        --color-muted: #b1b0a8;
+        --color-line: #484a43;
+        --color-paper: #191a17;
+        --color-surface: #242620;
         --color-lime: #c7eb3d;
     }
 
