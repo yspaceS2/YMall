@@ -82,6 +82,10 @@ public class Member {
         this.emailVerifiedAt = LocalDateTime.now();
     }
 
+    public void promoteToSeller() {
+        this.role = MemberRole.ROLE_SELLER;
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();

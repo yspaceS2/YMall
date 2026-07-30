@@ -1,6 +1,8 @@
 import {
     ArrowLeft,
     Bell,
+    BriefcaseBusiness,
+    ClipboardCheck,
     LayoutDashboard,
     LogOut,
     Menu,
@@ -26,6 +28,7 @@ const memberNavigation: NavigationItem[] = [
     { label: '대시보드', href: '/mypage', icon: LayoutDashboard },
     { label: '주문·배송 조회', href: '/mypage/orders', icon: ReceiptText },
     { label: '알림', href: '/mypage/notifications', icon: Bell },
+    { label: '판매자 신청', href: '/mypage/seller-application', icon: BriefcaseBusiness },
 ]
 
 const sellerNavigation: NavigationItem[] = [
@@ -34,6 +37,11 @@ const sellerNavigation: NavigationItem[] = [
 
 const adminNavigation: NavigationItem[] = [
     { label: '대시보드', href: '/admin', icon: LayoutDashboard },
+    {
+        label: '판매자 신청 관리',
+        href: '/admin/seller-applications',
+        icon: ClipboardCheck,
+    },
 ]
 
 export function ManagementLayout({

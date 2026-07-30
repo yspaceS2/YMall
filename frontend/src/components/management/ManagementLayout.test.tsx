@@ -57,6 +57,8 @@ describe('ManagementLayout', () => {
             .toHaveAttribute('href', '/mypage/orders')
         expect(screen.getByRole('link', { name: '알림' }))
             .toHaveAttribute('href', '/mypage/notifications')
+        expect(screen.getByRole('link', { name: '판매자 신청' }))
+            .toHaveAttribute('href', '/mypage/seller-application')
     })
 
     it.each([
@@ -78,6 +80,15 @@ describe('ManagementLayout', () => {
             .toHaveAttribute('aria-current', 'page')
         expect(screen.getByRole('link', { name: '대시보드' }))
             .not.toHaveAttribute('aria-current')
+    })
+
+    it('관리자에게 판매자 신청 관리 메뉴를 표시한다', () => {
+        renderManagementLayout('admin', '/admin/seller-applications')
+
+        expect(screen.getByRole('link', { name: '판매자 신청 관리' }))
+            .toHaveAttribute('href', '/admin/seller-applications')
+        expect(screen.getByRole('link', { name: '판매자 신청 관리' }))
+            .toHaveAttribute('aria-current', 'page')
     })
 
     it('로그아웃 버튼으로 인증 로그아웃을 요청한다', async () => {
