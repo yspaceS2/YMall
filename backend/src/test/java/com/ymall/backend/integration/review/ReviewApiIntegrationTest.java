@@ -214,9 +214,21 @@ class ReviewApiIntegrationTest {
         order.addItem(orderItem);
         order.completePayment();
         if (delivered) {
-            orderItem.updateFulfillmentStatus(OrderItemFulfillmentStatus.PREPARING);
-            orderItem.updateFulfillmentStatus(OrderItemFulfillmentStatus.SHIPPED);
-            orderItem.updateFulfillmentStatus(OrderItemFulfillmentStatus.DELIVERED);
+            orderItem.updateFulfillmentStatus(
+                OrderItemFulfillmentStatus.PREPARING,
+                null,
+                null
+            );
+            orderItem.updateFulfillmentStatus(
+                OrderItemFulfillmentStatus.SHIPPED,
+                "CJ대한통운",
+                "1234567890"
+            );
+            orderItem.updateFulfillmentStatus(
+                OrderItemFulfillmentStatus.DELIVERED,
+                null,
+                null
+            );
             order.refreshFulfillmentStatus();
         }
         orderRepository.saveAndFlush(order);

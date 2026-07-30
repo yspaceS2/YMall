@@ -105,7 +105,12 @@ export interface SellerOrderItem {
     quantity: number
     refundedQuantity: number
     lineTotal: number
+    thumbnailUrl: string | null
     fulfillmentStatus: FulfillmentStatus
+    carrier: string | null
+    trackingNumber: string | null
+    shippedAt: string | null
+    deliveredAt: string | null
 }
 
 export interface SellerOrder {
@@ -115,6 +120,24 @@ export interface SellerOrder {
     createdAt: string
     refundSupported: boolean
     items: SellerOrderItem[]
+}
+
+export interface SellerDeliveryAddress {
+    recipientName: string
+    recipientPhone: string
+    postalCode: string
+    roadAddress: string
+    detailAddress: string | null
+}
+
+export interface SellerOrderDetail extends SellerOrder {
+    deliveryAddress: SellerDeliveryAddress | null
+}
+
+export interface SellerOrderItemFulfillmentUpdateRequest {
+    fulfillmentStatus: FulfillmentStatus
+    carrier?: string
+    trackingNumber?: string
 }
 
 export type SellerProductPage = PageResponse<SellerProductSummary>

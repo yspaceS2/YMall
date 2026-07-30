@@ -267,10 +267,19 @@ class NotificationApiIntegrationTest {
 
     private void updateFulfillment(Long orderId, String token, String fulfillmentStatus)
         throws Exception {
+        String content = "SHIPPED".equals(fulfillmentStatus)
+            ? """
+                {
+                  "fulfillmentStatus":"SHIPPED",
+                  "carrier":"CJ대한통운",
+                  "trackingNumber":"1234567890"
+                }
+                """
+            : "{\"fulfillmentStatus\":\"%s\"}".formatted(fulfillmentStatus);
         mockMvc.perform(patch("/api/seller/orders/{orderId}/status", orderId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fulfillmentStatus\":\"%s\"}".formatted(fulfillmentStatus)))
+                .content(content))
             .andExpect(status().isOk());
     }
 

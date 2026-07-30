@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ymall.backend.global.common.ApiResponse;
 import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.global.security.MemberPrincipal;
+import com.ymall.backend.order.entity.OrderItemFulfillmentStatus;
+import com.ymall.backend.seller.dto.SellerOrderDetailResponse;
+import com.ymall.backend.seller.dto.SellerOrderItemFulfillmentUpdateRequest;
 import com.ymall.backend.seller.dto.SellerOrderResponse;
 import com.ymall.backend.seller.dto.SellerOrderStatusUpdateRequest;
 import com.ymall.backend.seller.service.SellerOrderService;
@@ -35,11 +38,44 @@ public class SellerOrderController {
     public ResponseEntity<ApiResponse<PageResponse<SellerOrderResponse>>> getOrders(
         @AuthenticationPrincipal MemberPrincipal principal,
         @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int size
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(required = false) OrderItemFulfillmentStatus fulfillmentStatus
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-            sellerOrderService.getOrders(principal.memberId(), page, size)
+            sellerOrderService.getOrders(
+                principal.memberId(),
+                page,
+                size,
+                fulfillmentStatus
+            )
         ));
+    }
+
+    @GetMapping("/{orderId}")
+    public ApiResponse<SellerOrderDetailResponse> getOrder(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long orderId
+    ) {
+        return ApiResponse.success(
+            sellerOrderService.getOrder(principal.memberId(), orderId)
+        );
+    }
+
+    @PatchMapping("/{orderId}/items/{orderItemId}/fulfillment")
+    public ApiResponse<SellerOrderDetailResponse> updateItemFulfillment(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long orderId,
+        @PathVariable Long orderItemId,
+        @Valid @RequestBody SellerOrderItemFulfillmentUpdateRequest request
+    ) {
+        return ApiResponse.success(
+            sellerOrderService.updateItemStatus(
+                principal.memberId(),
+                orderId,
+                orderItemId,
+                request
+            )
+        );
     }
 
     @PatchMapping("/{orderId}/status")

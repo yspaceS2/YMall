@@ -16,6 +16,7 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 import com.ymall.backend.order.entity.Order;
+import com.ymall.backend.order.entity.OrderItemFulfillmentStatus;
 import com.ymall.backend.order.entity.OrderStatus;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -89,6 +90,38 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findSellerOrders(
         @Param("sellerProfileId") Long sellerProfileId,
         @Param("statuses") Collection<OrderStatus> statuses,
+        Pageable pageable
+    );
+
+    @Query(
+        value = """
+            select orders from Order orders
+            where exists (
+                select item.id from OrderItem item
+                where item.order = orders
+                  and item.product.sellerProfile.id = :sellerProfileId
+                  and item.fulfillmentStatus = :fulfillmentStatus
+                  and item.refundedQuantity < item.quantity
+            )
+              and orders.status in :statuses
+            order by orders.createdAt desc
+            """,
+        countQuery = """
+            select count(orders) from Order orders
+            where exists (
+                select item.id from OrderItem item
+                where item.order = orders
+                  and item.product.sellerProfile.id = :sellerProfileId
+                  and item.fulfillmentStatus = :fulfillmentStatus
+                  and item.refundedQuantity < item.quantity
+            )
+              and orders.status in :statuses
+            """
+    )
+    Page<Order> findSellerOrdersByFulfillmentStatus(
+        @Param("sellerProfileId") Long sellerProfileId,
+        @Param("statuses") Collection<OrderStatus> statuses,
+        @Param("fulfillmentStatus") OrderItemFulfillmentStatus fulfillmentStatus,
         Pageable pageable
     );
 

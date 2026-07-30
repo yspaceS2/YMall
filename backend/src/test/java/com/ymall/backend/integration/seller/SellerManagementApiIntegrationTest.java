@@ -28,8 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.order.entity.DeliveryAddressSnapshot;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderItemFulfillmentStatus;
@@ -207,6 +209,110 @@ class SellerManagementApiIntegrationTest {
     }
 
     @Test
+    void sellerManagesOwnedOrderItemFulfillmentWithTrackingAndStatusFilter()
+        throws Exception {
+        Product firstProduct = saveProduct(firstProfile, "개별 출고 상품");
+        Product secondProduct = saveProduct(firstProfile, "나중 출고 상품");
+        MemberAddress deliveryAddress = new MemberAddress(
+            buyer,
+            "테스트 배송지",
+            "테스트 구매자",
+            "01012345678",
+            "12345",
+            "서울시 테스트로 1",
+            "101호",
+            true
+        );
+        Order order = new Order(
+            buyer,
+            "seller-item-fulfillment",
+            new DeliveryAddressSnapshot(deliveryAddress)
+        );
+        order.addItem(new OrderItem(
+            firstProduct,
+            firstProduct.getName(),
+            firstProduct.getPrice(),
+            1
+        ));
+        order.addItem(new OrderItem(
+            secondProduct,
+            secondProduct.getName(),
+            secondProduct.getPrice(),
+            1
+        ));
+        order.completePayment();
+        order = orderRepository.saveAndFlush(order);
+        Long orderId = order.getId();
+        Long firstItemId = order.getItems().get(0).getId();
+
+        mockMvc.perform(get("/api/seller/orders/{orderId}", orderId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.deliveryAddress.recipientName")
+                .value("테스트 구매자"))
+            .andExpect(jsonPath("$.data.deliveryAddress.recipientPhone")
+                .value("01012345678"))
+            .andExpect(jsonPath("$.data.items.length()").value(2));
+
+        mockMvc.perform(patch(
+                "/api/seller/orders/{orderId}/items/{orderItemId}/fulfillment",
+                orderId,
+                firstItemId
+            )
+                .header(HttpHeaders.AUTHORIZATION, bearer(secondSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fulfillmentStatus\":\"PREPARING\"}"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("SELLER_ORDER_NOT_FOUND"));
+
+        mockMvc.perform(patch(
+                "/api/seller/orders/{orderId}/items/{orderItemId}/fulfillment",
+                orderId,
+                firstItemId
+            )
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fulfillmentStatus\":\"PREPARING\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items[0].fulfillmentStatus").value("PREPARING"))
+            .andExpect(jsonPath("$.data.items[1].fulfillmentStatus").value("PENDING"));
+
+        mockMvc.perform(patch(
+                "/api/seller/orders/{orderId}/items/{orderItemId}/fulfillment",
+                orderId,
+                firstItemId
+            )
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fulfillmentStatus":"SHIPPED",
+                      "carrier":"CJ대한통운",
+                      "trackingNumber":"1234567890"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.orderStatus").value("PREPARING"))
+            .andExpect(jsonPath("$.data.items[0].fulfillmentStatus").value("SHIPPED"))
+            .andExpect(jsonPath("$.data.items[0].carrier").value("CJ대한통운"))
+            .andExpect(jsonPath("$.data.items[0].trackingNumber").value("1234567890"))
+            .andExpect(jsonPath("$.data.items[0].shippedAt").isNotEmpty())
+            .andExpect(jsonPath("$.data.items[1].fulfillmentStatus").value("PENDING"));
+
+        mockMvc.perform(get("/api/seller/orders")
+                .param("fulfillmentStatus", "SHIPPED")
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.content[0].orderId").value(orderId));
+
+        mockMvc.perform(get("/api/seller/orders")
+                .param("fulfillmentStatus", "DELIVERED")
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.content").isEmpty());
+    }
+
+    @Test
     void sellerShipsOnlyRemainingItemsAfterPartialRefund() throws Exception {
         Product refundedProduct = saveProduct(firstProfile, "Refunded product");
         Product remainingProduct = saveProduct(firstProfile, "Remaining product");
@@ -274,7 +380,13 @@ class SellerManagementApiIntegrationTest {
         mockMvc.perform(patch("/api/seller/orders/{orderId}/status", orderId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fulfillmentStatus\":\"SHIPPED\"}"))
+                .content("""
+                    {
+                      "fulfillmentStatus":"SHIPPED",
+                      "carrier":"CJ대한통운",
+                      "trackingNumber":"1234567890"
+                    }
+                    """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.orderStatus").value("SHIPPED"));
 
