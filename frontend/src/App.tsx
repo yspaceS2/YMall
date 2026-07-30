@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireRole } from './auth/RequireRole'
 import { Layout } from './components/Layout'
+import { ManagementLayout } from './components/management/ManagementLayout'
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { LoginPage } from './pages/LoginPage'
@@ -24,33 +25,95 @@ import { AccessDeniedPage } from './pages/AccessDeniedPage'
 
 function App() {
     return (
-        <Layout>
-            <Routes>
-                <Route path="/" element={<ProductListPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/password-reset" element={<PasswordResetPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/oauth2/callback" element={<OAuth2CallbackPage />} />
-                <Route path="/oauth2/signup" element={<OAuthSignupPage />} />
-                <Route path="/products/:productId" element={<ProductDetailPage />} />
-                <Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />
-                <Route
-                    path="/checkout"
-                    element={<RequireAuth><CheckoutPage /></RequireAuth>}
-                />
-                <Route path="/orders" element={<RequireAuth><OrderHistoryPage /></RequireAuth>} />
-                <Route path="/notifications" element={<RequireAuth><NotificationPage /></RequireAuth>} />
-                <Route path="/mypage" element={<RequireAuth><MyPage /></RequireAuth>} />
-                <Route path="/forbidden" element={<RequireAuth><AccessDeniedPage /></RequireAuth>} />
-                <Route path="/orders/:orderId/payment" element={<RequireAuth><PaymentPage /></RequireAuth>} />
-                <Route path="/orders/:orderId/payment/success" element={<RequireAuth><TossPaymentSuccessPage /></RequireAuth>} />
-                <Route path="/orders/:orderId/payment/fail" element={<RequireAuth><TossPaymentFailPage /></RequireAuth>} />
-                <Route path="/orders/:orderId/result" element={<RequireAuth><OrderResultPage /></RequireAuth>} />
-                <Route path="/seller" element={<RequireRole roles={['ROLE_SELLER', 'ROLE_ADMIN']}><SellerManagementPage /></RequireRole>} />
-                <Route path="/admin" element={<RequireRole roles={['ROLE_ADMIN']}><AdminManagementPage /></RequireRole>} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-        </Layout>
+        <Routes>
+            <Route
+                path="/mypage/*"
+                element={
+                    <RequireAuth>
+                        <ManagementLayout role="member">
+                            <MemberPortalRoutes />
+                        </ManagementLayout>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/seller/*"
+                element={
+                    <RequireRole roles={['ROLE_SELLER', 'ROLE_ADMIN']}>
+                        <ManagementLayout role="seller">
+                            <SellerPortalRoutes />
+                        </ManagementLayout>
+                    </RequireRole>
+                }
+            />
+            <Route
+                path="/admin/*"
+                element={
+                    <RequireRole roles={['ROLE_ADMIN']}>
+                        <ManagementLayout role="admin">
+                            <AdminPortalRoutes />
+                        </ManagementLayout>
+                    </RequireRole>
+                }
+            />
+            <Route path="*" element={<Layout><StoreRoutes /></Layout>} />
+        </Routes>
+    )
+}
+
+function MemberPortalRoutes() {
+    return (
+        <Routes>
+            <Route index element={<MyPage />} />
+            <Route path="orders" element={<OrderHistoryPage />} />
+            <Route path="notifications" element={<NotificationPage />} />
+            <Route path="*" element={<Navigate to="/mypage" replace />} />
+        </Routes>
+    )
+}
+
+function SellerPortalRoutes() {
+    return (
+        <Routes>
+            <Route index element={<SellerManagementPage />} />
+            <Route path="*" element={<Navigate to="/seller" replace />} />
+        </Routes>
+    )
+}
+
+function AdminPortalRoutes() {
+    return (
+        <Routes>
+            <Route index element={<AdminManagementPage />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
+    )
+}
+
+function StoreRoutes() {
+    return (
+        <Routes>
+            <Route path="/" element={<ProductListPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/password-reset" element={<PasswordResetPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/oauth2/callback" element={<OAuth2CallbackPage />} />
+            <Route path="/oauth2/signup" element={<OAuthSignupPage />} />
+            <Route path="/products/:productId" element={<ProductDetailPage />} />
+            <Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />
+            <Route
+                path="/checkout"
+                element={<RequireAuth><CheckoutPage /></RequireAuth>}
+            />
+            <Route path="/orders" element={<Navigate to="/mypage/orders" replace />} />
+            <Route path="/notifications" element={<Navigate to="/mypage/notifications" replace />} />
+            <Route path="/forbidden" element={<RequireAuth><AccessDeniedPage /></RequireAuth>} />
+            <Route path="/orders/:orderId/payment" element={<RequireAuth><PaymentPage /></RequireAuth>} />
+            <Route path="/orders/:orderId/payment/success" element={<RequireAuth><TossPaymentSuccessPage /></RequireAuth>} />
+            <Route path="/orders/:orderId/payment/fail" element={<RequireAuth><TossPaymentFailPage /></RequireAuth>} />
+            <Route path="/orders/:orderId/result" element={<RequireAuth><OrderResultPage /></RequireAuth>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
     )
 }
 
