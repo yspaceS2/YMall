@@ -1,8 +1,11 @@
+import type { ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireRole } from './auth/RequireRole'
 import { Layout } from './components/Layout'
 import { ManagementLayout } from './components/management/ManagementLayout'
+import { AdminSellerApplicationPanel } from './components/admin/AdminSellerApplicationPanel'
+import { SellerApplicationPanel } from './components/member/SellerApplicationPanel'
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { LoginPage } from './pages/LoginPage'
@@ -67,6 +70,14 @@ function MemberPortalRoutes() {
             <Route index element={<MyPage />} />
             <Route path="orders" element={<OrderHistoryPage />} />
             <Route path="notifications" element={<NotificationPage />} />
+            <Route
+                path="seller-application"
+                element={
+                    <PortalPage>
+                        <SellerApplicationPanel />
+                    </PortalPage>
+                }
+            />
             <Route path="*" element={<Navigate to="/mypage" replace />} />
         </Routes>
     )
@@ -85,6 +96,14 @@ function AdminPortalRoutes() {
     return (
         <Routes>
             <Route index element={<AdminManagementPage />} />
+            <Route
+                path="seller-applications"
+                element={
+                    <PortalPage>
+                        <AdminSellerApplicationPanel />
+                    </PortalPage>
+                }
+            />
             <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
     )
@@ -114,6 +133,14 @@ function StoreRoutes() {
             <Route path="/orders/:orderId/result" element={<RequireAuth><OrderResultPage /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+    )
+}
+
+function PortalPage({ children }: { children: ReactNode }) {
+    return (
+        <div className="mx-auto max-w-350 px-4 py-10 min-[601px]:px-8 min-[601px]:py-14">
+            {children}
+        </div>
     )
 }
 
