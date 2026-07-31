@@ -154,6 +154,92 @@ class SellerManagementApiIntegrationTest {
     }
 
     @Test
+    void sellerFiltersOwnProductsByKeywordCategoryTreeAndStock() throws Exception {
+        Category childCategory = categoryRepository.save(new Category(
+            "노트북",
+            "notebooks",
+            category,
+            2,
+            1,
+            true
+        ));
+        saveProduct(firstProfile, childCategory, "초경량 카메라 노트북", "YTech", 3);
+        saveProduct(firstProfile, category, "사무용 모니터", "YDisplay", 8);
+        saveProduct(secondProfile, childCategory, "다른 판매자 카메라 노트북", "YTech", 2);
+
+        mockMvc.perform(get("/api/seller/products")
+                .param("keyword", "카메라")
+                .param("categoryId", category.getId().toString())
+                .param("stockCondition", "LTE")
+                .param("stockQuantity", "5")
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].name").value("초경량 카메라 노트북"))
+            .andExpect(jsonPath("$.data.content[0].stock").value(3));
+    }
+
+    @Test
+    void sellerSearchesOrdersAndReadsPendingFulfillmentOrderCount() throws Exception {
+        Product pendingProduct = saveProduct(firstProfile, "검색 대상 상품");
+        Product preparingProduct = saveProduct(firstProfile, "이미 처리한 상품");
+        Order pendingOrder = new Order(buyer, "pending-search-order");
+        pendingOrder.addItem(new OrderItem(
+            pendingProduct,
+            pendingProduct.getName(),
+            pendingProduct.getPrice(),
+            1
+        ));
+        pendingOrder.addItem(new OrderItem(
+            pendingProduct,
+            "검색 대상 추가 상품",
+            pendingProduct.getPrice(),
+            1
+        ));
+        pendingOrder.completePayment();
+        pendingOrder = orderRepository.saveAndFlush(pendingOrder);
+
+        Order preparingOrder = new Order(buyer, "preparing-search-order");
+        OrderItem preparingItem = new OrderItem(
+            preparingProduct,
+            preparingProduct.getName(),
+            preparingProduct.getPrice(),
+            1
+        );
+        preparingOrder.addItem(preparingItem);
+        preparingOrder.completePayment();
+        preparingItem.updateFulfillmentStatus(
+            OrderItemFulfillmentStatus.PREPARING,
+            null,
+            null
+        );
+        preparingOrder.refreshFulfillmentStatus();
+        orderRepository.saveAndFlush(preparingOrder);
+
+        mockMvc.perform(get("/api/seller/orders")
+                .param("keyword", "검색 대상")
+                .param("fulfillmentStatus", "PENDING")
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].orderId").value(pendingOrder.getId()))
+            .andExpect(jsonPath("$.data.content[0].items[0].productName")
+                .value("검색 대상 상품"));
+
+        mockMvc.perform(get("/api/seller/orders")
+                .param("keyword", pendingOrder.getId().toString())
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].orderId").value(pendingOrder.getId()));
+
+        mockMvc.perform(get("/api/seller/orders/pending-count")
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.count").value(1));
+    }
+
+    @Test
     void normalizesSellerOrderPaginationRange() throws Exception {
         mockMvc.perform(get("/api/seller/orders")
                 .param("page", "-1")
@@ -519,15 +605,25 @@ class SellerManagementApiIntegrationTest {
     }
 
     private Product saveProduct(SellerProfile profile, String name) {
+        return saveProduct(profile, category, name, "YMall", 10);
+    }
+
+    private Product saveProduct(
+        SellerProfile profile,
+        Category productCategory,
+        String name,
+        String brand,
+        int stock
+    ) {
         Product product = new Product(
-            category,
+            productCategory,
             name,
             "상품 설명",
-            "YMall",
+            brand,
             BigDecimal.valueOf(10000),
             BigDecimal.ZERO,
             BigDecimal.ZERO,
-            10,
+            stock,
             "thumbnail",
             ProductStatus.APPROVED
         );

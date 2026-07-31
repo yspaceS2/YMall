@@ -1,5 +1,6 @@
 import { LoaderCircle, PackageCheck, Pencil, Store, Trash2 } from 'lucide-react'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { uploadProductImage } from '../api/files'
 import { getCategories } from '../api/products'
@@ -7,6 +8,10 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { ProductCategorySelector } from '../components/seller/ProductCategorySelector'
 import { ProductImageUploadField } from '../components/seller/ProductImageUploadField'
+import {
+    ManagementListSearch,
+    ManagementPagination,
+} from '../components/management/ManagementListUi'
 import {
     createSellerProduct,
     createSellerProfile,
@@ -21,10 +26,14 @@ import type { Category } from '../types/product'
 import type {
     SellerProductSummary,
     SellerProductRequest,
+    SellerProductStockCondition,
     SellerProfile,
 } from '../types/seller'
 import { formatPrice } from '../utils/product'
-import { findFirstLeafCategoryId } from '../utils/productCategory'
+import {
+    findFirstLeafCategoryId,
+    getCategoryChildren,
+} from '../utils/productCategory'
 
 const emptyProduct: SellerProductRequest = {
     categoryId: 0,
@@ -45,6 +54,7 @@ const emptyProduct: SellerProductRequest = {
 }
 
 export function SellerManagementPage() {
+    const [searchParams, setSearchParams] = useSearchParams()
     const [profile, setProfile] = useState<SellerProfile | null>(null)
     const [profileForm, setProfileForm] = useState({ storeName: '', businessNumber: '', description: '' })
     const [products, setProducts] = useState<SellerProductSummary[]>([])
@@ -57,12 +67,26 @@ export function SellerManagementPage() {
     const [editingProductId, setEditingProductId] = useState<number | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
-    const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false)
-    const [nextProductPage, setNextProductPage] = useState(2)
-    const [hasMoreProducts, setHasMoreProducts] = useState(false)
+    const [productTotalPages, setProductTotalPages] = useState(0)
+    const [productTotalElements, setProductTotalElements] = useState(0)
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
     const [productToDelete, setProductToDelete] = useState<SellerProductSummary | null>(null)
+    const productPage = positivePage(searchParams.get('page'))
+    const productKeyword = searchParams.get('keyword') ?? ''
+    const rootCategoryId = positiveId(searchParams.get('rootCategoryId'))
+    const middleCategoryId = positiveId(searchParams.get('middleCategoryId'))
+    const leafCategoryId = positiveId(searchParams.get('categoryId'))
+    const selectedCategoryId = leafCategoryId ?? middleCategoryId ?? rootCategoryId
+    const stockCondition = parseStockCondition(searchParams.get('stockCondition'))
+    const stockQuantity = nonNegativeInteger(searchParams.get('stockQuantity'))
+    const rootCategories = getCategoryChildren(categories, null)
+    const middleCategories = rootCategoryId
+        ? getCategoryChildren(categories, rootCategoryId)
+        : []
+    const leafCategories = middleCategoryId
+        ? getCategoryChildren(categories, middleCategoryId)
+        : []
 
     useEffect(() => {
         const controller = new AbortController()
@@ -85,7 +109,6 @@ export function SellerManagementPage() {
                 businessNumber: profileResponse.businessNumber,
                 description: profileResponse.description ?? '',
             })
-            return loadManagementData(controller.signal)
         }).catch((error: unknown) => {
             if (error instanceof Error && error.name === 'AbortError') return
             setErrorMessage(error instanceof ApiError ? error.message : '판매자 정보를 불러오지 못했습니다.')
@@ -95,12 +118,35 @@ export function SellerManagementPage() {
         return () => controller.abort()
     }, [])
 
-    async function loadManagementData(signal?: AbortSignal) {
-        const productResponse = await getSellerProducts({ signal })
-        setProducts(productResponse.content)
-        setHasMoreProducts(productResponse.hasNext)
-        setNextProductPage(2)
-    }
+    useEffect(() => {
+        if (!profile) return
+        const controller = new AbortController()
+        getSellerProducts({
+            page: productPage,
+            keyword: productKeyword,
+            categoryId: selectedCategoryId,
+            stockCondition,
+            stockQuantity,
+            signal: controller.signal,
+        }).then((response) => {
+            setProducts(response.content)
+            setProductTotalPages(response.totalPages)
+            setProductTotalElements(response.totalElements)
+        }).catch((error: unknown) => {
+            if (error instanceof Error && error.name === 'AbortError') return
+            setErrorMessage(error instanceof ApiError
+                ? error.message
+                : '상품 목록을 불러오지 못했습니다.')
+        })
+        return () => controller.abort()
+    }, [
+        productKeyword,
+        productPage,
+        profile,
+        selectedCategoryId,
+        stockCondition,
+        stockQuantity,
+    ])
 
     async function saveProfile(event: FormEvent) {
         event.preventDefault()
@@ -115,7 +161,6 @@ export function SellerManagementPage() {
                 : await createSellerProfile(profileForm)
             setProfile(saved)
             setMessage(profile ? '판매자 정보가 수정되었습니다.' : '판매자 등록이 완료되었습니다.')
-            if (!profile) await loadManagementData()
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '판매자 정보를 저장하지 못했습니다.')
         } finally {
@@ -183,10 +228,16 @@ export function SellerManagementPage() {
                 categoryId: findFirstLeafCategoryId(categories),
             })
             resetPendingImages()
-            const response = await getSellerProducts()
+            const response = await getSellerProducts({
+                page: productPage,
+                keyword: productKeyword,
+                categoryId: selectedCategoryId,
+                stockCondition,
+                stockQuantity,
+            })
             setProducts(response.content)
-            setHasMoreProducts(response.hasNext)
-            setNextProductPage(2)
+            setProductTotalPages(response.totalPages)
+            setProductTotalElements(response.totalElements)
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '상품을 저장하지 못했습니다.')
         } finally {
@@ -235,10 +286,16 @@ export function SellerManagementPage() {
         setErrorMessage('')
         try {
             await deleteSellerProduct(productId)
-            const response = await getSellerProducts()
+            const response = await getSellerProducts({
+                page: productPage,
+                keyword: productKeyword,
+                categoryId: selectedCategoryId,
+                stockCondition,
+                stockQuantity,
+            })
             setProducts(response.content)
-            setHasMoreProducts(response.hasNext)
-            setNextProductPage(2)
+            setProductTotalPages(response.totalPages)
+            setProductTotalElements(response.totalElements)
             setProductToDelete(null)
             setMessage('상품이 삭제되었습니다.')
         } catch (error) {
@@ -248,20 +305,32 @@ export function SellerManagementPage() {
         }
     }
 
-    async function loadMoreProducts() {
-        if (!hasMoreProducts || isLoadingMoreProducts) return
-        setIsLoadingMoreProducts(true)
-        setErrorMessage('')
-        try {
-            const response = await getSellerProducts({ page: nextProductPage })
-            setProducts((current) => [...current, ...response.content])
-            setHasMoreProducts(response.hasNext)
-            setNextProductPage((current) => current + 1)
-        } catch (error) {
-            setErrorMessage(error instanceof ApiError ? error.message : '상품을 추가로 불러오지 못했습니다.')
-        } finally {
-            setIsLoadingMoreProducts(false)
+    function updateCategoryFilter(
+        name: 'rootCategoryId' | 'middleCategoryId' | 'categoryId',
+        value: string,
+    ) {
+        const next = new URLSearchParams(searchParams)
+        if (value) next.set(name, value)
+        else next.delete(name)
+        if (name === 'rootCategoryId') {
+            next.delete('middleCategoryId')
+            next.delete('categoryId')
+        } else if (name === 'middleCategoryId') {
+            next.delete('categoryId')
         }
+        next.set('page', '1')
+        setSearchParams(next)
+    }
+
+    function updateStockFilter(
+        name: 'stockCondition' | 'stockQuantity',
+        value: string,
+    ) {
+        const next = new URLSearchParams(searchParams)
+        if (value) next.set(name, value)
+        else next.delete(name)
+        next.set('page', '1')
+        setSearchParams(next)
     }
 
     if (isLoading) {
@@ -372,6 +441,80 @@ export function SellerManagementPage() {
                                 {editingProductId && <button className="h-11 border border-line px-5 text-xs font-bold" type="button" onClick={() => { setEditingProductId(null); setProductForm({ ...emptyProduct, categoryId: findFirstLeafCategoryId(categories) }); resetPendingImages() }}>취소</button>}
                             </div>
                         </form>
+                        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                            <strong className="text-sm">
+                                등록 상품 {productTotalElements.toLocaleString()}개
+                            </strong>
+                            <span className="text-xs text-muted">
+                                카테고리·재고 조건과 검색어를 함께 적용할 수 있습니다.
+                            </span>
+                        </div>
+                        <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.2fr]">
+                            <CategoryFilter
+                                label="대분류"
+                                emptyLabel="전체 대분류"
+                                categories={rootCategories}
+                                value={rootCategoryId}
+                                onChange={(value) => updateCategoryFilter(
+                                    'rootCategoryId',
+                                    value,
+                                )}
+                            />
+                            <CategoryFilter
+                                label="중분류"
+                                emptyLabel="전체 중분류"
+                                categories={middleCategories}
+                                value={middleCategoryId}
+                                disabled={!rootCategoryId}
+                                onChange={(value) => updateCategoryFilter(
+                                    'middleCategoryId',
+                                    value,
+                                )}
+                            />
+                            <CategoryFilter
+                                label="소분류"
+                                emptyLabel="전체 소분류"
+                                categories={leafCategories}
+                                value={leafCategoryId}
+                                disabled={!middleCategoryId}
+                                onChange={(value) => updateCategoryFilter(
+                                    'categoryId',
+                                    value,
+                                )}
+                            />
+                            <label className="grid gap-1.5 text-xs font-bold">
+                                재고 수량
+                                <span className="flex">
+                                    <input
+                                        className="h-11 min-w-0 flex-1 border border-r-0 border-line bg-surface px-3 text-sm font-normal text-ink"
+                                        min="0"
+                                        placeholder="수량 입력"
+                                        type="number"
+                                        value={stockQuantity ?? ''}
+                                        onChange={(event) => updateStockFilter(
+                                            'stockQuantity',
+                                            event.target.value,
+                                        )}
+                                    />
+                                    <select
+                                        aria-label="재고 수량 비교 조건"
+                                        className="h-11 border border-line bg-surface px-3 text-sm font-normal text-ink"
+                                        value={stockCondition}
+                                        onChange={(event) => updateStockFilter(
+                                            'stockCondition',
+                                            event.target.value,
+                                        )}
+                                    >
+                                        <option value="GTE">개 이상</option>
+                                        <option value="LTE">개 이하</option>
+                                    </select>
+                                </span>
+                            </label>
+                        </div>
+                        <ManagementListSearch
+                            key={productKeyword}
+                            placeholder="상품명 또는 브랜드를 검색하세요"
+                        />
                         <div className="grid gap-3">
                             {products.length === 0 ? (
                                 <p className="text-sm text-muted">등록한 상품이 없습니다.</p>
@@ -395,7 +538,10 @@ export function SellerManagementPage() {
                                 </div>
                             ))}
                         </div>
-                        {hasMoreProducts && <button className="mx-auto mt-5 grid h-10 min-w-32 place-items-center border border-ink px-5 text-xs font-bold disabled:opacity-50" type="button" disabled={isLoadingMoreProducts} onClick={loadMoreProducts}>{isLoadingMoreProducts ? <LoaderCircle className="size-4 animate-spin" /> : '상품 더 보기'}</button>}
+                        <ManagementPagination
+                            page={productPage}
+                            totalPages={productTotalPages}
+                        />
                     </Panel>
 
                 </>}
@@ -429,4 +575,59 @@ function NumberField({ label, value, onChange, min, max }: { label: string; valu
 
 function DateField({ label, value, onChange, required }: { label: string; value: string | null; onChange: (value: string | null) => void; required: boolean }) {
     return <label className="grid gap-2 text-xs font-bold">{label}<input className="h-11 border border-line bg-surface px-3 font-normal text-ink" type="date" value={value ?? ''} required={required} onChange={(event) => onChange(event.target.value || null)} /></label>
+}
+
+function CategoryFilter({
+    label,
+    emptyLabel,
+    categories,
+    value,
+    disabled = false,
+    onChange,
+}: {
+    label: string
+    emptyLabel: string
+    categories: Category[]
+    value?: number
+    disabled?: boolean
+    onChange: (value: string) => void
+}) {
+    return (
+        <label className="grid gap-1.5 text-xs font-bold">
+            {label}
+            <select
+                className="h-11 border border-line bg-surface px-3 text-sm font-normal text-ink"
+                disabled={disabled}
+                value={value ?? ''}
+                onChange={(event) => onChange(event.target.value)}
+            >
+                <option value="">{emptyLabel}</option>
+                {categories.map((category) => (
+                    <option key={category.categoryId} value={category.categoryId}>
+                        {category.name}
+                    </option>
+                ))}
+            </select>
+        </label>
+    )
+}
+
+function positivePage(value: string | null) {
+    const parsed = Number(value)
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 1
+}
+
+function positiveId(value: string | null) {
+    const parsed = Number(value)
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
+}
+
+function nonNegativeInteger(value: string | null) {
+    if (value == null || value.trim() === '') return undefined
+    const parsed = Number(value)
+    return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined
+}
+
+function parseStockCondition(value: string | null): SellerProductStockCondition {
+    return value === 'LTE' ? 'LTE' : 'GTE'
 }

@@ -21,6 +21,7 @@ import com.ymall.backend.seller.dto.SellerOrderDetailResponse;
 import com.ymall.backend.seller.dto.SellerOrderItemFulfillmentUpdateRequest;
 import com.ymall.backend.seller.dto.SellerOrderResponse;
 import com.ymall.backend.seller.dto.SellerOrderStatusUpdateRequest;
+import com.ymall.backend.seller.dto.SellerPendingOrderCountResponse;
 import com.ymall.backend.seller.service.SellerOrderService;
 import com.ymall.backend.payment.refund.dto.PaymentRefundRequest;
 import com.ymall.backend.payment.refund.dto.PaymentRefundResponse;
@@ -34,11 +35,21 @@ public class SellerOrderController {
     private final SellerOrderService sellerOrderService;
     private final PaymentRefundService paymentRefundService;
 
+    @GetMapping("/pending-count")
+    public ApiResponse<SellerPendingOrderCountResponse> getPendingOrderCount(
+        @AuthenticationPrincipal MemberPrincipal principal
+    ) {
+        return ApiResponse.success(
+            sellerOrderService.getPendingOrderCount(principal.memberId())
+        );
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<SellerOrderResponse>>> getOrders(
         @AuthenticationPrincipal MemberPrincipal principal,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "") String keyword,
         @RequestParam(required = false) OrderItemFulfillmentStatus fulfillmentStatus
     ) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -46,6 +57,7 @@ public class SellerOrderController {
                 principal.memberId(),
                 page,
                 size,
+                keyword,
                 fulfillmentStatus
             )
         ));

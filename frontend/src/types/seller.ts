@@ -108,6 +108,7 @@ export interface SellerProductSummary extends ProductSummary {
 }
 
 export type FulfillmentStatus = 'PENDING' | 'PREPARING' | 'SHIPPED' | 'DELIVERED'
+export type SellerProductStockCondition = 'GTE' | 'LTE'
 
 export interface SellerOrderItem {
     orderItemId: number
@@ -154,5 +155,8 @@ export interface SellerOrderItemFulfillmentUpdateRequest {
 
 export type SellerProductPage = PageResponse<SellerProductSummary>
 export type SellerOrderPage = PageResponse<SellerOrder>
+export interface SellerPendingOrderCount {
+    count: number
+}
 export type SettlementRequestPage = PageResponse<SettlementRequest>
 export type SellerProductDetail = ProductDetail

@@ -1,7 +1,9 @@
 package com.ymall.backend.seller.service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +32,7 @@ import com.ymall.backend.product.repository.ProductRevisionRepository;
 import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.seller.entity.SellerProfile;
 import com.ymall.backend.seller.dto.SellerProductResponse;
+import com.ymall.backend.seller.dto.SellerProductStockCondition;
 
 @Service
 @RequiredArgsConstructor
@@ -45,20 +48,47 @@ public class SellerProductService {
     private final ProductCacheInvalidator productCacheInvalidator;
     private final ProductRevisionRepository productRevisionRepository;
 
-    public PageResponse<SellerProductResponse> getProducts(Long memberId, int page, int size) {
+    public PageResponse<SellerProductResponse> getProducts(
+        Long memberId,
+        int page,
+        int size,
+        String keyword,
+        Long categoryId,
+        SellerProductStockCondition stockCondition,
+        Integer stockQuantity
+    ) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         Pageable pageable = PageRequest.of(
             Math.max(page - 1, 0),
             Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
             Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        return PageResponse.from(
-            productRepository.findBySellerProfileIdAndStatusNot(
-                profile.getId(),
-                ProductStatus.DELETED,
-                pageable
-            ).map(SellerProductResponse::from)
-        );
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        boolean filterCategory = categoryId != null;
+        Set<Long> categoryIds = filterCategory
+            ? getActiveCategoryTreeIds(categoryId)
+            : Set.of(-1L);
+        SellerProductStockCondition normalizedStockCondition = stockCondition == null
+            ? SellerProductStockCondition.GTE
+            : stockCondition;
+        Integer minimumStock = stockQuantity != null
+            && normalizedStockCondition == SellerProductStockCondition.GTE
+            ? stockQuantity
+            : null;
+        Integer maximumStock = stockQuantity != null
+            && normalizedStockCondition == SellerProductStockCondition.LTE
+            ? stockQuantity
+            : null;
+        return PageResponse.from(productRepository.searchSellerProducts(
+            profile.getId(),
+            ProductStatus.DELETED,
+            normalizedKeyword,
+            filterCategory,
+            categoryIds,
+            minimumStock,
+            maximumStock,
+            pageable
+        ).map(SellerProductResponse::from));
     }
 
     public ProductDetailResponse getProduct(Long memberId, Long productId) {
@@ -228,5 +258,29 @@ public class SellerProductService {
             cursor = cursor.getParent();
         }
         return true;
+    }
+
+    private Set<Long> getActiveCategoryTreeIds(Long rootCategoryId) {
+        Category rootCategory = categoryRepository.findById(rootCategoryId)
+            .filter(Category::isActive)
+            .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+        List<Category> activeCategories = categoryRepository.findByActiveTrue(Sort.unsorted());
+        Set<Long> categoryIds = new HashSet<>();
+        categoryIds.add(rootCategory.getId());
+
+        boolean categoryAdded;
+        do {
+            categoryAdded = false;
+            for (Category category : activeCategories) {
+                Category parent = category.getParent();
+                if (parent != null
+                    && categoryIds.contains(parent.getId())
+                    && categoryIds.add(category.getId())) {
+                    categoryAdded = true;
+                }
+            }
+        } while (categoryAdded);
+
+        return categoryIds;
     }
 }

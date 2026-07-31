@@ -6,6 +6,7 @@ import type {
     SellerProductDetail,
     SellerProductPage,
     SellerProductRequest,
+    SellerProductStockCondition,
     SellerProfile,
     SellerProfileCreateRequest,
     SellerProfileUpdateRequest,
@@ -15,6 +16,7 @@ import type {
     SettlementRequest,
     SettlementRequestPage,
     FulfillmentStatus,
+    SellerPendingOrderCount,
 } from '../types/seller'
 import { apiRequest } from './client'
 import type {
@@ -109,17 +111,42 @@ const SELLER_PAGE_SIZE = 20
 
 interface SellerPageOptions {
     page?: number
+    size?: number
     signal?: AbortSignal
 }
 
+interface SellerProductPageOptions extends SellerPageOptions {
+    keyword?: string
+    categoryId?: number
+    stockCondition?: SellerProductStockCondition
+    stockQuantity?: number
+}
+
 interface SellerOrderPageOptions extends SellerPageOptions {
+    keyword?: string
     fulfillmentStatus?: FulfillmentStatus | ''
 }
 
-export function getSellerProducts(options: SellerPageOptions = {}) {
-    const { page = 1, signal } = options
+export function getSellerProducts(options: SellerProductPageOptions = {}) {
+    const {
+        page = 1,
+        size = SELLER_PAGE_SIZE,
+        keyword = '',
+        categoryId,
+        stockCondition,
+        stockQuantity,
+        signal,
+    } = options
+    const query = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+        keyword,
+    })
+    if (categoryId !== undefined) query.set('categoryId', String(categoryId))
+    if (stockCondition) query.set('stockCondition', stockCondition)
+    if (stockQuantity !== undefined) query.set('stockQuantity', String(stockQuantity))
     return apiRequest<SellerProductPage>(
-        `/seller/products?page=${page}&size=${SELLER_PAGE_SIZE}`,
+        `/seller/products?${query.toString()}`,
         { signal },
     )
 }
@@ -144,16 +171,34 @@ export function deleteSellerProduct(productId: number) {
 }
 
 export function getSellerOrders(options: SellerOrderPageOptions = {}) {
-    const { page = 1, signal, fulfillmentStatus } = options
+    const {
+        page = 1,
+        size = SELLER_PAGE_SIZE,
+        keyword = '',
+        signal,
+        fulfillmentStatus,
+    } = options
     const query = new URLSearchParams({
         page: String(page),
-        size: String(SELLER_PAGE_SIZE),
+        size: String(size),
+        keyword,
     })
     if (fulfillmentStatus) query.set('fulfillmentStatus', fulfillmentStatus)
     return apiRequest<SellerOrderPage>(
         `/seller/orders?${query.toString()}`,
         { signal },
     )
+}
+
+export const SELLER_PENDING_ORDER_COUNT_CHANGED_EVENT =
+    'ymall:seller-pending-order-count-changed'
+
+export function getSellerPendingOrderCount(signal?: AbortSignal) {
+    return apiRequest<SellerPendingOrderCount>('/seller/orders/pending-count', { signal })
+}
+
+export function notifySellerPendingOrderCountChanged() {
+    window.dispatchEvent(new Event(SELLER_PENDING_ORDER_COUNT_CHANGED_EVENT))
 }
 
 export function getSellerOrder(orderId: number, signal?: AbortSignal) {
@@ -171,13 +216,19 @@ export function updateSellerOrderItemFulfillment(
             method: 'PATCH',
             body: request,
         },
-    )
+    ).then((response) => {
+        notifySellerPendingOrderCountChanged()
+        return response
+    })
 }
 
 export function updateSellerOrderStatus(orderId: number, fulfillmentStatus: FulfillmentStatus) {
     return apiRequest<SellerOrder>(`/seller/orders/${orderId}/status`, {
         method: 'PATCH',
         body: { fulfillmentStatus },
+    }).then((response) => {
+        notifySellerPendingOrderCountChanged()
+        return response
     })
 }
 
@@ -185,6 +236,9 @@ export function requestSellerRefund(orderId: number, request: PaymentRefundReque
     return apiRequest<PaymentRefund>(`/seller/orders/${orderId}/refunds`, {
         method: 'POST',
         body: request,
+    }).then((response) => {
+        notifySellerPendingOrderCountChanged()
+        return response
     })
 }
 

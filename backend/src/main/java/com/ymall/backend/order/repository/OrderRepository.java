@@ -125,6 +125,92 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         Pageable pageable
     );
 
+    @Query(
+        value = """
+            select orders from Order orders
+            where exists (
+                select item.id from OrderItem item
+                where item.order = orders
+                  and item.product.sellerProfile.id = :sellerProfileId
+            )
+              and orders.status in :statuses
+              and (
+                  :keyword = ''
+                  or orders.id = :orderId
+                  or exists (
+                      select keywordItem.id from OrderItem keywordItem
+                      where keywordItem.order = orders
+                        and keywordItem.product.sellerProfile.id = :sellerProfileId
+                        and lower(keywordItem.productName) like lower(concat('%', :keyword, '%'))
+                  )
+              )
+              and (
+                  :filterFulfillmentStatus = false
+                  or exists (
+                      select filteredItem.id from OrderItem filteredItem
+                      where filteredItem.order = orders
+                        and filteredItem.product.sellerProfile.id = :sellerProfileId
+                        and filteredItem.fulfillmentStatus = :fulfillmentStatus
+                        and filteredItem.refundedQuantity < filteredItem.quantity
+                  )
+              )
+            order by orders.createdAt desc
+            """,
+        countQuery = """
+            select count(orders) from Order orders
+            where exists (
+                select item.id from OrderItem item
+                where item.order = orders
+                  and item.product.sellerProfile.id = :sellerProfileId
+            )
+              and orders.status in :statuses
+              and (
+                  :keyword = ''
+                  or orders.id = :orderId
+                  or exists (
+                      select keywordItem.id from OrderItem keywordItem
+                      where keywordItem.order = orders
+                        and keywordItem.product.sellerProfile.id = :sellerProfileId
+                        and lower(keywordItem.productName) like lower(concat('%', :keyword, '%'))
+                  )
+              )
+              and (
+                  :filterFulfillmentStatus = false
+                  or exists (
+                      select filteredItem.id from OrderItem filteredItem
+                      where filteredItem.order = orders
+                        and filteredItem.product.sellerProfile.id = :sellerProfileId
+                        and filteredItem.fulfillmentStatus = :fulfillmentStatus
+                        and filteredItem.refundedQuantity < filteredItem.quantity
+                  )
+              )
+            """
+    )
+    Page<Order> searchSellerOrders(
+        @Param("sellerProfileId") Long sellerProfileId,
+        @Param("statuses") Collection<OrderStatus> statuses,
+        @Param("keyword") String keyword,
+        @Param("orderId") Long orderId,
+        @Param("filterFulfillmentStatus") boolean filterFulfillmentStatus,
+        @Param("fulfillmentStatus") OrderItemFulfillmentStatus fulfillmentStatus,
+        Pageable pageable
+    );
+
+    @Query("""
+        select count(distinct item.order.id) from OrderItem item
+        where item.product.sellerProfile.id = :sellerProfileId
+          and (
+              item.fulfillmentStatus is null
+              or item.fulfillmentStatus = com.ymall.backend.order.entity.OrderItemFulfillmentStatus.PENDING
+          )
+          and item.refundedQuantity < item.quantity
+          and item.order.status in :statuses
+        """)
+    long countSellerPendingFulfillmentOrders(
+        @Param("sellerProfileId") Long sellerProfileId,
+        @Param("statuses") Collection<OrderStatus> statuses
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"items", "items.product", "items.product.sellerProfile"})
     @Query("""
