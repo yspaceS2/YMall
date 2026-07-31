@@ -15,6 +15,7 @@ import type {
 import { apiRequest } from './client'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 import type { ProductStatus } from '../types/product'
+import type { SettlementRequestHistory } from '../types/seller'
 
 const ADMIN_PAGE_SIZE = 20
 
@@ -151,12 +152,57 @@ export function getAdminRefunds(orderId: number, signal?: AbortSignal) {
 }
 
 export function getAdminSettlementRequests(
-    status?: SettlementRequestStatus,
+    {
+        page = 1,
+        size = 20,
+        status,
+        requestId,
+        sellerKeyword,
+        requestedFrom,
+        requestedTo,
+        signal,
+    }: {
+        page?: number
+        size?: number
+        status?: SettlementRequestStatus
+        requestId?: number
+        sellerKeyword?: string
+        requestedFrom?: string
+        requestedTo?: string
+        signal?: AbortSignal
+    } = {},
+) {
+    const query = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+    })
+    if (status) query.set('status', status)
+    if (requestId !== undefined) query.set('requestId', String(requestId))
+    if (sellerKeyword?.trim()) query.set('sellerKeyword', sellerKeyword.trim())
+    if (requestedFrom) query.set('requestedFrom', requestedFrom)
+    if (requestedTo) query.set('requestedTo', requestedTo)
+    return apiRequest<AdminSettlementRequestPage>(
+        `/admin/settlement-requests?${query.toString()}`,
+        { signal },
+    )
+}
+
+export function getAdminSettlementRequest(
+    settlementRequestId: number,
     signal?: AbortSignal,
 ) {
-    const query = status ? `?status=${status}&page=1&size=50` : '?page=1&size=50'
-    return apiRequest<AdminSettlementRequestPage>(
-        `/admin/settlement-requests${query}`,
+    return apiRequest<AdminSettlementRequest>(
+        `/admin/settlement-requests/${settlementRequestId}`,
+        { signal },
+    )
+}
+
+export function getAdminSettlementRequestHistories(
+    settlementRequestId: number,
+    signal?: AbortSignal,
+) {
+    return apiRequest<SettlementRequestHistory[]>(
+        `/admin/settlement-requests/${settlementRequestId}/histories`,
         { signal },
     )
 }

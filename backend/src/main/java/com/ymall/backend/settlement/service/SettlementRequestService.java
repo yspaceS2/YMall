@@ -3,7 +3,6 @@ package com.ymall.backend.settlement.service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
@@ -38,9 +37,9 @@ import com.ymall.backend.settlement.repository.SettlementRequestRepository;
 @Transactional(readOnly = true)
 public class SettlementRequestService {
 
-    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
     private static final int MAX_PAGE_SIZE = 100;
     private static final BigDecimal ZERO = new BigDecimal("0.00");
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
 
     private final SettlementRequestRepository requestRepository;
     private final SettlementRequestHistoryRepository historyRepository;
@@ -50,68 +49,63 @@ public class SettlementRequestService {
     private final SellerProfileService sellerProfileService;
     private final MemberRepository memberRepository;
 
-    public SettlementAvailabilityResponse getAvailability(Long memberId, String periodText) {
+    public SettlementAvailabilityResponse getAvailability(Long memberId) {
         SellerProfile seller = sellerProfileService.getProfileEntity(memberId);
-        Period period = period(periodText);
-        List<SettlementLedgerEntry> entries = ledgerRepository.findAvailableForPeriod(
-            seller.getId(),
-            period.from(),
-            period.to()
-        );
+        List<SettlementLedgerEntry> entries = ledgerRepository.findAvailable(seller.getId());
         Amounts amounts = amounts(entries);
-        boolean requestOpen = requestRepository
-            .findBySellerProfileIdAndPeriodStart(seller.getId(), period.start())
-            .map(request -> request.getStatus() == SettlementRequestStatus.REJECTED)
-            .orElse(true);
         boolean hasSettlementAccount = settlementAccountRepository
             .findBySellerProfileId(seller.getId())
             .isPresent();
         return new SettlementAvailabilityResponse(
-            period.start(),
-            period.end(),
             entries.size(),
             amounts.gross(),
             amounts.fee(),
             amounts.settlement(),
             hasSettlementAccount,
-            hasSettlementAccount
-                && requestOpen
-                && amounts.settlement().compareTo(BigDecimal.ZERO) > 0
+            hasSettlementAccount && amounts.settlement().compareTo(BigDecimal.ZERO) > 0
         );
     }
 
     public PageResponse<SettlementRequestResponse> getSellerRequests(
         Long memberId,
+        SettlementRequestStatus status,
+        Long requestId,
+        LocalDate requestedFrom,
+        LocalDate requestedTo,
         int page,
         int size
     ) {
         SellerProfile seller = sellerProfileService.getProfileEntity(memberId);
         return PageResponse.from(requestRepository
-            .findAllBySellerProfileIdOrderByPeriodStartDesc(
+            .findSellerRequests(
                 seller.getId(),
+                status,
+                requestId,
+                startOfDay(requestedFrom),
+                startOfNextDay(requestedTo),
                 pageRequest(page, size)
             )
             .map(this::toResponse));
     }
 
+    public SettlementRequestResponse getSellerRequest(Long memberId, Long requestId) {
+        SellerProfile seller = sellerProfileService.getProfileEntity(memberId);
+        return requestRepository.findByIdAndSellerProfileId(requestId, seller.getId())
+            .map(this::toResponse)
+            .orElseThrow(() -> new BusinessException(
+                ErrorCode.SETTLEMENT_REQUEST_NOT_FOUND
+            ));
+    }
+
     @Transactional
-    public SettlementRequestResponse request(Long memberId, String periodText) {
+    public SettlementRequestResponse request(Long memberId) {
         SellerProfile seller = sellerProfileRepository.findForUpdateByMemberId(memberId)
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_PROFILE_NOT_FOUND));
         if (settlementAccountRepository.findBySellerProfileId(seller.getId()).isEmpty()) {
             throw new BusinessException(ErrorCode.SELLER_SETTLEMENT_ACCOUNT_NOT_FOUND);
         }
-        Period period = period(periodText);
-        SettlementRequest existing = requestRepository
-            .findBySellerAndPeriodForUpdate(seller.getId(), period.start())
-            .orElse(null);
-        if (existing != null && existing.getStatus() != SettlementRequestStatus.REJECTED) {
-            throw new BusinessException(ErrorCode.SETTLEMENT_REQUEST_DUPLICATED);
-        }
-        List<SettlementLedgerEntry> entries = ledgerRepository.findAvailableForPeriodForUpdate(
-            seller.getId(),
-            period.from(),
-            period.to()
+        List<SettlementLedgerEntry> entries = ledgerRepository.findAvailableForUpdate(
+            seller.getId()
         );
         Amounts amounts = amounts(entries);
         if (entries.isEmpty() || amounts.settlement().compareTo(BigDecimal.ZERO) <= 0) {
@@ -119,39 +113,45 @@ public class SettlementRequestService {
         }
 
         Member actor = seller.getMember();
-        SettlementRequest request;
-        SettlementRequestStatus fromStatus = null;
-        if (existing == null) {
-            request = requestRepository.save(new SettlementRequest(
-                seller,
-                period.start(),
-                period.end(),
-                amounts.gross(),
-                amounts.fee(),
-                amounts.settlement()
-            ));
-        } else {
-            fromStatus = existing.resubmit(
-                amounts.gross(),
-                amounts.fee(),
-                amounts.settlement()
-            );
-            request = existing;
-        }
+        SettlementRequest request = requestRepository.save(new SettlementRequest(
+            seller,
+            amounts.gross(),
+            amounts.fee(),
+            amounts.settlement()
+        ));
 
         entries.forEach(entry -> entry.requestSettlement(request));
-        saveHistory(request, fromStatus, SettlementRequestStatus.REQUESTED, actor, null);
+        saveHistory(request, null, SettlementRequestStatus.REQUESTED, actor, null);
         return toResponse(request);
     }
 
     public PageResponse<SettlementRequestResponse> getAdminRequests(
         SettlementRequestStatus status,
+        Long requestId,
+        String sellerKeyword,
+        LocalDate requestedFrom,
+        LocalDate requestedTo,
         int page,
         int size
     ) {
         return PageResponse.from(requestRepository
-            .findAdminRequests(status, pageRequest(page, size))
+            .findAdminRequests(
+                status,
+                requestId,
+                normalize(sellerKeyword),
+                startOfDay(requestedFrom),
+                startOfNextDay(requestedTo),
+                pageRequest(page, size)
+            )
             .map(this::toResponse));
+    }
+
+    public SettlementRequestResponse getAdminRequest(Long requestId) {
+        return requestRepository.findById(requestId)
+            .map(this::toResponse)
+            .orElseThrow(() -> new BusinessException(
+                ErrorCode.SETTLEMENT_REQUEST_NOT_FOUND
+            ));
     }
 
     @Transactional
@@ -228,26 +228,6 @@ public class SettlementRequestService {
             .toList();
     }
 
-    private Period period(String text) {
-        YearMonth target;
-        try {
-            target = YearMonth.parse(text);
-        } catch (RuntimeException exception) {
-            throw new BusinessException(ErrorCode.SETTLEMENT_REQUEST_PERIOD_INVALID);
-        }
-        if (!target.isBefore(YearMonth.now(BUSINESS_ZONE))) {
-            throw new BusinessException(ErrorCode.SETTLEMENT_REQUEST_PERIOD_INVALID);
-        }
-        LocalDate start = target.atDay(1);
-        LocalDate nextStart = target.plusMonths(1).atDay(1);
-        return new Period(
-            start,
-            target.atEndOfMonth(),
-            start.atStartOfDay(BUSINESS_ZONE).toInstant(),
-            nextStart.atStartOfDay(BUSINESS_ZONE).toInstant()
-        );
-    }
-
     private Amounts amounts(List<SettlementLedgerEntry> entries) {
         return entries.stream().reduce(
             new Amounts(ZERO, ZERO, ZERO),
@@ -291,6 +271,23 @@ public class SettlementRequestService {
         );
     }
 
+    private Instant startOfDay(LocalDate date) {
+        return date == null ? null : date.atStartOfDay(BUSINESS_ZONE).toInstant();
+    }
+
+    private Instant startOfNextDay(LocalDate date) {
+        return date == null
+            ? null
+            : date.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant();
+    }
+
+    private String normalize(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
     private SettlementRequestResponse toResponse(SettlementRequest request) {
         return new SettlementRequestResponse(
             request.getId(),
@@ -309,14 +306,6 @@ public class SettlementRequestService {
             request.getCreatedAt(),
             request.getUpdatedAt()
         );
-    }
-
-    private record Period(
-        LocalDate start,
-        LocalDate end,
-        Instant from,
-        Instant to
-    ) {
     }
 
     private record Amounts(

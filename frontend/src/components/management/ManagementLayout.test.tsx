@@ -92,6 +92,18 @@ describe('ManagementLayout', () => {
             .toHaveAttribute('aria-current', 'page')
     })
 
+    it.each([
+        ['seller', '/seller/settlement'],
+        ['admin', '/admin/settlement'],
+    ] as const)('%s 센터에 정산 관리 메뉴를 표시한다', (role, href) => {
+        renderManagementLayout(role, href)
+
+        expect(screen.getByRole('link', { name: '정산 관리' }))
+            .toHaveAttribute('href', href)
+        expect(screen.getByRole('link', { name: '정산 관리' }))
+            .toHaveAttribute('aria-current', 'page')
+    })
+
     it('현재 경로에 해당하는 메뉴만 활성화한다', () => {
         renderManagementLayout('member', '/mypage/notifications')
 

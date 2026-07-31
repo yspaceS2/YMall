@@ -44,8 +44,6 @@ export interface SellerSettlementAccountUpsertRequest {
 export type SettlementRequestStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'PAID'
 
 export interface SettlementAvailability {
-    periodStart: string
-    periodEnd: string
     entryCount: number
     grossAmount: number
     feeAmount: number
@@ -58,8 +56,8 @@ export interface SettlementRequest {
     settlementRequestId: number
     sellerProfileId: number
     storeName: string
-    periodStart: string
-    periodEnd: string
+    periodStart: string | null
+    periodEnd: string | null
     status: SettlementRequestStatus
     grossAmount: number
     feeAmount: number
@@ -70,6 +68,15 @@ export interface SettlementRequest {
     paidAt: string | null
     createdAt: string
     updatedAt: string
+}
+
+export interface SettlementRequestHistory {
+    fromStatus: SettlementRequestStatus | null
+    toStatus: SettlementRequestStatus
+    actorMemberId: number
+    actorName: string
+    reason: string | null
+    createdAt: string
 }
 
 export interface SellerProductRequest {

@@ -32,12 +32,12 @@ export function AdminSettlementPanel() {
     const [errorMessage, setErrorMessage] = useState('')
 
     const load = useCallback(async (signal?: AbortSignal) => {
-        setRequests((await getAdminSettlementRequests(undefined, signal)).content)
+        setRequests((await getAdminSettlementRequests({ signal })).content)
     }, [])
 
     useEffect(() => {
         const controller = new AbortController()
-        getAdminSettlementRequests(undefined, controller.signal)
+        getAdminSettlementRequests({ signal: controller.signal })
             .then((response) => setRequests(response.content))
             .catch((error: unknown) => {
                 if (error instanceof Error && error.name === 'AbortError') return
@@ -97,7 +97,7 @@ export function AdminSettlementPanel() {
                         <article className="border border-line p-4" key={request.settlementRequestId}>
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
-                                    <strong>{request.storeName} · {request.periodStart.slice(0, 7)}</strong>
+                                    <strong>{request.storeName} · 정산 #{request.settlementRequestId}</strong>
                                     <p className="mt-1 text-xs text-muted">
                                         신청 {formatKoreanDateTime(request.createdAt)}
                                     </p>

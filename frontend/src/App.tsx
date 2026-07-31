@@ -6,6 +6,8 @@ import { Layout } from './components/Layout'
 import { ManagementLayout } from './components/management/ManagementLayout'
 import { AdminSellerApplicationPanel } from './components/admin/AdminSellerApplicationPanel'
 import { SellerApplicationPanel } from './components/member/SellerApplicationPanel'
+import { SettlementManagementPanel } from './components/seller/SettlementManagementPanel'
+import { AdminSettlementRequestList } from './components/settlement/SettlementRequestList'
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { LoginPage } from './pages/LoginPage'
@@ -46,6 +48,7 @@ import {
     SellerProductQuestionDetailPage,
     SellerProductQuestionListPage,
 } from './pages/SellerProductQuestionsPage'
+import { SettlementRequestDetailPage } from './pages/SettlementRequestDetailPage'
 
 function App() {
     return (
@@ -115,6 +118,14 @@ function SellerPortalRoutes() {
             <Route path="questions" element={<SellerProductQuestionListPage />} />
             <Route path="questions/:questionId" element={<SellerProductQuestionDetailPage />} />
             <Route path="notifications" element={<NotificationPage />} />
+            <Route
+                path="settlement"
+                element={<PortalPage><SettlementManagementPanel /></PortalPage>}
+            />
+            <Route
+                path="settlement/:settlementRequestId"
+                element={<SettlementRequestDetailPage role="seller" />}
+            />
             <Route path="*" element={<Navigate to="/seller" replace />} />
         </Routes>
     )
@@ -143,6 +154,14 @@ function AdminPortalRoutes() {
             <Route path="product-change-requests" element={<AdminProductChangeReviewListPage />} />
             <Route path="product-change-requests/:requestId" element={<AdminProductChangeReviewDetailPage />} />
             <Route path="notifications" element={<NotificationPage />} />
+            <Route
+                path="settlement"
+                element={<PortalPage><AdminSettlementRequestList /></PortalPage>}
+            />
+            <Route
+                path="settlement/:settlementRequestId"
+                element={<SettlementRequestDetailPage role="admin" />}
+            />
             <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
     )
