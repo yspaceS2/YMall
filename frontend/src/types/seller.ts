@@ -141,6 +141,7 @@ export interface SellerDeliveryAddress {
     postalCode: string
     roadAddress: string
     detailAddress: string | null
+    masked: boolean
 }
 
 export interface SellerOrderDetail extends SellerOrder {

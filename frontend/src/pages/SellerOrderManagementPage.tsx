@@ -380,7 +380,11 @@ export function SellerOrderDetailPage() {
 
             <section className="mb-8 border-t-2 border-ink">
                 <h2 className="border-b border-line py-4 text-base font-bold">배송지 정보</h2>
-                {address ? (
+                {address?.masked ? (
+                    <p className="border-b border-line bg-surface px-5 py-5 text-sm text-muted">
+                        배송 완료 후 보존 기간이 지나 개인정보가 마스킹되었습니다.
+                    </p>
+                ) : address ? (
                     <dl className="grid gap-x-8 gap-y-4 border-b border-line bg-surface px-5 py-5 text-sm min-[701px]:grid-cols-2">
                         <InfoTerm label="받는 분" value={address.recipientName} />
                         <InfoTerm label="연락처" value={address.recipientPhone} />

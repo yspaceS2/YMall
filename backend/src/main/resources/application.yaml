@@ -121,6 +121,9 @@ ymall:
       timeout: ${PENDING_ORDER_EXPIRATION_TIMEOUT:30m}
       batch-size: ${PENDING_ORDER_EXPIRATION_BATCH_SIZE:100}
       poll-interval: ${PENDING_ORDER_EXPIRATION_POLL_INTERVAL:1m}
+  seller:
+    order-privacy:
+      delivery-address-retention: ${SELLER_DELIVERY_ADDRESS_RETENTION:90d}
   kafka:
     enabled: ${KAFKA_ENABLED:true}
     order-events:
