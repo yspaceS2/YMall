@@ -20,6 +20,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.ymall.backend.file.domain.FilePurpose;
 import com.ymall.backend.file.dto.FileUploadResponse;
 import com.ymall.backend.global.config.FileStorageProperties;
 import com.ymall.backend.global.exception.BusinessException;
@@ -40,12 +41,16 @@ class LocalFileStorageServiceTest {
         LocalFileStorageService service = createService();
         MockMultipartFile file = createImageFile();
 
-        FileUploadResponse response = service.storeImage(file);
+        FileUploadResponse response = service.storeImage(file, FilePurpose.PRODUCT_IMAGE);
 
-        assertThat(response.fileUrl()).startsWith("/images/products/");
-        assertThat(response.thumbnailUrl()).startsWith("/images/products/thumb-");
-        assertThat(Files.exists(tempDir.resolve("products").resolve(response.storedFileName()))).isTrue();
-        assertThat(Files.exists(tempDir.resolve("products").resolve(response.thumbnailFileName()))).isTrue();
+        assertThat(response.fileUrl())
+            .matches("/images/public/products/\\d{4}/\\d{2}/\\d{2}/.+");
+        assertThat(response.thumbnailUrl())
+            .matches("/images/public/products/\\d{4}/\\d{2}/\\d{2}/thumb-.+");
+        try (var storedFiles = Files.walk(tempDir)) {
+            assertThat(storedFiles.map(Path::getFileName))
+                .contains(Path.of(response.storedFileName()), Path.of(response.thumbnailFileName()));
+        }
     }
 
     /**
@@ -63,7 +68,24 @@ class LocalFileStorageServiceTest {
             "not-image".getBytes()
         );
 
-        assertThatThrownBy(() -> service.storeImage(file))
+        assertThatThrownBy(() -> service.storeImage(file, FilePurpose.PRODUCT_IMAGE))
+            .isInstanceOf(BusinessException.class)
+            .extracting("errorCode")
+            .isEqualTo(ErrorCode.INVALID_IMAGE_TYPE);
+    }
+
+    @Test
+    @DisplayName("이미지 MIME 타입으로 위장한 파일 업로드는 거절한다")
+    void rejectSpoofedImageContent() {
+        LocalFileStorageService service = createService();
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "fake.jpg",
+            "image/jpeg",
+            "not-an-image".getBytes()
+        );
+
+        assertThatThrownBy(() -> service.storeImage(file, FilePurpose.PRODUCT_IMAGE))
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode")
             .isEqualTo(ErrorCode.INVALID_IMAGE_TYPE);
@@ -80,7 +102,7 @@ class LocalFileStorageServiceTest {
         given(file.getOriginalFilename()).willReturn("product.jpg");
         given(file.getInputStream()).willThrow(new IOException("disk error"));
 
-        assertThatThrownBy(() -> service.storeImage(file))
+        assertThatThrownBy(() -> service.storeImage(file, FilePurpose.PRODUCT_IMAGE))
             .isInstanceOf(BusinessException.class)
             .hasCauseInstanceOf(IOException.class)
             .extracting("errorCode")

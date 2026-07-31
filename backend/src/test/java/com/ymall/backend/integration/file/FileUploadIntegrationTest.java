@@ -1,7 +1,9 @@
 package com.ymall.backend.integration.file;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -22,6 +24,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import tools.jackson.databind.ObjectMapper;
+
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
@@ -29,6 +33,9 @@ class FileUploadIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     /**
      * 이미지 업로드 API가 Controller와 LocalFileStorageService를 통과해
@@ -48,8 +55,15 @@ class FileUploadIntegrationTest {
             .getResponse()
             .getContentAsString();
 
-        assertThat(response).contains("/images/products/");
-        assertThat(Files.exists(Path.of("./build/test-uploads/products"))).isTrue();
+        assertThat(response).contains("/images/public/products/");
+        assertThat(Files.exists(Path.of("./build/test-uploads/public/products"))).isTrue();
+
+        String fileUrl = objectMapper.readTree(response).path("data").path("fileUrl").asText();
+        mockMvc.perform(get(fileUrl))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith("image/jpeg"));
+        mockMvc.perform(get("/images/private/refunds/secret.jpg"))
+            .andExpect(status().isNotFound());
     }
 
     private MockMultipartFile createImageFile() throws Exception {

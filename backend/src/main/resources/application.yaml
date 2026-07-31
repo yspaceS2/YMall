@@ -13,6 +13,11 @@ spring:
   application:
     name: backend
 
+  servlet:
+    multipart:
+      max-file-size: ${IMAGE_UPLOAD_MAX_FILE_SIZE:10MB}
+      max-request-size: ${IMAGE_UPLOAD_MAX_REQUEST_SIZE:10MB}
+
   jpa:
     properties:
       hibernate:
@@ -79,10 +84,10 @@ ymall:
     refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:14d}
     refresh-token-cookie-secure: ${JWT_REFRESH_TOKEN_COOKIE_SECURE:false}
   file:
-    upload-dir: ./uploads
-    image-url-prefix: /images
-    thumbnail-width: 300
-    thumbnail-height: 300
+    upload-dir: ${FILE_UPLOAD_DIR:./uploads}
+    image-url-prefix: ${FILE_IMAGE_URL_PREFIX:/images}
+    thumbnail-width: ${FILE_THUMBNAIL_WIDTH:300}
+    thumbnail-height: ${FILE_THUMBNAIL_HEIGHT:300}
   cache:
     product-detail-ttl: ${PRODUCT_DETAIL_CACHE_TTL:10m}
     review-summary-ttl: ${REVIEW_SUMMARY_CACHE_TTL:30m}
