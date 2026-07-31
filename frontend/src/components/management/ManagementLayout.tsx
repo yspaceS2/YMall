@@ -11,6 +11,7 @@ import {
     ReceiptText,
     Tags,
     Undo2,
+    WalletCards,
     X,
     type LucideIcon,
 } from 'lucide-react'
@@ -49,6 +50,7 @@ const sellerNavigation: NavigationItem[] = [
     { label: '반품 관리', href: '/seller/returns', icon: Undo2 },
     { label: '상품 문의 관리', href: '/seller/questions', icon: MessageSquareText },
     { label: '알림', href: '/seller/notifications', icon: Bell },
+    { label: '정산 관리', href: '/seller/settlement', icon: WalletCards },
 ]
 
 const adminNavigation: NavigationItem[] = [
@@ -61,6 +63,7 @@ const adminNavigation: NavigationItem[] = [
     { label: '상품 승인 관리', href: '/admin/products', icon: PackageSearch },
     { label: '카테고리 관리', href: '/admin/categories', icon: Tags },
     { label: '알림', href: '/admin/notifications', icon: Bell },
+    { label: '정산 관리', href: '/admin/settlement', icon: WalletCards },
 ]
 
 export function ManagementLayout({

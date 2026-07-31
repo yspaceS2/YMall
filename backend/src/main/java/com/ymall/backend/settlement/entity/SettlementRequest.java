@@ -38,10 +38,10 @@ public class SettlementRequest {
     @JoinColumn(name = "seller_profile_id", nullable = false, updatable = false)
     private SellerProfile sellerProfile;
 
-    @Column(name = "period_start", nullable = false, updatable = false)
+    @Column(name = "period_start", updatable = false)
     private LocalDate periodStart;
 
-    @Column(name = "period_end", nullable = false, updatable = false)
+    @Column(name = "period_end", updatable = false)
     private LocalDate periodEnd;
 
     @Enumerated(EnumType.STRING)
@@ -81,32 +81,13 @@ public class SettlementRequest {
 
     public SettlementRequest(
         SellerProfile sellerProfile,
-        LocalDate periodStart,
-        LocalDate periodEnd,
         BigDecimal grossAmount,
         BigDecimal feeAmount,
         BigDecimal settlementAmount
     ) {
         this.sellerProfile = sellerProfile;
-        this.periodStart = periodStart;
-        this.periodEnd = periodEnd;
         this.status = SettlementRequestStatus.REQUESTED;
         updateAmounts(grossAmount, feeAmount, settlementAmount);
-    }
-
-    public SettlementRequestStatus resubmit(
-        BigDecimal grossAmount,
-        BigDecimal feeAmount,
-        BigDecimal settlementAmount
-    ) {
-        requireStatus(SettlementRequestStatus.REJECTED);
-        SettlementRequestStatus previous = status;
-        status = SettlementRequestStatus.REQUESTED;
-        rejectionReason = null;
-        reviewedBy = null;
-        reviewedAt = null;
-        updateAmounts(grossAmount, feeAmount, settlementAmount);
-        return previous;
     }
 
     public SettlementRequestStatus approve(Member admin) {

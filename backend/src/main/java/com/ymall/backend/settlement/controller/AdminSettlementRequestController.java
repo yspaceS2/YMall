@@ -1,7 +1,9 @@
 package com.ymall.backend.settlement.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -34,11 +36,36 @@ public class AdminSettlementRequestController {
     @GetMapping
     public ApiResponse<PageResponse<SettlementRequestResponse>> getRequests(
         @RequestParam(required = false) SettlementRequestStatus status,
+        @RequestParam(required = false) Long requestId,
+        @RequestParam(required = false) String sellerKeyword,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate requestedFrom,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate requestedTo,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size
     ) {
         return ApiResponse.success(
-            settlementRequestService.getAdminRequests(status, page, size)
+            settlementRequestService.getAdminRequests(
+                status,
+                requestId,
+                sellerKeyword,
+                requestedFrom,
+                requestedTo,
+                page,
+                size
+            )
+        );
+    }
+
+    @GetMapping("/{settlementRequestId}")
+    public ApiResponse<SettlementRequestResponse> getRequest(
+        @PathVariable Long settlementRequestId
+    ) {
+        return ApiResponse.success(
+            settlementRequestService.getAdminRequest(settlementRequestId)
         );
     }
 

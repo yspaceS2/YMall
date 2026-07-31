@@ -50,24 +50,58 @@ export function upsertSellerSettlementAccount(
     })
 }
 
-export function getSettlementAvailability(period: string, signal?: AbortSignal) {
+export function getSettlementAvailability(signal?: AbortSignal) {
     return apiRequest<SettlementAvailability>(
-        `/seller/settlement-requests/availability?period=${encodeURIComponent(period)}`,
+        '/seller/settlement-requests/availability',
         { signal },
     )
 }
 
-export function getSettlementRequests(signal?: AbortSignal) {
+export function getSettlementRequests({
+    page = 1,
+    size = 20,
+    status,
+    requestId,
+    requestedFrom,
+    requestedTo,
+    signal,
+}: {
+    page?: number
+    size?: number
+    status?: SettlementRequest['status']
+    requestId?: number
+    requestedFrom?: string
+    requestedTo?: string
+    signal?: AbortSignal
+} = {}) {
+    const query = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+    })
+    if (status) query.set('status', status)
+    if (requestId !== undefined) query.set('requestId', String(requestId))
+    if (requestedFrom) query.set('requestedFrom', requestedFrom)
+    if (requestedTo) query.set('requestedTo', requestedTo)
     return apiRequest<SettlementRequestPage>(
-        '/seller/settlement-requests?page=1&size=24',
+        `/seller/settlement-requests?${query.toString()}`,
         { signal },
     )
 }
 
-export function createSettlementRequest(period: string) {
+export function getSettlementRequest(
+    settlementRequestId: number,
+    signal?: AbortSignal,
+) {
+    return apiRequest<SettlementRequest>(
+        `/seller/settlement-requests/${settlementRequestId}`,
+        { signal },
+    )
+}
+
+export function createSettlementRequest() {
     return apiRequest<SettlementRequest>('/seller/settlement-requests', {
         method: 'POST',
-        body: { period },
+        body: {},
     })
 }
 

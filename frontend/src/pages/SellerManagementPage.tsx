@@ -5,8 +5,6 @@ import { uploadProductImage } from '../api/files'
 import { getCategories } from '../api/products'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
-import { SettlementAccountPanel } from '../components/seller/SettlementAccountPanel'
-import { SettlementRequestPanel } from '../components/seller/SettlementRequestPanel'
 import { ProductCategorySelector } from '../components/seller/ProductCategorySelector'
 import { ProductImageUploadField } from '../components/seller/ProductImageUploadField'
 import {
@@ -288,8 +286,6 @@ export function SellerManagementPage() {
                 </Panel>
 
                 {profile && <>
-                    <SettlementAccountPanel />
-                    <SettlementRequestPanel />
                     <Panel icon={<PackageCheck />} title="상품 관리">
                         <form className="mb-8 grid gap-4 border-b border-line pb-8 min-[701px]:grid-cols-2" onSubmit={saveProduct}>
                             <div className="grid gap-2 text-xs font-bold">

@@ -1,0 +1,12 @@
+import type { SettlementRequestStatus } from '../../types/seller'
+
+export const settlementStatusLabel: Record<SettlementRequestStatus, string> = {
+    REQUESTED: '승인 대기',
+    APPROVED: '지급 대기',
+    REJECTED: '반려',
+    PAID: '모의 지급 완료',
+}
+
+export const settlementStatuses = Object.keys(
+    settlementStatusLabel,
+) as SettlementRequestStatus[]

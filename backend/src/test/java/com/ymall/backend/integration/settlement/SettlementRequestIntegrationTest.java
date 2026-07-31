@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.YearMonth;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Map;
 
@@ -57,8 +57,6 @@ import com.ymall.backend.settlement.service.SettlementLedgerProcessor;
 @Transactional
 class SettlementRequestIntegrationTest {
 
-    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -102,7 +100,6 @@ class SettlementRequestIntegrationTest {
     private Member buyer;
     private Member admin;
     private Order order;
-    private String targetPeriod;
     private Instant occurredAt;
 
     @BeforeEach
@@ -112,9 +109,9 @@ class SettlementRequestIntegrationTest {
         admin = saveMember("settlement-request-admin@example.com", MemberRole.ROLE_ADMIN);
         SellerProfile sellerProfile = sellerProfileRepository.save(new SellerProfile(
             seller,
-            "월별 정산 상점",
+            "수시 정산 상점",
             "333-33-33333",
-            "월별 정산 통합 테스트"
+            "수시 정산 통합 테스트"
         ));
         settlementAccountRepository.save(new SellerSettlementAccount(
             sellerProfile,
@@ -129,8 +126,8 @@ class SettlementRequestIntegrationTest {
         Category category = categoryRepository.save(new Category("정산 상품", "settlement-request"));
         Product product = new Product(
             category,
-            "월별 정산 상품",
-            "월별 정산 상품",
+            "수시 정산 상품",
+            "수시 정산 상품",
             "YMall",
             new BigDecimal("10000.00"),
             BigDecimal.ZERO,
@@ -147,9 +144,7 @@ class SettlementRequestIntegrationTest {
         order.completePayment();
         orderRepository.saveAndFlush(order);
 
-        YearMonth previousMonth = YearMonth.now(BUSINESS_ZONE).minusMonths(1);
-        targetPeriod = previousMonth.toString();
-        occurredAt = previousMonth.atDay(15).atStartOfDay(BUSINESS_ZONE).toInstant();
+        occurredAt = Instant.now();
         ledgerProcessor.process(event(OrderEventType.PAYMENT_COMPLETED));
         ledgerProcessor.process(event(OrderEventType.ORDER_DELIVERED));
     }
@@ -159,7 +154,7 @@ class SettlementRequestIntegrationTest {
         mockMvc.perform(post("/api/seller/settlement-requests")
                 .header(HttpHeaders.AUTHORIZATION, bearer(seller))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"period\":\"" + targetPeriod + "\"}"))
+                .content("{}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.status").value("REQUESTED"))
             .andExpect(jsonPath("$.data.settlementAmount").value(19400.0));
@@ -167,9 +162,9 @@ class SettlementRequestIntegrationTest {
         mockMvc.perform(post("/api/seller/settlement-requests")
                 .header(HttpHeaders.AUTHORIZATION, bearer(seller))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"period\":\"" + targetPeriod + "\"}"))
+                .content("{}"))
             .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.error.code").value("SETTLEMENT_REQUEST_DUPLICATED"));
+            .andExpect(jsonPath("$.error.code").value("SETTLEMENT_REQUEST_AMOUNT_INVALID"));
 
         Long requestId = requestRepository.findAll().get(0).getId();
         mockMvc.perform(patch("/api/admin/settlement-requests/{requestId}/approval", requestId)
@@ -207,11 +202,11 @@ class SettlementRequestIntegrationTest {
     }
 
     @Test
-    void rejectionReleasesLedgerAndAllowsSamePeriodResubmission() throws Exception {
+    void rejectionReleasesLedgerAndAllowsNewRequest() throws Exception {
         mockMvc.perform(post("/api/seller/settlement-requests")
                 .header(HttpHeaders.AUTHORIZATION, bearer(seller))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"period\":\"" + targetPeriod + "\"}"))
+                .content("{}"))
             .andExpect(status().isOk());
         Long requestId = requestRepository.findAll().get(0).getId();
 
@@ -233,32 +228,25 @@ class SettlementRequestIntegrationTest {
         mockMvc.perform(post("/api/seller/settlement-requests")
                 .header(HttpHeaders.AUTHORIZATION, bearer(seller))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"period\":\"" + targetPeriod + "\"}"))
+                .content("{}"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.settlementRequestId").value(requestId))
             .andExpect(jsonPath("$.data.status").value("REQUESTED"));
 
-        assertThat(requestRepository.findAll()).hasSize(1);
+        assertThat(requestRepository.findAll()).hasSize(2);
     }
 
     @Test
-    void permissionsAndClosedPeriodAreEnforced() throws Exception {
+    void permissionsAreEnforced() throws Exception {
         mockMvc.perform(post("/api/seller/settlement-requests")
                 .header(HttpHeaders.AUTHORIZATION, bearer(buyer))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"period\":\"" + targetPeriod + "\"}"))
+                .content("{}"))
             .andExpect(status().isForbidden());
 
         mockMvc.perform(get("/api/admin/settlement-requests")
                 .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
             .andExpect(status().isForbidden());
 
-        mockMvc.perform(post("/api/seller/settlement-requests")
-                .header(HttpHeaders.AUTHORIZATION, bearer(seller))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"period\":\"" + YearMonth.now(BUSINESS_ZONE) + "\"}"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.error.code").value("SETTLEMENT_REQUEST_PERIOD_INVALID"));
     }
 
     @Test
@@ -267,12 +255,104 @@ class SettlementRequestIntegrationTest {
         settlementAccountRepository.flush();
 
         mockMvc.perform(get("/api/seller/settlement-requests/availability")
-                .header(HttpHeaders.AUTHORIZATION, bearer(seller))
-                .param("period", targetPeriod))
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.hasSettlementAccount").value(false))
             .andExpect(jsonPath("$.data.canRequest").value(false))
             .andExpect(jsonPath("$.data.settlementAmount").value(19400.0));
+    }
+
+    @Test
+    void availableBalanceCanBeRequestedWithoutWaitingForMonthEnd() throws Exception {
+        mockMvc.perform(get("/api/seller/settlement-requests/availability")
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.canRequest").value(true))
+            .andExpect(jsonPath("$.data.settlementAmount").value(19400.0));
+
+        mockMvc.perform(post("/api/seller/settlement-requests")
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("REQUESTED"));
+    }
+
+    @Test
+    void settlementListsSupportFiltersAndDetailOwnership() throws Exception {
+        mockMvc.perform(post("/api/seller/settlement-requests")
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isOk());
+        Long requestId = requestRepository.findAll().get(0).getId();
+        LocalDate requestedDate = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        String storeName = sellerProfileRepository.findByMemberId(seller.getId())
+            .orElseThrow()
+            .getStoreName();
+
+        mockMvc.perform(get("/api/seller/settlement-requests")
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                .param("status", "REQUESTED")
+                .param("requestId", requestId.toString())
+                .param("requestedFrom", requestedDate.toString())
+                .param("requestedTo", requestedDate.toString()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].settlementRequestId").value(requestId));
+
+        mockMvc.perform(get(
+                "/api/seller/settlement-requests/{requestId}",
+                requestId
+            ).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.settlementRequestId").value(requestId));
+
+        Member otherSeller = saveMember(
+            "settlement-request-other-seller@example.com",
+            MemberRole.ROLE_SELLER
+        );
+        sellerProfileRepository.save(new SellerProfile(
+            otherSeller,
+            "다른 정산 상점",
+            "444-44-44444",
+            "정산 소유권 테스트"
+        ));
+        mockMvc.perform(get(
+                "/api/seller/settlement-requests/{requestId}",
+                requestId
+            ).header(HttpHeaders.AUTHORIZATION, bearer(otherSeller)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("SETTLEMENT_REQUEST_NOT_FOUND"));
+
+        mockMvc.perform(get("/api/admin/settlement-requests")
+                .header(HttpHeaders.AUTHORIZATION, bearer(admin))
+                .param("status", "REQUESTED")
+                .param("requestId", requestId.toString())
+                .param("sellerKeyword", storeName)
+                .param("requestedFrom", requestedDate.toString())
+                .param("requestedTo", requestedDate.toString()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1));
+
+        mockMvc.perform(get("/api/admin/settlement-requests")
+                .header(HttpHeaders.AUTHORIZATION, bearer(admin))
+                .param("sellerKeyword", "존재하지-않는-판매자"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(0));
+
+        mockMvc.perform(get("/api/seller/settlement-requests")
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                .param("requestedFrom", requestedDate.plusDays(1).toString()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(0));
+
+        mockMvc.perform(get(
+                "/api/admin/settlement-requests/{requestId}",
+                requestId
+            ).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.settlementRequestId").value(requestId));
     }
 
     private OrderEventEnvelope event(OrderEventType type) {

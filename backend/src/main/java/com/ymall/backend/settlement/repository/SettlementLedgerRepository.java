@@ -59,28 +59,20 @@ public interface SettlementLedgerRepository extends JpaRepository<SettlementLedg
         select entry from SettlementLedgerEntry entry
         where entry.sellerProfile.id = :sellerProfileId
           and entry.status = com.ymall.backend.settlement.entity.SettlementStatus.AVAILABLE
-          and entry.occurredAt >= :from
-          and entry.occurredAt < :to
         order by entry.id
         """)
-    List<SettlementLedgerEntry> findAvailableForPeriodForUpdate(
-        @Param("sellerProfileId") Long sellerProfileId,
-        @Param("from") Instant from,
-        @Param("to") Instant to
+    List<SettlementLedgerEntry> findAvailableForUpdate(
+        @Param("sellerProfileId") Long sellerProfileId
     );
 
     @Query("""
         select entry from SettlementLedgerEntry entry
         where entry.sellerProfile.id = :sellerProfileId
           and entry.status = com.ymall.backend.settlement.entity.SettlementStatus.AVAILABLE
-          and entry.occurredAt >= :from
-          and entry.occurredAt < :to
         order by entry.id
         """)
-    List<SettlementLedgerEntry> findAvailableForPeriod(
-        @Param("sellerProfileId") Long sellerProfileId,
-        @Param("from") Instant from,
-        @Param("to") Instant to
+    List<SettlementLedgerEntry> findAvailable(
+        @Param("sellerProfileId") Long sellerProfileId
     );
 
     List<SettlementLedgerEntry> findAllBySettlementRequestId(Long settlementRequestId);
