@@ -9,6 +9,7 @@ import {
     PackageSearch,
     ReceiptText,
     Tags,
+    Undo2,
     X,
     type LucideIcon,
 } from 'lucide-react'
@@ -36,6 +37,7 @@ const memberNavigation: NavigationItem[] = [
 const sellerNavigation: NavigationItem[] = [
     { label: '대시보드', href: '/seller', icon: LayoutDashboard },
     { label: '주문·배송 관리', href: '/seller/orders', icon: ReceiptText },
+    { label: '반품 관리', href: '/seller/returns', icon: Undo2 },
 ]
 
 const adminNavigation: NavigationItem[] = [

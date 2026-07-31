@@ -98,6 +98,43 @@ public record NotificationEvent(
         };
     }
 
+    public static NotificationEvent returnRequested(
+        UUID eventId,
+        Long sellerMemberId,
+        Long returnRequestId,
+        String productName
+    ) {
+        return new NotificationEvent(
+            eventId,
+            sellerMemberId,
+            NotificationType.RETURN_REQUESTED,
+            "새 반품 요청이 접수되었습니다.",
+            "%s 상품의 반품 요청을 확인해 주세요.".formatted(productName),
+            "/seller/returns/%d".formatted(returnRequestId)
+        );
+    }
+
+    public static NotificationEvent returnProcessed(
+        UUID eventId,
+        Long memberId,
+        Long orderId,
+        String productName,
+        boolean approved
+    ) {
+        return new NotificationEvent(
+            eventId,
+            memberId,
+            approved
+                ? NotificationType.RETURN_APPROVED
+                : NotificationType.RETURN_REJECTED,
+            approved ? "반품이 승인되었습니다." : "반품 요청이 거절되었습니다.",
+            approved
+                ? "%s 상품의 환불 처리가 완료되었습니다.".formatted(productName)
+                : "%s 상품의 반품 처리 결과를 확인해 주세요.".formatted(productName),
+            "/mypage/orders"
+        );
+    }
+
     private static NotificationEvent orderEvent(
         UUID eventId,
         Long memberId,

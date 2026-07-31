@@ -3,9 +3,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../api/client'
-import { getOrder, getOrders, getRefunds, requestRefund } from '../api/orders'
+import {
+    createReturnRequest,
+    getOrder,
+    getOrders,
+    getRefunds,
+    requestRefund,
+} from '../api/orders'
 import { createReview, deleteReview, getAllMyReviews, updateReview } from '../api/reviews'
 import { RefundDialog } from '../components/RefundDialog'
+import { ReturnRequestDialog } from '../components/ReturnRequestDialog'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
@@ -14,6 +21,7 @@ import type {
     OrderItem,
     PaymentRefund,
     PaymentRefundRequest,
+    ReturnRequestCreateRequest,
 } from '../types/order'
 import type { Review } from '../types/review'
 import { formatOrderDate, getOrderStatusLabel } from '../utils/order'
@@ -24,6 +32,11 @@ interface ReviewEditorState {
     reviewId?: number
     rating: number
     content: string
+}
+
+interface ReturnTarget {
+    orderId: number
+    item: OrderItem
 }
 
 export function OrderHistoryPage() {
@@ -43,6 +56,9 @@ export function OrderHistoryPage() {
     const [isLoadingRefunds, setIsLoadingRefunds] = useState(false)
     const [isRefunding, setIsRefunding] = useState(false)
     const [refundError, setRefundError] = useState('')
+    const [returnTarget, setReturnTarget] = useState<ReturnTarget | null>(null)
+    const [returnError, setReturnError] = useState('')
+    const [isRequestingReturn, setIsRequestingReturn] = useState(false)
     const [retryKey, setRetryKey] = useState(0)
     const loadMoreControllerRef = useRef<AbortController | null>(null)
     const reviewsByOrderItemId = useMemo(
@@ -193,6 +209,26 @@ export function OrderHistoryPage() {
         }
     }
 
+    async function submitReturn(request: ReturnRequestCreateRequest) {
+        if (!returnTarget) return false
+        setReturnError('')
+        setIsRequestingReturn(true)
+        try {
+            await createReturnRequest(returnTarget.orderId, request)
+            setSuccessMessage('반품 신청이 접수되었습니다.')
+            return true
+        } catch (error) {
+            setReturnError(
+                error instanceof ApiError
+                    ? error.message
+                    : '반품 신청을 처리하지 못했습니다.',
+            )
+            return false
+        } finally {
+            setIsRequestingReturn(false)
+        }
+    }
+
     if (isLoading) {
         return <PageState variant="loading" title="주문 내역을 불러오는 중입니다" description="잠시만 기다려 주세요." />
     }
@@ -257,6 +293,21 @@ export function OrderHistoryPage() {
                                                 </div>
                                                 {item.fulfillmentStatus === 'DELIVERED' && (
                                                     <div className="flex gap-2">
+                                                        {item.refundedQuantity < item.quantity && (
+                                                            <button
+                                                                className="border border-ink bg-surface px-3 py-2 text-[11px] font-bold"
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setReturnError('')
+                                                                    setReturnTarget({
+                                                                        orderId: order.orderId,
+                                                                        item,
+                                                                    })
+                                                                }}
+                                                            >
+                                                                반품 신청
+                                                            </button>
+                                                        )}
                                                         <button
                                                             className="border border-ink bg-white px-3 py-2 text-[11px] font-bold"
                                                             type="button"
@@ -367,6 +418,17 @@ export function OrderHistoryPage() {
                     if (!isRefunding) setRefundOrder(null)
                 }}
                 onSubmit={submitRefund}
+            />
+            <ReturnRequestDialog
+                key={returnTarget?.item.orderItemId ?? 'closed'}
+                open={returnTarget !== null}
+                item={returnTarget?.item ?? null}
+                isSubmitting={isRequestingReturn}
+                errorMessage={returnError}
+                onClose={() => {
+                    if (!isRequestingReturn) setReturnTarget(null)
+                }}
+                onSubmit={submitReturn}
             />
         </section>
     )

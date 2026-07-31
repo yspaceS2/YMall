@@ -146,6 +146,16 @@ public class PaymentRefund {
         this.processedAt = LocalDateTime.now();
     }
 
+    public void resolveUnknownAsFailed(String failureCode, String failureMessage) {
+        if (status != PaymentRefundStatus.UNKNOWN) {
+            return;
+        }
+        this.status = PaymentRefundStatus.FAILED;
+        this.failureCode = failureCode;
+        this.failureMessage = failureMessage;
+        this.processedAt = LocalDateTime.now();
+    }
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

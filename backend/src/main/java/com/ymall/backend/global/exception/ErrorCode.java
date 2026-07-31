@@ -80,6 +80,10 @@ public enum ErrorCode {
         "결제사의 환불 결과가 요청 내용과 일치하지 않습니다."
     ),
     ORDER_CANCELLATION_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 주문을 취소할 수 없습니다."),
+    RETURN_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "반품 요청을 찾을 수 없습니다."),
+    RETURN_REQUEST_NOT_ALLOWED(HttpStatus.CONFLICT, "배송 완료 후 7일 이내의 상품만 반품을 신청할 수 있습니다."),
+    RETURN_REQUEST_QUANTITY_EXCEEDED(HttpStatus.CONFLICT, "반품 가능한 수량을 초과했습니다."),
+    RETURN_REQUEST_STATUS_INVALID(HttpStatus.CONFLICT, "현재 상태에서는 반품 요청을 처리할 수 없습니다."),
     SELLER_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "판매자 프로필을 찾을 수 없습니다."),
     SELLER_PROFILE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 판매자 프로필이 존재합니다."),
     SELLER_BUSINESS_NUMBER_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 사업자 번호입니다."),

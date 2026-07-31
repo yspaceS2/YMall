@@ -105,3 +105,29 @@ export interface PaymentRefund {
     createdAt: string
     processedAt: string | null
 }
+
+export type ReturnRequestStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED'
+
+export interface ReturnRequestCreateRequest {
+    orderItemId: number
+    quantity: number
+    reason: string
+}
+
+export interface ReturnRequest {
+    returnRequestId: number
+    orderId: number
+    orderItemId: number
+    productId: number
+    productName: string
+    thumbnailUrl: string | null
+    memberName: string
+    quantity: number
+    reason: string
+    status: ReturnRequestStatus
+    sellerResponse: string | null
+    paymentRefundId: number | null
+    returnDeadline: string | null
+    requestedAt: string
+    processedAt: string | null
+}

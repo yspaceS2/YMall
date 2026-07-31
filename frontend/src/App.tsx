@@ -38,6 +38,10 @@ import {
     AdminProductChangeReviewListPage,
 } from './pages/AdminProductChangeReviewPage'
 import { AccessDeniedPage } from './pages/AccessDeniedPage'
+import {
+    SellerReturnRequestDetailPage,
+    SellerReturnRequestsPage,
+} from './pages/SellerReturnRequestsPage'
 
 function App() {
     return (
@@ -102,6 +106,8 @@ function SellerPortalRoutes() {
             <Route index element={<SellerManagementPage />} />
             <Route path="orders" element={<SellerOrderListPage />} />
             <Route path="orders/:orderId" element={<SellerOrderDetailPage />} />
+            <Route path="returns" element={<SellerReturnRequestsPage />} />
+            <Route path="returns/:returnRequestId" element={<SellerReturnRequestDetailPage />} />
             <Route path="*" element={<Navigate to="/seller" replace />} />
         </Routes>
     )
