@@ -9,6 +9,7 @@ import { cancelGoogleOneTap } from '../api/googleIdentity'
 import { GoogleOneTapPrompt } from '../components/auth/GoogleOneTapPrompt'
 import { AuthMessage } from '../components/auth/AuthMessage'
 import { AuthPageLayout } from '../components/auth/AuthPageLayout'
+import { useToast } from '../toast/useToast'
 
 interface LoginLocationState {
     from?: string
@@ -45,11 +46,11 @@ function NaverLogo() {
 
 export function LoginPage() {
     const { isAuthenticated, login, completeOAuthLogin } = useAuth()
+    const { showToast } = useToast()
     const location = useLocation()
     const navigate = useNavigate()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [errorMessage, setErrorMessage] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const state = location.state as LoginLocationState | null
     const destination = state?.from?.startsWith('/') ? state.from : '/'
@@ -60,15 +61,15 @@ export function LoginPage() {
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
-        setErrorMessage('')
         setIsSubmitting(true)
 
         try {
             await login({ email, password })
             navigate(destination, { replace: true })
         } catch (error) {
-            setErrorMessage(
+            showToast(
                 error instanceof ApiError ? error.message : '로그인 중 오류가 발생했습니다.',
+                'error',
             )
         } finally {
             setIsSubmitting(false)
@@ -96,10 +97,11 @@ export function LoginPage() {
                         })
                     }}
                     onError={(error) => {
-                        setErrorMessage(
+                        showToast(
                             error instanceof ApiError
                                 ? error.message
                                 : 'Google 간편 로그인을 사용할 수 없습니다. 다른 로그인 방법을 이용해 주세요.',
+                            'error',
                         )
                     }}
             />
@@ -114,7 +116,6 @@ export function LoginPage() {
                             비밀번호를 잊으셨나요?
                         </Link>
                     </div>
-                    {errorMessage && <AuthMessage tone="error">{errorMessage}</AuthMessage>}
                     <button className="mt-2 h-13.5 border border-ink bg-ink font-extrabold text-white disabled:cursor-wait disabled:opacity-60" type="submit" disabled={isSubmitting}>
                         {isSubmitting ? '로그인 중...' : '로그인'}
                     </button>
