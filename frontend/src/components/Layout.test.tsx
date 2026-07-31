@@ -9,6 +9,12 @@ import { Layout } from './Layout'
 
 const getUnreadNotificationCount = vi.fn()
 const getCategories = vi.fn()
+const getCart = vi.fn()
+
+vi.mock('../api/cart', () => ({
+    CART_CHANGED_EVENT: 'ymall:cart-changed',
+    getCart: (...args: unknown[]) => getCart(...args),
+}))
 
 vi.mock('../api/notifications', () => ({
     NOTIFICATIONS_CHANGED_EVENT: 'ymall:notifications-changed',
@@ -44,6 +50,7 @@ function renderLayout(role: MemberRole | null) {
 describe('Layout 역할별 메뉴', () => {
     it('일반 사용자에게 판매자·관리자 메뉴를 숨기고 미읽음 배지를 표시한다', async () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 3 })
+        getCart.mockResolvedValue({ items: [] })
         getCategories.mockResolvedValue([])
 
         renderLayout('ROLE_USER')
@@ -57,6 +64,7 @@ describe('Layout 역할별 메뉴', () => {
 
     it('판매자에게 판매자 메뉴만 표시한다', () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
+        getCart.mockResolvedValue({ items: [] })
         getCategories.mockResolvedValue([])
 
         renderLayout('ROLE_SELLER')
@@ -67,6 +75,7 @@ describe('Layout 역할별 메뉴', () => {
 
     it('관리자에게 판매자·관리자 메뉴를 모두 표시한다', () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
+        getCart.mockResolvedValue({ items: [] })
         getCategories.mockResolvedValue([])
 
         renderLayout('ROLE_ADMIN')
@@ -77,11 +86,11 @@ describe('Layout 역할별 메뉴', () => {
 
     it('로그아웃 버튼을 누르면 인증 로그아웃을 요청한다', async () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
+        getCart.mockResolvedValue({ items: [] })
         getCategories.mockResolvedValue([])
         const user = userEvent.setup()
         const { logout } = renderLayout('ROLE_USER')
 
-        await user.click(screen.getByRole('button', { name: '내 정보 메뉴' }))
         await user.click(screen.getByRole('menuitem', { name: '로그아웃' }))
 
         expect(logout).toHaveBeenCalledOnce()
@@ -89,6 +98,12 @@ describe('Layout 역할별 메뉴', () => {
 
     it('스토어 핵심 메뉴와 카테고리를 제공한다', async () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
+        getCart.mockResolvedValue({
+            items: [
+                { cartItemId: 1, quantity: 2 },
+                { cartItemId: 2, quantity: 1 },
+            ],
+        })
         getCategories.mockResolvedValue([
             {
                 categoryId: 1,
@@ -123,6 +138,10 @@ describe('Layout 역할별 메뉴', () => {
         expect(screen.getByRole('search', { name: '통합 상품 검색' })).toBeInTheDocument()
         expect(screen.getByRole('link', { name: '찜한 상품' })).toHaveAttribute('href', '/mypage#wishlist')
         expect(screen.getByRole('link', { name: '장바구니' })).toHaveAttribute('href', '/cart')
+        expect(await screen.findByLabelText('장바구니 상품 3개')).toHaveTextContent('3')
+        screen.getAllByRole('link', { name: '내 정보' }).forEach((link) => {
+            expect(link).toHaveAttribute('href', '/mypage')
+        })
 
         await user.click(screen.getByRole('button', { name: '전체 카테고리 열기' }))
 
@@ -137,7 +156,7 @@ describe('Layout 역할별 메뉴', () => {
         await user.hover(screen.getByRole('button', { name: '여성패션' }))
 
         expect(screen.getByRole('link', { name: '아우터' })).toBeInTheDocument()
-        expect(screen.getByRole('link', { name: '내 정보' })).toHaveAttribute('href', '/mypage')
+        expect(screen.getAllByRole('link', { name: '내 정보' })).not.toHaveLength(0)
         expect(screen.getByRole('button', { name: '전체 카테고리 닫기' })).toBeInTheDocument()
     })
 })

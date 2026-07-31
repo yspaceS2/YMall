@@ -25,7 +25,7 @@ import type {
 } from '../types/order'
 import type { Review } from '../types/review'
 import { formatOrderDate, getOrderStatusLabel } from '../utils/order'
-import { formatPrice } from '../utils/product'
+import { formatPrice, resolveImageUrl } from '../utils/product'
 
 interface ReviewEditorState {
     orderItemId: number
@@ -254,7 +254,7 @@ export function OrderHistoryPage() {
                             <div className="flex flex-wrap items-center justify-between gap-4">
                                 <div>
                                     <div className="flex flex-wrap items-center gap-3">
-                                        <strong>주문 #{order.orderId}</strong>
+                                        <strong>{orderDisplayName(order)}</strong>
                                         <span className="bg-[#eef0df] px-2 py-1 text-[10px] font-extrabold text-[#66751c]">{getOrderStatusLabel(order.status)}</span>
                                     </div>
                                     <p className="mt-2 text-xs text-muted">{formatOrderDate(order.createdAt)}</p>
@@ -283,13 +283,32 @@ export function OrderHistoryPage() {
                                     return (
                                         <div className="py-4" key={item.orderItemId}>
                                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                                <div>
-                                                    <Link className="text-sm font-bold hover:underline" to={`/products/${item.productId}`}>
-                                                        {item.productName}
+                                                <div className="flex min-w-0 items-center gap-3">
+                                                    <Link
+                                                        className="size-16 shrink-0 overflow-hidden bg-[#ecece6] dark:bg-[#30322d]"
+                                                        to={`/products/${item.productId}`}
+                                                        aria-label={`${item.productName} 상품 보기`}
+                                                    >
+                                                        {item.thumbnailUrl ? (
+                                                            <img
+                                                                className="size-full object-cover"
+                                                                src={resolveImageUrl(item.thumbnailUrl)}
+                                                                alt=""
+                                                            />
+                                                        ) : (
+                                                            <span className="grid size-full place-items-center text-[10px] font-bold tracking-widest text-muted">
+                                                                YMALL
+                                                            </span>
+                                                        )}
                                                     </Link>
-                                                    <p className="mt-1 text-xs text-muted">
-                                                        {item.quantity}개 · {formatPrice(item.totalPrice)} · {fulfillmentLabel(item.fulfillmentStatus)}
-                                                    </p>
+                                                    <div className="min-w-0">
+                                                        <Link className="block truncate text-sm font-bold hover:underline" to={`/products/${item.productId}`}>
+                                                            {item.productName}
+                                                        </Link>
+                                                        <p className="mt-1 text-xs text-muted">
+                                                            {item.quantity}개 · {formatPrice(item.totalPrice)} · {fulfillmentLabel(item.fulfillmentStatus)}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                                 {item.fulfillmentStatus === 'DELIVERED' && (
                                                     <div className="flex gap-2">
@@ -432,6 +451,16 @@ export function OrderHistoryPage() {
             />
         </section>
     )
+}
+
+function orderDisplayName(order: Order) {
+    const firstProductName = order.items[0]?.productName
+    if (!firstProductName) return `주문 #${order.orderId}`
+
+    const additionalItemCount = order.items.length - 1
+    return additionalItemCount > 0
+        ? `${firstProductName} 외 ${additionalItemCount}개`
+        : firstProductName
 }
 
 function fulfillmentLabel(status: OrderItem['fulfillmentStatus']) {

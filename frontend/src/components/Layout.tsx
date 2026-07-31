@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
+import { CART_CHANGED_EVENT, getCart } from '../api/cart'
 import { getUnreadNotificationCount, NOTIFICATIONS_CHANGED_EVENT } from '../api/notifications'
 import ymallSymbolLight from '../assets/brand/ymall-symbol-light.svg'
 import { useAuth } from '../auth/useAuth'
@@ -9,6 +10,7 @@ import { ScrollToTopButton } from './ui/ScrollToTopButton'
 export function Layout({ children }: { children: ReactNode }) {
     const { isAuthenticated, role, logout } = useAuth()
     const [unreadCount, setUnreadCount] = useState(0)
+    const [cartItemCount, setCartItemCount] = useState(0)
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -35,8 +37,39 @@ export function Layout({ children }: { children: ReactNode }) {
         }
     }, [isAuthenticated])
 
+    useEffect(() => {
+        if (!isAuthenticated) {
+            return
+        }
+
+        let controller: AbortController | null = null
+        const loadCartItemCount = () => {
+            controller?.abort()
+            controller = new AbortController()
+            getCart(controller.signal)
+                .then((cart) => {
+                    setCartItemCount(cart.items.reduce(
+                        (total, item) => total + item.quantity,
+                        0,
+                    ))
+                })
+                .catch((error: unknown) => {
+                    if (error instanceof Error && error.name === 'AbortError') return
+                    setCartItemCount(0)
+                })
+        }
+
+        loadCartItemCount()
+        window.addEventListener(CART_CHANGED_EVENT, loadCartItemCount)
+        return () => {
+            controller?.abort()
+            window.removeEventListener(CART_CHANGED_EVENT, loadCartItemCount)
+        }
+    }, [isAuthenticated])
+
     const handleLogout = async () => {
         setUnreadCount(0)
+        setCartItemCount(0)
         await logout()
     }
 
@@ -46,6 +79,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 isAuthenticated={isAuthenticated}
                 role={role}
                 unreadCount={unreadCount}
+                cartItemCount={cartItemCount}
                 onLogout={handleLogout}
             />
             <main className="flex-1">{children}</main>

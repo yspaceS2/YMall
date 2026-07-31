@@ -21,6 +21,7 @@ public interface OrderMapper {
 
     @Mapping(source = "id", target = "orderItemId")
     @Mapping(source = "product.id", target = "productId")
+    @Mapping(source = "product.thumbnailUrl", target = "thumbnailUrl")
     @Mapping(source = "lineTotal", target = "totalPrice")
     @Mapping(target = "fulfillmentStatus", expression = "java(orderItem.getEffectiveFulfillmentStatus())")
     OrderItemResponse toOrderItemResponse(OrderItem orderItem);
