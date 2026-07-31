@@ -39,9 +39,14 @@ const product = {
     brand: 'YMALL',
     price: 10_000,
     discountPercentage: 10,
+    discountStartDate: '2026-07-01',
+    discountEndDate: '2026-08-01',
     rating: 4.5,
     stock: 5,
     thumbnailUrl: 'https://example.com/thumbnail.jpg',
+    freeShipping: true,
+    shippingFee: 0,
+    estimatedDeliveryDays: 3,
     status: 'APPROVED' as const,
     images: [
         {

@@ -63,7 +63,7 @@ public class SettlementLedgerProcessor {
         if (ledgerRepository.existsBySourceKey(sourceKey)) {
             return;
         }
-        BigDecimal grossAmount = item.getLineTotal();
+        BigDecimal grossAmount = item.getLineTotal().add(item.getShippingFee());
         BigDecimal feeAmount = calculateFee(item.getUnitPrice())
             .multiply(BigDecimal.valueOf(item.getQuantity()));
         ledgerRepository.save(SettlementLedgerEntry.sale(

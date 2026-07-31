@@ -544,6 +544,11 @@ class SellerManagementApiIntegrationTest {
                 "brand": "YMall",
                 "price": 10000,
                 "discountPercentage": 0,
+                "discountStartDate": null,
+                "discountEndDate": null,
+                "freeShipping": true,
+                "shippingFee": 0,
+                "estimatedDeliveryDays": 3,
                 "stock": 10,
                 "thumbnailUrl": "thumbnail",
                 "images": []

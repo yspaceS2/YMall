@@ -67,6 +67,10 @@ export function CartPage() {
         ),
         [items],
     )
+    const totalShippingFee = useMemo(
+        () => items.reduce((total, item) => total + item.shippingFee, 0),
+        [items],
+    )
     const hasUnavailableItems = useMemo(
         () => items.some((item) => (
             item.productStatus !== 'APPROVED'
@@ -218,10 +222,10 @@ export function CartPage() {
                         <dl className="my-6">
                             <div className="flex justify-between py-2 text-xs text-muted"><dt>상품 수량</dt><dd className="m-0 text-ink">{totalQuantity}개</dd></div>
                             <div className="flex justify-between py-2 text-xs text-muted"><dt>상품 금액</dt><dd className="m-0 text-ink">{formatPrice(totalPrice)}</dd></div>
-                            <div className="flex justify-between py-2 text-xs text-muted"><dt>배송비</dt><dd className="m-0 text-ink">무료</dd></div>
+                            <div className="flex justify-between py-2 text-xs text-muted"><dt>배송비</dt><dd className="m-0 text-ink">{totalShippingFee === 0 ? '무료' : formatPrice(totalShippingFee)}</dd></div>
                             <div className="mt-3.5 flex items-baseline justify-between border-t border-ink pt-5 text-xs font-extrabold">
                                 <dt>결제 예정 금액</dt>
-                                <dd className="m-0 text-xl">{formatPrice(totalPrice)}</dd>
+                                <dd className="m-0 text-xl">{formatPrice(totalPrice + totalShippingFee)}</dd>
                             </div>
                         </dl>
                         {hasUnavailableItems ? (

@@ -136,6 +136,11 @@ public class ProductService {
             request.brand(),
             request.price(),
             request.discountPercentage(),
+            request.discountStartDate(),
+            request.discountEndDate(),
+            request.freeShipping(),
+            request.shippingFee() == null ? java.math.BigDecimal.ZERO : request.shippingFee(),
+            request.estimatedDeliveryDays(),
             request.stock(),
             request.thumbnailUrl()
         );

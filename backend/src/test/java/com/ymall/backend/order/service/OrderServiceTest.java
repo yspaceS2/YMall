@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -98,6 +99,54 @@ class OrderServiceTest {
         then(cartItemRepository).should().deleteAll(List.of(cartItem));
         then(orderRepository).should().save(any(Order.class));
         then(productCacheInvalidator).should().evictProductDetails(List.of(1L));
+    }
+
+    @Test
+    void snapshotsShippingFeeAndAddsItToOrderTotal() {
+        Member member = member();
+        Product product = new Product(
+            new Category("전자기기", "electronics"),
+            "무선 키보드",
+            "description",
+            "YMall",
+            BigDecimal.valueOf(39_000),
+            BigDecimal.ZERO,
+            null,
+            null,
+            false,
+            BigDecimal.valueOf(3_000),
+            2,
+            BigDecimal.valueOf(4.5),
+            10,
+            "thumbnail",
+            ProductStatus.APPROVED
+        );
+        ReflectionTestUtils.setField(product, "id", 1L);
+        CartItem cartItem = new CartItem(member, product, 2);
+
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(orderRepository.findByMemberIdAndIdempotencyKey(1L, "shipping-request"))
+            .willReturn(Optional.empty());
+        given(memberAddressRepository.findByIdAndMemberId(1L, 1L))
+            .willReturn(Optional.of(address(member)));
+        given(cartItemRepository.findAllByMemberIdForUpdate(1L)).willReturn(List.of(cartItem));
+        given(productRepository.findAllByIdForUpdate(List.of(1L))).willReturn(List.of(product));
+        given(orderRepository.save(any(Order.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(orderMapper.toOrderResponse(any(Order.class))).willReturn(response(1L));
+
+        orderService.createOrder(
+            1L,
+            new OrderCreateRequest("shipping-request", 1L)
+        );
+
+        ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
+        then(orderRepository).should().save(captor.capture());
+        Order savedOrder = captor.getValue();
+        assertThat(savedOrder.getProductAmount()).isEqualByComparingTo("78000");
+        assertThat(savedOrder.getShippingFee()).isEqualByComparingTo("3000");
+        assertThat(savedOrder.getTotalAmount()).isEqualByComparingTo("81000");
+        assertThat(savedOrder.getItems().get(0).getShippingFee())
+            .isEqualByComparingTo("3000");
     }
 
     @Test

@@ -44,6 +44,14 @@ public enum ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
     PRODUCT_REVIEW_NOT_ALLOWED(HttpStatus.CONFLICT, "이미 심사가 완료된 상품입니다."),
+    PRODUCT_CHANGE_REQUEST_NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        "상품 변경 심사 요청을 찾을 수 없습니다."
+    ),
+    PRODUCT_CHANGE_REVIEW_NOT_ALLOWED(
+        HttpStatus.CONFLICT,
+        "이미 처리가 완료된 상품 변경 요청입니다."
+    ),
     PRODUCT_NOT_AVAILABLE(HttpStatus.CONFLICT, "현재 장바구니에 담을 수 없는 상품입니다."),
     PRODUCT_NOT_ORDERABLE(HttpStatus.CONFLICT, "현재 주문할 수 없는 상품입니다."),
     INSUFFICIENT_STOCK(HttpStatus.CONFLICT, "상품 재고가 부족합니다."),

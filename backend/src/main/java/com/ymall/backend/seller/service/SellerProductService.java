@@ -1,5 +1,8 @@
 package com.ymall.backend.seller.service;
 
+import java.util.List;
+import java.util.Objects;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -16,10 +19,14 @@ import com.ymall.backend.product.dto.ProductDetailResponse;
 import com.ymall.backend.product.dto.ProductUpdateRequest;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
+import com.ymall.backend.product.entity.ProductRevision;
+import com.ymall.backend.product.entity.ProductRevisionDetailImage;
+import com.ymall.backend.product.entity.ProductRevisionImage;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.mapper.ProductMapper;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.repository.ProductRevisionRepository;
 import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.seller.entity.SellerProfile;
 import com.ymall.backend.seller.dto.SellerProductResponse;
@@ -36,6 +43,7 @@ public class SellerProductService {
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
     private final ProductCacheInvalidator productCacheInvalidator;
+    private final ProductRevisionRepository productRevisionRepository;
 
     public PageResponse<SellerProductResponse> getProducts(Long memberId, int page, int size) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
@@ -75,21 +83,114 @@ public class SellerProductService {
     ) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         Product product = getOwnedProduct(profile.getId(), productId);
-        product.update(
-            getCategory(request.categoryId()),
+        Category category = getCategory(request.categoryId());
+        if (product.getStatus() == ProductStatus.PENDING
+            || product.getStatus() == ProductStatus.REJECTED) {
+            product.update(
+                category,
+                request.name(),
+                request.description(),
+                request.brand(),
+                request.price(),
+                request.discountPercentage(),
+                request.discountStartDate(),
+                request.discountEndDate(),
+                request.freeShipping(),
+                request.shippingFee() == null ? java.math.BigDecimal.ZERO : request.shippingFee(),
+                request.estimatedDeliveryDays(),
+                request.stock(),
+                request.thumbnailUrl()
+            );
+            product.replaceImages(productMapper.toImageEntities(request));
+            product.replaceDetailImages(productMapper.toDetailImageEntities(request));
+            product.requestApproval();
+        } else {
+            boolean requiresReview = contentChanged(product, category, request);
+            product.updateOperationalPolicy(
+                request.price(),
+                request.discountPercentage(),
+                request.discountStartDate(),
+                request.discountEndDate(),
+                request.freeShipping(),
+                request.shippingFee() == null ? java.math.BigDecimal.ZERO : request.shippingFee(),
+                request.estimatedDeliveryDays(),
+                request.stock()
+            );
+            if (requiresReview) {
+                savePendingRevision(product, category, request);
+            }
+        }
+        productCacheInvalidator.evictDetail(productId);
+        return productMapper.toProductDetailResponse(product);
+    }
+
+    private void savePendingRevision(
+        Product product,
+        Category category,
+        ProductUpdateRequest request
+    ) {
+        ProductRevision revision = productRevisionRepository
+            .findByProductIdAndStatus(product.getId(), ProductStatus.PENDING)
+            .orElseGet(() -> new ProductRevision(
+                product,
+                category,
+                request.name(),
+                request.description(),
+                request.brand(),
+                request.thumbnailUrl()
+            ));
+        revision.update(
+            category,
             request.name(),
             request.description(),
             request.brand(),
-            request.price(),
-            request.discountPercentage(),
-            request.stock(),
             request.thumbnailUrl()
         );
-        product.replaceImages(productMapper.toImageEntities(request));
-        product.replaceDetailImages(productMapper.toDetailImageEntities(request));
-        product.requestApproval();
-        productCacheInvalidator.evictDetail(productId);
-        return productMapper.toProductDetailResponse(product);
+        revision.replaceImages(request.images() == null ? List.of() : request.images().stream()
+            .map(image -> new ProductRevisionImage(
+                image.originalUrl(),
+                image.imageUrl(),
+                image.sortOrder()
+            ))
+            .toList());
+        revision.replaceDetailImages(request.detailImages() == null
+            ? List.of()
+            : request.detailImages().stream()
+                .map(image -> new ProductRevisionDetailImage(
+                    image.originalUrl(),
+                    image.imageUrl(),
+                    image.sortOrder()
+                ))
+                .toList());
+        productRevisionRepository.save(revision);
+    }
+
+    private boolean contentChanged(
+        Product product,
+        Category category,
+        ProductUpdateRequest request
+    ) {
+        return !Objects.equals(product.getCategory().getId(), category.getId())
+            || !Objects.equals(product.getName(), request.name())
+            || !Objects.equals(product.getDescription(), request.description())
+            || !Objects.equals(product.getBrand(), request.brand())
+            || !Objects.equals(product.getThumbnailUrl(), request.thumbnailUrl())
+            || !product.getImages().stream()
+                .sorted(java.util.Comparator.comparing(image -> image.getSortOrder()))
+                .map(image -> image.getImageUrl())
+                .toList()
+                .equals(request.images() == null ? List.of() : request.images().stream()
+                    .sorted(java.util.Comparator.comparing(image -> image.sortOrder()))
+                    .map(image -> image.imageUrl())
+                    .toList())
+            || !product.getDetailImages().stream()
+                .sorted(java.util.Comparator.comparing(image -> image.getSortOrder()))
+                .map(image -> image.getImageUrl())
+                .toList()
+                .equals(request.detailImages() == null ? List.of() : request.detailImages().stream()
+                    .sorted(java.util.Comparator.comparing(image -> image.sortOrder()))
+                    .map(image -> image.imageUrl())
+                    .toList());
     }
 
     @Transactional

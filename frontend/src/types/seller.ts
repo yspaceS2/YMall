@@ -79,8 +79,13 @@ export interface SellerProductRequest {
     brand: string
     price: number
     discountPercentage: number
+    discountStartDate: string | null
+    discountEndDate: string | null
     stock: number
     thumbnailUrl: string
+    freeShipping: boolean
+    shippingFee: number
+    estimatedDeliveryDays: number
     images: SellerProductImageRequest[]
     detailImages: SellerProductImageRequest[]
 }

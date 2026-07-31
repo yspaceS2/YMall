@@ -11,6 +11,8 @@ public record OrderResponse(
     String paymentOrderId,
     OrderStatus status,
     BigDecimal totalAmount,
+    BigDecimal productAmount,
+    BigDecimal shippingFee,
     List<OrderItemResponse> items,
     OrderDeliveryAddressResponse deliveryAddress,
     boolean refundSupported,
@@ -18,6 +20,17 @@ public record OrderResponse(
 ) {
     public OrderResponse(Long orderId, OrderStatus status, BigDecimal totalAmount,
         List<OrderItemResponse> items, LocalDateTime createdAt) {
-        this(orderId, null, status, totalAmount, items, null, false, createdAt);
+        this(
+            orderId,
+            null,
+            status,
+            totalAmount,
+            totalAmount,
+            BigDecimal.ZERO,
+            items,
+            null,
+            false,
+            createdAt
+        );
     }
 }

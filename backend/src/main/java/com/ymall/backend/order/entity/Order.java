@@ -63,6 +63,9 @@ public class Order {
     @Column(nullable = false, precision = 38, scale = 2)
     private BigDecimal totalAmount;
 
+    @Column(name = "shipping_amount", nullable = false, precision = 38, scale = 2)
+    private BigDecimal shippingFee;
+
     @Embedded
     private DeliveryAddressSnapshot deliveryAddress;
 
@@ -89,6 +92,7 @@ public class Order {
         this.paymentOrderId = "YMALL-" + UUID.randomUUID().toString().replace("-", "");
         this.status = OrderStatus.PENDING_PAYMENT;
         this.totalAmount = BigDecimal.ZERO.setScale(2);
+        this.shippingFee = BigDecimal.ZERO.setScale(2);
         this.deliveryAddress = deliveryAddress;
         this.inventoryReserved = true;
     }
@@ -96,7 +100,12 @@ public class Order {
     public void addItem(OrderItem item) {
         items.add(item);
         item.assignOrder(this);
-        totalAmount = totalAmount.add(item.getLineTotal());
+        shippingFee = shippingFee.add(item.getShippingFee());
+        totalAmount = totalAmount.add(item.getLineTotal()).add(item.getShippingFee());
+    }
+
+    public BigDecimal getProductAmount() {
+        return totalAmount.subtract(shippingFee);
     }
 
     public void completePayment() {

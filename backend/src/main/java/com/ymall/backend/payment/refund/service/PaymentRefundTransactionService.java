@@ -160,8 +160,7 @@ public class PaymentRefundTransactionService {
         );
         BigDecimal remainingAmount = remainingAmount(order, priorRefunds);
         BigDecimal requestedAmount = quantities.stream()
-            .map(quantity -> quantity.item().getUnitPrice()
-                .multiply(BigDecimal.valueOf(quantity.quantity())))
+            .map(this::refundAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (requestedAmount.signum() <= 0
             || requestedAmount.compareTo(remainingAmount) > 0) {
@@ -365,17 +364,24 @@ public class PaymentRefundTransactionService {
         return order.getTotalAmount().subtract(refunded).subtract(pending);
     }
 
+    private BigDecimal refundAmount(RefundQuantity quantity) {
+        BigDecimal amount = quantity.item().getUnitPrice()
+            .multiply(BigDecimal.valueOf(quantity.quantity()));
+        if (quantity.quantity() == quantity.item().getRefundableQuantity()) {
+            return amount.add(quantity.item().getShippingFee());
+        }
+        return amount;
+    }
+
     private void validateGatewayResult(
         PaymentRefund refund,
         Order order,
         PaymentGatewayResult result
     ) {
-        BigDecimal expectedBalance = order.getTotalAmount().subtract(
-            order.getItems().stream()
-                .map(item -> item.getUnitPrice()
-                    .multiply(BigDecimal.valueOf(item.getRefundedQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-        ).subtract(refund.getAmount());
+        BigDecimal expectedBalance = remainingAmount(
+            order,
+            refundRepository.findAllByOrderIdOrderByCreatedAtDesc(order.getId())
+        );
         boolean valid = result != null
             && refund.getPayment().getPaymentKey().equals(result.paymentKey())
             && order.getPaymentOrderId().equals(result.orderId())
