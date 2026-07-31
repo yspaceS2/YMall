@@ -18,6 +18,10 @@ import { PasswordResetPage } from './pages/PasswordResetPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ProductListPage } from './pages/ProductListPage'
 import { SellerManagementPage } from './pages/SellerManagementPage'
+import {
+    SellerOrderDetailPage,
+    SellerOrderListPage,
+} from './pages/SellerOrderManagementPage'
 import { SignupPage } from './pages/SignupPage'
 import { TossPaymentFailPage } from './pages/TossPaymentFailPage'
 import { TossPaymentSuccessPage } from './pages/TossPaymentSuccessPage'
@@ -92,6 +96,8 @@ function SellerPortalRoutes() {
     return (
         <Routes>
             <Route index element={<SellerManagementPage />} />
+            <Route path="orders" element={<SellerOrderListPage />} />
+            <Route path="orders/:orderId" element={<SellerOrderDetailPage />} />
             <Route path="*" element={<Navigate to="/seller" replace />} />
         </Routes>
     )

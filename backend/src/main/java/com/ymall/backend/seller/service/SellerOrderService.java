@@ -20,10 +20,14 @@ import com.ymall.backend.global.messaging.OrderEventType;
 import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
+import com.ymall.backend.order.entity.OrderItemFulfillmentStatus;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
 import com.ymall.backend.payment.entity.PaymentResult;
 import com.ymall.backend.payment.repository.PaymentRepository;
+import com.ymall.backend.seller.dto.SellerDeliveryAddressResponse;
+import com.ymall.backend.seller.dto.SellerOrderDetailResponse;
+import com.ymall.backend.seller.dto.SellerOrderItemFulfillmentUpdateRequest;
 import com.ymall.backend.seller.dto.SellerOrderItemResponse;
 import com.ymall.backend.seller.dto.SellerOrderResponse;
 import com.ymall.backend.seller.dto.SellerOrderStatusUpdateRequest;
@@ -50,17 +54,29 @@ public class SellerOrderService {
     private final SellerProfileService sellerProfileService;
     private final OrderOutboxService orderOutboxService;
 
-    public PageResponse<SellerOrderResponse> getOrders(Long memberId, int page, int size) {
+    public PageResponse<SellerOrderResponse> getOrders(
+        Long memberId,
+        int page,
+        int size,
+        OrderItemFulfillmentStatus fulfillmentStatus
+    ) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         Pageable pageable = PageRequest.of(
             Math.max(page - 1, 0),
             Math.min(Math.max(size, 1), MAX_PAGE_SIZE)
         );
-        Page<Order> orders = orderRepository.findSellerOrders(
-            profile.getId(),
-            SELLER_VISIBLE_STATUSES,
-            pageable
-        );
+        Page<Order> orders = fulfillmentStatus == null
+            ? orderRepository.findSellerOrders(
+                profile.getId(),
+                SELLER_VISIBLE_STATUSES,
+                pageable
+            )
+            : orderRepository.findSellerOrdersByFulfillmentStatus(
+                profile.getId(),
+                SELLER_VISIBLE_STATUSES,
+                fulfillmentStatus,
+                pageable
+            );
         List<Long> orderIds = orders.stream().map(Order::getId).toList();
         Set<Long> refundSupportedOrderIds = orderIds.isEmpty()
             ? Set.of()
@@ -73,6 +89,27 @@ public class SellerOrderService {
             profile.getId(),
             refundSupportedOrderIds.contains(order.getId())
         )));
+    }
+
+    public SellerOrderDetailResponse getOrder(Long memberId, Long orderId) {
+        SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
+        Order order = orderRepository.findSellerOrderById(orderId, profile.getId())
+            .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND));
+        boolean refundSupported = paymentRepository
+            .existsByOrderIdAndResultAndPaymentKeyIsNotNull(
+                order.getId(),
+                PaymentResult.SUCCESS
+            );
+        List<SellerOrderItemResponse> items = toItemResponses(order, profile.getId());
+        return new SellerOrderDetailResponse(
+            order.getId(),
+            order.getStatus(),
+            sellerAmount(items),
+            order.getCreatedAt(),
+            refundSupported,
+            SellerDeliveryAddressResponse.from(order.getDeliveryAddress()),
+            items
+        );
     }
 
     @Transactional
@@ -100,7 +137,11 @@ public class SellerOrderService {
         OrderStatus previousOrderStatus = order.getStatus();
         try {
             sellerItems.forEach(item ->
-                item.updateFulfillmentStatus(request.fulfillmentStatus())
+                item.updateFulfillmentStatus(
+                    request.fulfillmentStatus(),
+                    request.carrier(),
+                    request.trackingNumber()
+                )
             );
         } catch (IllegalStateException exception) {
             throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
@@ -127,6 +168,73 @@ public class SellerOrderService {
         );
     }
 
+    @Transactional
+    public SellerOrderDetailResponse updateItemStatus(
+        Long memberId,
+        Long orderId,
+        Long orderItemId,
+        SellerOrderItemFulfillmentUpdateRequest request
+    ) {
+        SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
+        Order order = orderRepository.findSellerOrderByIdForUpdate(orderId, profile.getId())
+            .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND));
+        if (!SELLER_VISIBLE_STATUSES.contains(order.getStatus())) {
+            throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
+        }
+        OrderItem item = ownedItems(order, profile.getId()).stream()
+            .filter(candidate -> candidate.getId().equals(orderItemId))
+            .findFirst()
+            .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND));
+        if (item.getRefundableQuantity() < 1) {
+            throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
+        }
+        OrderItemFulfillmentStatus previousStatus = item.getEffectiveFulfillmentStatus();
+        try {
+            item.updateFulfillmentStatus(
+                request.fulfillmentStatus(),
+                request.carrier(),
+                request.trackingNumber()
+            );
+        } catch (IllegalStateException exception) {
+            throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
+        }
+        order.refreshFulfillmentStatus();
+        if (previousStatus != item.getEffectiveFulfillmentStatus()) {
+            orderOutboxService.save(
+                toOrderEventType(request.fulfillmentStatus()),
+                order.getId(),
+                order.getMember().getId(),
+                Map.of(
+                    "orderItemId", item.getId(),
+                    "productName", item.getProductName(),
+                    "fulfillmentStatus", request.fulfillmentStatus().name()
+                )
+            );
+        }
+        List<SellerOrderItemResponse> items = toItemResponses(order, profile.getId());
+        return new SellerOrderDetailResponse(
+            order.getId(),
+            order.getStatus(),
+            sellerAmount(items),
+            order.getCreatedAt(),
+            paymentRepository.existsByOrderIdAndResultAndPaymentKeyIsNotNull(
+                order.getId(),
+                PaymentResult.SUCCESS
+            ),
+            SellerDeliveryAddressResponse.from(order.getDeliveryAddress()),
+            items
+        );
+    }
+
+    private OrderEventType toOrderEventType(OrderItemFulfillmentStatus status) {
+        return switch (status) {
+            case PREPARING -> OrderEventType.ORDER_PREPARING;
+            case SHIPPED -> OrderEventType.ORDER_SHIPPED;
+            case DELIVERED -> OrderEventType.ORDER_DELIVERED;
+            default -> throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
+        };
+    }
+
     private OrderEventType toOrderEventType(OrderStatus status) {
         return switch (status) {
             case PREPARING -> OrderEventType.ORDER_PREPARING;
@@ -141,20 +249,27 @@ public class SellerOrderService {
         Long sellerProfileId,
         boolean refundSupported
     ) {
-        List<SellerOrderItemResponse> items = ownedItems(order, sellerProfileId).stream()
-            .map(this::toItemResponse)
-            .toList();
-        BigDecimal sellerAmount = items.stream()
-            .map(SellerOrderItemResponse::lineTotal)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<SellerOrderItemResponse> items = toItemResponses(order, sellerProfileId);
         return new SellerOrderResponse(
             order.getId(),
             order.getStatus(),
-            sellerAmount,
+            sellerAmount(items),
             order.getCreatedAt(),
             refundSupported,
             items
         );
+    }
+
+    private List<SellerOrderItemResponse> toItemResponses(Order order, Long sellerProfileId) {
+        return ownedItems(order, sellerProfileId).stream()
+            .map(this::toItemResponse)
+            .toList();
+    }
+
+    private BigDecimal sellerAmount(List<SellerOrderItemResponse> items) {
+        return items.stream()
+            .map(SellerOrderItemResponse::lineTotal)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private List<OrderItem> ownedItems(Order order, Long sellerProfileId) {
@@ -173,7 +288,12 @@ public class SellerOrderService {
             item.getQuantity(),
             item.getRefundedQuantity(),
             item.getLineTotal(),
-            item.getEffectiveFulfillmentStatus()
+            item.getProduct().getThumbnailUrl(),
+            item.getEffectiveFulfillmentStatus(),
+            item.getCarrier(),
+            item.getTrackingNumber(),
+            item.getShippedAt(),
+            item.getDeliveredAt()
         );
     }
 }

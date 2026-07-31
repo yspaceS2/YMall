@@ -73,6 +73,15 @@ describe('ManagementLayout', () => {
         expect(screen.getByText('관리 콘텐츠')).toBeInTheDocument()
     })
 
+    it('판매자에게 주문·배송 관리 메뉴를 표시한다', () => {
+        renderManagementLayout('seller', '/seller/orders')
+
+        expect(screen.getByRole('link', { name: '주문·배송 관리' }))
+            .toHaveAttribute('href', '/seller/orders')
+        expect(screen.getByRole('link', { name: '주문·배송 관리' }))
+            .toHaveAttribute('aria-current', 'page')
+    })
+
     it('현재 경로에 해당하는 메뉴만 활성화한다', () => {
         renderManagementLayout('member', '/mypage/notifications')
 

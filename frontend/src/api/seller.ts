@@ -1,5 +1,7 @@
 import type {
     SellerOrder,
+    SellerOrderDetail,
+    SellerOrderItemFulfillmentUpdateRequest,
     SellerOrderPage,
     SellerProductDetail,
     SellerProductPage,
@@ -70,6 +72,10 @@ interface SellerPageOptions {
     signal?: AbortSignal
 }
 
+interface SellerOrderPageOptions extends SellerPageOptions {
+    fulfillmentStatus?: FulfillmentStatus | ''
+}
+
 export function getSellerProducts(options: SellerPageOptions = {}) {
     const { page = 1, signal } = options
     return apiRequest<SellerProductPage>(
@@ -97,11 +103,34 @@ export function deleteSellerProduct(productId: number) {
     return apiRequest<void>(`/seller/products/${productId}`, { method: 'DELETE' })
 }
 
-export function getSellerOrders(options: SellerPageOptions = {}) {
-    const { page = 1, signal } = options
+export function getSellerOrders(options: SellerOrderPageOptions = {}) {
+    const { page = 1, signal, fulfillmentStatus } = options
+    const query = new URLSearchParams({
+        page: String(page),
+        size: String(SELLER_PAGE_SIZE),
+    })
+    if (fulfillmentStatus) query.set('fulfillmentStatus', fulfillmentStatus)
     return apiRequest<SellerOrderPage>(
-        `/seller/orders?page=${page}&size=${SELLER_PAGE_SIZE}`,
+        `/seller/orders?${query.toString()}`,
         { signal },
+    )
+}
+
+export function getSellerOrder(orderId: number, signal?: AbortSignal) {
+    return apiRequest<SellerOrderDetail>(`/seller/orders/${orderId}`, { signal })
+}
+
+export function updateSellerOrderItemFulfillment(
+    orderId: number,
+    orderItemId: number,
+    request: SellerOrderItemFulfillmentUpdateRequest,
+) {
+    return apiRequest<SellerOrderDetail>(
+        `/seller/orders/${orderId}/items/${orderItemId}/fulfillment`,
+        {
+            method: 'PATCH',
+            body: request,
+        },
     )
 }
 

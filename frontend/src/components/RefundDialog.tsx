@@ -24,6 +24,7 @@ interface RefundDialogProps {
     isLoadingHistory: boolean
     isSubmitting: boolean
     errorMessage: string
+    mode?: 'refund' | 'sellerCancel'
     onClose: () => void
     onSubmit: (request: PaymentRefundRequest) => Promise<boolean>
 }
@@ -36,6 +37,7 @@ export function RefundDialog({
     isLoadingHistory,
     isSubmitting,
     errorMessage,
+    mode = 'refund',
     onClose,
     onSubmit,
 }: RefundDialogProps) {
@@ -73,6 +75,7 @@ export function RefundDialog({
     )
 
     if (!open || orderId === null) return null
+    const isSellerCancel = mode === 'sellerCancel'
 
     function updateQuantity(item: RefundableOrderItem, quantity: number) {
         const remaining = item.quantity - item.refundedQuantity
@@ -126,7 +129,7 @@ export function RefundDialog({
                             ORDER #{orderId}
                         </p>
                         <h2 id="refund-dialog-title" className="mt-2 text-2xl font-bold">
-                            환불 신청 및 내역
+                            {isSellerCancel ? '판매 취소 및 환불 처리' : '환불 신청 및 내역'}
                         </h2>
                     </div>
                     <button
@@ -142,7 +145,9 @@ export function RefundDialog({
 
                 <form className="mt-7" onSubmit={submit}>
                     <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-sm font-bold">환불할 상품</h3>
+                        <h3 className="text-sm font-bold">
+                            {isSellerCancel ? '판매 취소할 상품' : '환불할 상품'}
+                        </h3>
                         {refundableItems.length > 0 && (
                             <button
                                 className="text-xs font-bold underline"
@@ -187,12 +192,16 @@ export function RefundDialog({
                     </div>
 
                     <label className="mt-5 grid gap-2 text-xs font-bold">
-                        환불 사유
+                        {isSellerCancel ? '판매 취소 사유' : '환불 사유'}
                         <textarea
                             className="min-h-24 resize-y border border-line bg-white p-3 text-sm font-normal outline-none focus:border-ink"
                             value={reason}
                             maxLength={200}
-                            placeholder="환불 사유를 입력해 주세요."
+                            placeholder={
+                                isSellerCancel
+                                    ? '재고 착오 등 판매 취소 사유를 입력해 주세요.'
+                                    : '환불 사유를 입력해 주세요.'
+                            }
                             onChange={(event) => setReason(event.target.value)}
                         />
                     </label>
@@ -209,7 +218,11 @@ export function RefundDialog({
                                 || !reason.trim()
                             }
                         >
-                            {isSubmitting ? '환불 처리 중...' : '환불 신청'}
+                            {isSubmitting
+                                ? '환불 처리 중...'
+                                : isSellerCancel
+                                    ? '판매 취소 및 환불'
+                                    : '환불 신청'}
                         </button>
                     </div>
                     {errorMessage && (

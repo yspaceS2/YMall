@@ -1,6 +1,7 @@
 package com.ymall.backend.order.entity;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -53,8 +54,20 @@ public class OrderItem {
     private int refundedQuantity;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(nullable = false, length = 20)
     private OrderItemFulfillmentStatus fulfillmentStatus;
+
+    @Column(length = 50)
+    private String carrier;
+
+    @Column(name = "tracking_number", length = 100)
+    private String trackingNumber;
+
+    @Column(name = "shipped_at")
+    private LocalDateTime shippedAt;
+
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
 
     public OrderItem(Product product, String productName, BigDecimal unitPrice, Integer quantity) {
         if (quantity == null || quantity < 1) {
@@ -77,13 +90,29 @@ public class OrderItem {
         return fulfillmentStatus == null ? OrderItemFulfillmentStatus.PENDING : fulfillmentStatus;
     }
 
-    public void updateFulfillmentStatus(OrderItemFulfillmentStatus targetStatus) {
+    public void updateFulfillmentStatus(
+        OrderItemFulfillmentStatus targetStatus,
+        String carrier,
+        String trackingNumber
+    ) {
         OrderItemFulfillmentStatus currentStatus = getEffectiveFulfillmentStatus();
         if (currentStatus == targetStatus) {
             return;
         }
         if (targetStatus == null || targetStatus.ordinal() != currentStatus.ordinal() + 1) {
             throw new IllegalStateException("배송 상태는 한 단계씩 변경해야 합니다.");
+        }
+        if (targetStatus == OrderItemFulfillmentStatus.SHIPPED) {
+            if (carrier == null || carrier.isBlank()
+                || trackingNumber == null || trackingNumber.isBlank()) {
+                throw new IllegalStateException("Carrier and tracking number are required.");
+            }
+            this.carrier = carrier.trim();
+            this.trackingNumber = trackingNumber.trim();
+            this.shippedAt = LocalDateTime.now();
+        }
+        if (targetStatus == OrderItemFulfillmentStatus.DELIVERED) {
+            this.deliveredAt = LocalDateTime.now();
         }
         this.fulfillmentStatus = targetStatus;
     }
