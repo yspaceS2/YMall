@@ -123,7 +123,7 @@ public class Product {
         this.description = description;
         this.brand = brand;
         this.price = price;
-        this.discountPercentage = discountPercentage;
+        this.discountPercentage = normalizeDiscountPercentage(discountPercentage);
         this.discountStartDate = discountStartDate;
         this.discountEndDate = discountEndDate;
         this.freeShipping = freeShipping;
@@ -227,7 +227,7 @@ public class Product {
         this.description = description;
         this.brand = brand;
         this.price = price;
-        this.discountPercentage = discountPercentage;
+        this.discountPercentage = normalizeDiscountPercentage(discountPercentage);
         this.discountStartDate = discountStartDate;
         this.discountEndDate = discountEndDate;
         this.freeShipping = freeShipping;
@@ -275,7 +275,7 @@ public class Product {
         Integer stock
     ) {
         this.price = price;
-        this.discountPercentage = discountPercentage;
+        this.discountPercentage = normalizeDiscountPercentage(discountPercentage);
         this.discountStartDate = discountStartDate;
         this.discountEndDate = discountEndDate;
         this.freeShipping = freeShipping;
@@ -323,6 +323,10 @@ public class Product {
 
     public BigDecimal getEffectiveShippingFee() {
         return freeShipping || shippingFee == null ? BigDecimal.ZERO : shippingFee;
+    }
+
+    private static BigDecimal normalizeDiscountPercentage(BigDecimal discountPercentage) {
+        return discountPercentage == null ? BigDecimal.ZERO : discountPercentage;
     }
 
     /**
