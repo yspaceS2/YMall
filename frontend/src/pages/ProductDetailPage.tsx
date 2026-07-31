@@ -1,5 +1,5 @@
 import { ChevronLeft, Minus, Plus, ShieldCheck, Star, Truck } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { addCartItem } from '../api/cart'
 import { ApiError } from '../api/client'
@@ -11,6 +11,7 @@ import { ProductQuestionSection } from '../components/productquestion/ProductQue
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
 import { ProductWishlistButton } from '../components/wishlist/ProductWishlistButton'
+import { useToast } from '../toast/useToast'
 import type { ProductDetail } from '../types/product'
 import type { Review, ReviewSummary } from '../types/review'
 import { formatKoreanDate } from '../utils/dateTime'
@@ -23,14 +24,13 @@ export function ProductDetailPage() {
     const { isAuthenticated } = useAuth()
     const location = useLocation()
     const navigate = useNavigate()
+    const { showToast } = useToast()
     const id = Number(productId)
     const invalidProductId = !Number.isInteger(id)
     const [product, setProduct] = useState<ProductDetail | null>(null)
     const [error, setError] = useState('')
     const [quantity, setQuantity] = useState(1)
     const [selectedImage, setSelectedImage] = useState('')
-    const [cartError, setCartError] = useState('')
-    const [wishlistError, setWishlistError] = useState('')
     const [isAddingToCart, setIsAddingToCart] = useState(false)
     const [reviews, setReviews] = useState<Review[]>([])
     const [reviewCount, setReviewCount] = useState(0)
@@ -130,6 +130,12 @@ export function ProductDetailPage() {
     }, [id, invalidProductId, reviewSummaryRetryKey])
 
     const discountedPrice = useMemo(() => product ? getDiscountedPrice(product.price, product.discountPercentage) : 0, [product])
+    const handleWishlistError = useCallback((message: string) => {
+        showToast(message, 'error')
+    }, [showToast])
+    const handleWishlistChanged = useCallback((message: string) => {
+        showToast(message, 'success')
+    }, [showToast])
 
     async function handleAddToCart() {
         if (!product) return
@@ -140,16 +146,16 @@ export function ProductDetailPage() {
             return
         }
 
-        setCartError('')
         setIsAddingToCart(true)
         try {
             await addCartItem({ productId: product.productId, quantity })
-            navigate('/cart')
+            showToast('장바구니에 상품을 담았습니다.', 'success')
         } catch (requestError) {
-            setCartError(
+            showToast(
                 requestError instanceof ApiError
                     ? requestError.message
                     : '장바구니에 상품을 담지 못했습니다.',
+                'error',
             )
         } finally {
             setIsAddingToCart(false)
@@ -212,15 +218,14 @@ export function ProductDetailPage() {
                     <h1 className="my-2 font-serif text-[clamp(34px,4vw,52px)] leading-[1.05] font-medium tracking-[-.04em]">{product.name}</h1>
                     <div className="flex items-center gap-1 text-[13px]"><Star className="size-4 text-[#8ca324]" fill="currentColor" /> {product.rating?.toFixed(1) ?? '0.0'} <span className="ml-1 text-muted">상품 평점</span></div>
                     <div className="my-8 flex items-baseline gap-2.5">{product.discountPercentage > 0 && <><del className="text-[#aaa]">{formatPrice(product.price)}</del><strong className="text-[#849b21]">{product.discountPercentage}%</strong></>}<b className="ml-auto text-2xl">{formatPrice(discountedPrice)}</b></div>
-                    <p className="border-b border-line pb-7 text-sm leading-7 text-[#676761]">{product.description}</p>
-                    <dl className="m-0 border-b border-line py-4.5 text-[13px]"><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">배송</dt><dd className="m-0">{product.freeShipping ? '무료배송' : formatPrice(product.shippingFee)} · 평균 {product.estimatedDeliveryDays}일 소요</dd></div><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">재고</dt><dd className="m-0">{product.stock > 0 ? `${product.stock}개 남음` : '품절'}</dd></div></dl>
+                    <dl className="m-0 border-y border-line py-4.5 text-[13px]"><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">배송</dt><dd className="m-0">{product.freeShipping ? '무료배송' : formatPrice(product.shippingFee)} · 평균 {product.estimatedDeliveryDays}일 소요</dd></div><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">재고</dt><dd className="m-0">{product.stock > 0 ? `${product.stock}개 남음` : '품절'}</dd></div></dl>
                     <div className="flex items-center justify-between py-6 text-[13px]"><span>수량</span><div className="flex items-center border border-line"><button className="grid h-9 w-9.5 place-items-center border-0 bg-transparent" onClick={() => setQuantity((value) => Math.max(1, value - 1))} type="button"><Minus className="size-3.5" /></button><b className="min-w-8.5 text-center">{quantity}</b><button className="grid h-9 w-9.5 place-items-center border-0 bg-transparent disabled:opacity-35" onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))} disabled={product.stock === 0} type="button"><Plus className="size-3.5" /></button></div></div>
-                    {(cartError || wishlistError) && <FeedbackMessage className="mb-4.5" tone="error">{cartError || wishlistError}</FeedbackMessage>}
                     <div className="grid grid-cols-1 gap-2 min-[601px]:grid-cols-[120px_1fr]">
                         <ProductWishlistButton
                             productId={product.productId}
                             isAuthenticated={isAuthenticated}
-                            onError={setWishlistError}
+                            onError={handleWishlistError}
+                            onChanged={handleWishlistChanged}
                             onLoginRequired={() => navigate('/login', {
                                 state: { from: `${location.pathname}${location.search}` },
                             })}

@@ -15,6 +15,7 @@ export interface OrderItem {
     orderItemId: number
     productId: number
     productName: string
+    thumbnailUrl: string | null
     unitPrice: number
     quantity: number
     refundedQuantity: number

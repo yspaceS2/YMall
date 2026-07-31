@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getProduct } from '../api/products'
 import { getProductReviews, getProductReviewSummary } from '../api/reviews'
+import { ToastProvider } from '../toast/ToastProvider'
 import { ProductDetailPage } from './ProductDetailPage'
 
 vi.mock('../api/cart', () => ({
@@ -144,9 +145,11 @@ describe('ProductDetailPage', () => {
 function renderPage() {
     return render(
         <MemoryRouter initialEntries={['/products/1']}>
-            <Routes>
-                <Route path="/products/:productId" element={<ProductDetailPage />} />
-            </Routes>
+            <ToastProvider>
+                <Routes>
+                    <Route path="/products/:productId" element={<ProductDetailPage />} />
+                </Routes>
+            </ToastProvider>
         </MemoryRouter>,
     )
 }

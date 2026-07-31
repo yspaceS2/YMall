@@ -5,7 +5,7 @@ test('알림 배지와 개별·전체 읽음 처리를 확인한다', async ({ p
     await installMockApi(page)
     await loginThroughUi(page)
 
-    await page.getByRole('button', { name: '내 정보 메뉴' }).click()
+    await page.getByRole('link', { name: '내 정보' }).hover()
     const notificationLink = page.getByRole('menuitem', { name: /^알림\s+2$/ })
     await expect(notificationLink).toBeVisible()
     await notificationLink.click()

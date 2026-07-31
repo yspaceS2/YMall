@@ -9,6 +9,9 @@ test('상품을 장바구니에 담아 주문을 만들고 결제 화면까지 �
     await expect(page.getByRole('heading', { name: '테스트 무선 키보드' })).toBeVisible()
 
     await page.getByRole('button', { name: /장바구니 담기/ }).click()
+    await expect(page).toHaveURL(/\/products\/1$/)
+    await expect(page.getByLabel('장바구니 상품 1개')).toBeVisible()
+    await page.getByRole('link', { name: '장바구니' }).click()
     await expect(page).toHaveURL(/\/cart$/)
     await expect(page.getByText('테스트 무선 키보드')).toBeVisible()
 

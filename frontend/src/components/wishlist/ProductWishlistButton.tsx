@@ -13,6 +13,7 @@ interface ProductWishlistButtonProps {
     isAuthenticated: boolean
     onLoginRequired: () => void
     onError: (message: string) => void
+    onChanged?: (message: string) => void
 }
 
 export function ProductWishlistButton({
@@ -20,6 +21,7 @@ export function ProductWishlistButton({
     isAuthenticated,
     onLoginRequired,
     onError,
+    onChanged,
 }: ProductWishlistButtonProps) {
     const [status, setStatus] = useState<{
         productId: number
@@ -64,9 +66,11 @@ export function ProductWishlistButton({
             if (isWished) {
                 await removeWishlistProduct(productId)
                 setStatus({ productId, wished: false })
+                onChanged?.('찜한 상품에서 제거했습니다.')
             } else {
                 await addWishlistProduct(productId)
                 setStatus({ productId, wished: true })
+                onChanged?.('찜한 상품에 추가했습니다.')
             }
         } catch (error) {
             onError(error instanceof ApiError
