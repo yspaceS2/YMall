@@ -16,6 +16,16 @@ vi.mock('../../api/productQuestions', () => ({
     SELLER_QUESTION_COUNT_CHANGED_EVENT: 'ymall:seller-question-count-changed',
 }))
 
+const sellerApiMocks = vi.hoisted(() => ({
+    getSellerPendingOrderCount: vi.fn().mockResolvedValue({ count: 0 }),
+}))
+
+vi.mock('../../api/seller', () => ({
+    getSellerPendingOrderCount: sellerApiMocks.getSellerPendingOrderCount,
+    SELLER_PENDING_ORDER_COUNT_CHANGED_EVENT:
+        'ymall:seller-pending-order-count-changed',
+}))
+
 function renderManagementLayout(
     role: 'member' | 'seller' | 'admin',
     initialPath?: string,
@@ -90,6 +100,19 @@ describe('ManagementLayout', () => {
             .toHaveAttribute('href', '/seller/orders')
         expect(screen.getByRole('link', { name: '주문·배송 관리' }))
             .toHaveAttribute('aria-current', 'page')
+    })
+
+    it('판매자에게 처리 대기 주문 상품 수와 필터 링크를 표시한다', async () => {
+        sellerApiMocks.getSellerPendingOrderCount.mockResolvedValueOnce({ count: 3 })
+        renderManagementLayout('seller')
+
+        expect(await screen.findByLabelText('처리 대기 주문 상품 3건'))
+            .toHaveTextContent('3')
+        expect(screen.getByRole('link', { name: /주문·배송 관리/ }))
+            .toHaveAttribute(
+                'href',
+                '/seller/orders?fulfillmentStatus=PENDING&page=1',
+            )
     })
 
     it.each([

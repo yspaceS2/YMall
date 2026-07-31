@@ -31,6 +31,7 @@ import com.ymall.backend.seller.dto.SellerOrderItemFulfillmentUpdateRequest;
 import com.ymall.backend.seller.dto.SellerOrderItemResponse;
 import com.ymall.backend.seller.dto.SellerOrderResponse;
 import com.ymall.backend.seller.dto.SellerOrderStatusUpdateRequest;
+import com.ymall.backend.seller.dto.SellerPendingOrderCountResponse;
 import com.ymall.backend.seller.entity.SellerProfile;
 
 @Service
@@ -58,6 +59,7 @@ public class SellerOrderService {
         Long memberId,
         int page,
         int size,
+        String keyword,
         OrderItemFulfillmentStatus fulfillmentStatus
     ) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
@@ -65,18 +67,17 @@ public class SellerOrderService {
             Math.max(page - 1, 0),
             Math.min(Math.max(size, 1), MAX_PAGE_SIZE)
         );
-        Page<Order> orders = fulfillmentStatus == null
-            ? orderRepository.findSellerOrders(
-                profile.getId(),
-                SELLER_VISIBLE_STATUSES,
-                pageable
-            )
-            : orderRepository.findSellerOrdersByFulfillmentStatus(
-                profile.getId(),
-                SELLER_VISIBLE_STATUSES,
-                fulfillmentStatus,
-                pageable
-            );
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        Long orderId = parseOrderId(normalizedKeyword);
+        Page<Order> orders = orderRepository.searchSellerOrders(
+            profile.getId(),
+            SELLER_VISIBLE_STATUSES,
+            normalizedKeyword,
+            orderId,
+            fulfillmentStatus != null,
+            fulfillmentStatus == null ? OrderItemFulfillmentStatus.PENDING : fulfillmentStatus,
+            pageable
+        );
         List<Long> orderIds = orders.stream().map(Order::getId).toList();
         Set<Long> refundSupportedOrderIds = orderIds.isEmpty()
             ? Set.of()
@@ -89,6 +90,16 @@ public class SellerOrderService {
             profile.getId(),
             refundSupportedOrderIds.contains(order.getId())
         )));
+    }
+
+    public SellerPendingOrderCountResponse getPendingOrderCount(Long memberId) {
+        SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
+        return new SellerPendingOrderCountResponse(
+            orderRepository.countSellerPendingFulfillmentItems(
+                profile.getId(),
+                SELLER_VISIBLE_STATUSES
+            )
+        );
     }
 
     public SellerOrderDetailResponse getOrder(Long memberId, Long orderId) {
@@ -295,5 +306,13 @@ public class SellerOrderService {
             item.getShippedAt(),
             item.getDeliveredAt()
         );
+    }
+
+    private Long parseOrderId(String keyword) {
+        try {
+            return keyword.isBlank() ? null : Long.valueOf(keyword);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 }

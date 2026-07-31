@@ -25,6 +25,10 @@ import {
     getSellerPendingQuestionCount,
     SELLER_QUESTION_COUNT_CHANGED_EVENT,
 } from '../../api/productQuestions'
+import {
+    getSellerPendingOrderCount,
+    SELLER_PENDING_ORDER_COUNT_CHANGED_EVENT,
+} from '../../api/seller'
 import ymallSymbolLight from '../../assets/brand/ymall-symbol-light.svg'
 import { useAuth } from '../../auth/useAuth'
 import { ThemeSelector } from '../ThemeSelector'
@@ -76,6 +80,7 @@ export function ManagementLayout({
     const { logout } = useAuth()
     const [isNavigationOpen, setIsNavigationOpen] = useState(false)
     const [pendingQuestionCount, setPendingQuestionCount] = useState(0)
+    const [pendingOrderCount, setPendingOrderCount] = useState(0)
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
     const location = useLocation()
     const isAdmin = role === 'admin'
@@ -143,6 +148,40 @@ export function ManagementLayout({
         }
     }, [role])
 
+    useEffect(() => {
+        if (role !== 'seller') return
+        let active = true
+        let controller: AbortController | null = null
+        const loadPendingOrderCount = () => {
+            controller?.abort()
+            controller = new AbortController()
+            getSellerPendingOrderCount(controller.signal)
+                .then((response) => {
+                    if (active) setPendingOrderCount(response.count)
+                })
+                .catch((error: unknown) => {
+                    if (error instanceof Error && error.name === 'AbortError') return
+                    if (active) setPendingOrderCount(0)
+                })
+        }
+
+        loadPendingOrderCount()
+        const intervalId = window.setInterval(loadPendingOrderCount, 30_000)
+        window.addEventListener(
+            SELLER_PENDING_ORDER_COUNT_CHANGED_EVENT,
+            loadPendingOrderCount,
+        )
+        return () => {
+            active = false
+            controller?.abort()
+            window.clearInterval(intervalId)
+            window.removeEventListener(
+                SELLER_PENDING_ORDER_COUNT_CHANGED_EVENT,
+                loadPendingOrderCount,
+            )
+        }
+    }, [role])
+
     return (
         <div className="min-h-screen bg-paper text-ink">
             <aside
@@ -195,15 +234,21 @@ export function ManagementLayout({
                             ].join(' ')
                             const isQuestionMenu = role === 'seller'
                                 && item.href === '/seller/questions'
+                            const isOrderMenu = role === 'seller'
+                                && item.href === '/seller/orders'
                             const isNotificationMenu = item.href.endsWith('/notifications')
-                            const badgeCount = isQuestionMenu
-                                ? pendingQuestionCount
-                                : isNotificationMenu
-                                    ? unreadNotificationCount
-                                    : 0
-                            const href = isQuestionMenu && pendingQuestionCount > 0
-                                ? '/seller/questions?status=WAITING&page=1'
-                                : item.href
+                            const badgeCount = isOrderMenu
+                                ? pendingOrderCount
+                                : isQuestionMenu
+                                    ? pendingQuestionCount
+                                    : isNotificationMenu
+                                        ? unreadNotificationCount
+                                        : 0
+                            const href = isOrderMenu && pendingOrderCount > 0
+                                ? '/seller/orders?fulfillmentStatus=PENDING&page=1'
+                                : isQuestionMenu && pendingQuestionCount > 0
+                                    ? '/seller/questions?status=WAITING&page=1'
+                                    : item.href
                             return (
                                 <li key={item.href}>
                                     <Link
@@ -222,9 +267,11 @@ export function ManagementLayout({
                                                         ? 'bg-[#171717] text-white'
                                                         : 'bg-lime text-[#171717]',
                                                 ].join(' ')}
-                                                aria-label={isQuestionMenu
-                                                    ? `답변 대기 문의 ${badgeCount}건`
-                                                    : `읽지 않은 알림 ${badgeCount}건`}
+                                                aria-label={isOrderMenu
+                                                    ? `처리 대기 주문 상품 ${badgeCount}건`
+                                                    : isQuestionMenu
+                                                        ? `답변 대기 문의 ${badgeCount}건`
+                                                        : `읽지 않은 알림 ${badgeCount}건`}
                                             >
                                                 {badgeCount > 99 ? '99+' : badgeCount}
                                             </span>

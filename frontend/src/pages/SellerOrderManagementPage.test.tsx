@@ -117,6 +117,31 @@ describe('SellerOrderManagementPage', () => {
         })
     })
 
+    it('주문번호 또는 상품명 검색어를 주문 목록 요청에 반영한다', async () => {
+        const user = userEvent.setup()
+        render(
+            <MemoryRouter>
+                <SellerOrderListPage />
+            </MemoryRouter>,
+        )
+
+        await screen.findByText('개별 출고 스니커즈')
+        await user.type(
+            screen.getByRole('textbox', { name: '검색어' }),
+            '스니커즈',
+        )
+        await user.click(screen.getByRole('button', { name: '검색' }))
+
+        await waitFor(() => {
+            expect(mocks.getSellerOrders).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    page: 1,
+                    keyword: '스니커즈',
+                }),
+            )
+        })
+    })
+
     it('상품별 운송장 정보를 입력해 배송 시작을 요청한다', async () => {
         const user = userEvent.setup()
         render(

@@ -1,14 +1,12 @@
 import {
     ArrowLeft,
-    ChevronLeft,
-    ChevronRight,
     LoaderCircle,
     PackageCheck,
     RotateCcw,
     Truck,
 } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import {
     getSellerOrder,
@@ -19,6 +17,10 @@ import {
 } from '../api/seller'
 import { RefundDialog } from '../components/RefundDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import {
+    ManagementListSearch,
+    ManagementPagination,
+} from '../components/management/ManagementListUi'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 import type {
     FulfillmentStatus,
@@ -46,38 +48,46 @@ const statusOptions: Array<{ value: FulfillmentStatus | ''; label: string }> = [
 
 export function SellerOrderListPage() {
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
     const [orders, setOrders] = useState<SellerOrder[]>([])
-    const [status, setStatus] = useState<FulfillmentStatus | ''>('')
-    const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(0)
-    const [isLoading, setIsLoading] = useState(true)
+    const [totalElements, setTotalElements] = useState(0)
+    const [loadedQueryKey, setLoadedQueryKey] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
+    const page = positivePage(searchParams.get('page'))
+    const keyword = searchParams.get('keyword') ?? ''
+    const status = parseFulfillmentStatus(searchParams.get('fulfillmentStatus'))
+    const queryKey = `${page}:${keyword}:${status}`
+    const isLoading = loadedQueryKey !== queryKey
 
     useEffect(() => {
         const controller = new AbortController()
         getSellerOrders({
             page,
+            keyword,
             fulfillmentStatus: status,
             signal: controller.signal,
         }).then((response) => {
             setOrders(response.content)
             setTotalPages(response.totalPages)
+            setTotalElements(response.totalElements)
+            setErrorMessage('')
         }).catch((error: unknown) => {
             if (error instanceof Error && error.name === 'AbortError') return
             setErrorMessage(error instanceof ApiError
                 ? error.message
                 : '주문 목록을 불러오지 못했습니다.')
         }).finally(() => {
-            if (!controller.signal.aborted) setIsLoading(false)
+            if (!controller.signal.aborted) setLoadedQueryKey(queryKey)
         })
         return () => controller.abort()
-    }, [page, status])
+    }, [keyword, page, queryKey, status])
 
     return (
         <ManagementPage
             eyebrow="ORDER FULFILLMENT"
             title="주문·배송 관리"
-            description="주문 상품별로 출고 상태와 운송장 정보를 관리합니다."
+            description={`주문 상품별로 출고 상태와 운송장 정보를 관리합니다. 총 ${totalElements.toLocaleString()}건`}
         >
             <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                 <label className="grid gap-2 text-xs font-bold">
@@ -86,10 +96,14 @@ export function SellerOrderListPage() {
                         className="h-11 min-w-44 border border-line bg-surface px-3 text-sm"
                         value={status}
                         onChange={(event) => {
-                            setIsLoading(true)
-                            setErrorMessage('')
-                            setStatus(event.target.value as FulfillmentStatus | '')
-                            setPage(1)
+                            const next = new URLSearchParams(searchParams)
+                            if (event.target.value) {
+                                next.set('fulfillmentStatus', event.target.value)
+                            } else {
+                                next.delete('fulfillmentStatus')
+                            }
+                            next.set('page', '1')
+                            setSearchParams(next)
                         }}
                     >
                         {statusOptions.map((option) => (
@@ -103,6 +117,7 @@ export function SellerOrderListPage() {
                     고객 배송 정보는 주문 상세에서만 확인할 수 있습니다.
                 </p>
             </div>
+            <ManagementListSearch placeholder="주문번호 또는 상품명을 검색하세요" />
 
             {errorMessage && (
                 <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>
@@ -191,41 +206,23 @@ export function SellerOrderListPage() {
                 </div>
             )}
 
-            {totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-center gap-3">
-                    <button
-                        className="grid size-10 place-items-center border border-line disabled:opacity-35"
-                        type="button"
-                        disabled={page <= 1}
-                        onClick={() => {
-                            setIsLoading(true)
-                            setErrorMessage('')
-                            setPage((current) => current - 1)
-                        }}
-                        aria-label="이전 페이지"
-                    >
-                        <ChevronLeft className="size-4" />
-                    </button>
-                    <span className="min-w-20 text-center text-sm font-bold">
-                        {page} / {totalPages}
-                    </span>
-                    <button
-                        className="grid size-10 place-items-center border border-line disabled:opacity-35"
-                        type="button"
-                        disabled={page >= totalPages}
-                        onClick={() => {
-                            setIsLoading(true)
-                            setErrorMessage('')
-                            setPage((current) => current + 1)
-                        }}
-                        aria-label="다음 페이지"
-                    >
-                        <ChevronRight className="size-4" />
-                    </button>
-                </div>
-            )}
+            <ManagementPagination page={page} totalPages={totalPages} />
         </ManagementPage>
     )
+}
+
+function positivePage(value: string | null) {
+    const parsed = Number(value)
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 1
+}
+
+function parseFulfillmentStatus(value: string | null): FulfillmentStatus | '' {
+    return value === 'PENDING'
+        || value === 'PREPARING'
+        || value === 'SHIPPED'
+        || value === 'DELIVERED'
+        ? value
+        : ''
 }
 
 export function SellerOrderDetailPage() {

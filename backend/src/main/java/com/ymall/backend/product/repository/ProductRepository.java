@@ -78,6 +78,31 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         Pageable pageable
     );
 
+    @EntityGraph(attributePaths = "category")
+    @Query("""
+        select product from Product product
+        where product.sellerProfile.id = :sellerProfileId
+          and product.status <> :excludedStatus
+          and (:filterCategory = false or product.category.id in :categoryIds)
+          and (:minimumStock is null or product.stock >= :minimumStock)
+          and (:maximumStock is null or product.stock <= :maximumStock)
+          and (
+              :keyword = ''
+              or lower(product.name) like lower(concat('%', :keyword, '%'))
+              or lower(coalesce(product.brand, '')) like lower(concat('%', :keyword, '%'))
+          )
+        """)
+    Page<Product> searchSellerProducts(
+        @Param("sellerProfileId") Long sellerProfileId,
+        @Param("excludedStatus") ProductStatus excludedStatus,
+        @Param("keyword") String keyword,
+        @Param("filterCategory") boolean filterCategory,
+        @Param("categoryIds") Set<Long> categoryIds,
+        @Param("minimumStock") Integer minimumStock,
+        @Param("maximumStock") Integer maximumStock,
+        Pageable pageable
+    );
+
     @EntityGraph(attributePaths = {"category", "images", "sellerProfile"})
     Optional<Product> findByIdAndSellerProfileIdAndStatusNot(
         Long productId,
