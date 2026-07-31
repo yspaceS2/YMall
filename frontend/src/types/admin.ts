@@ -19,13 +19,52 @@ export interface AdminProduct {
     brand: string | null
     price: number
     discountPercentage: number
+    discountStartDate: string | null
+    discountEndDate: string | null
     stock: number
     thumbnailUrl: string | null
+    freeShipping: boolean
+    shippingFee: number
+    estimatedDeliveryDays: number
     images: ProductImage[]
     detailImages: ProductDetailImage[]
     status: ProductStatus
     rejectionReason: string | null
     createdAt: string
+}
+
+export type ProductChangeRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export interface ProductSnapshot {
+    categoryId: number
+    categoryName: string
+    name: string
+    description: string | null
+    brand: string | null
+    price: number
+    discountPercentage: number
+    discountStartDate: string | null
+    discountEndDate: string | null
+    stock: number
+    thumbnailUrl: string | null
+    freeShipping: boolean
+    shippingFee: number
+    estimatedDeliveryDays: number
+    images: Array<{ originalUrl: string | null; imageUrl: string; sortOrder: number }>
+    detailImages: Array<{ originalUrl: string | null; imageUrl: string; sortOrder: number }>
+}
+
+export interface ProductChangeRequest {
+    productChangeRequestId: number
+    productId: number
+    sellerProfileId: number | null
+    storeName: string | null
+    status: ProductChangeRequestStatus
+    current: ProductSnapshot
+    proposed: ProductSnapshot
+    rejectionReason: string | null
+    createdAt: string
+    reviewedAt: string | null
 }
 
 export interface AdminCategory {

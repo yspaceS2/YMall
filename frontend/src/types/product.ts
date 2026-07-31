@@ -46,6 +46,11 @@ export interface ProductDetailImage {
 export interface ProductDetail extends Omit<ProductSummary, 'categoryId' | 'categoryName'> {
   category: Category
   description: string
+  discountStartDate: string | null
+  discountEndDate: string | null
+  freeShipping: boolean
+  shippingFee: number
+  estimatedDeliveryDays: number
   images: ProductImage[]
   detailImages: ProductDetailImage[]
 }

@@ -5,6 +5,8 @@ import type {
     AdminOrderPage,
     AdminProduct,
     AdminProductPage,
+    ProductChangeRequest,
+    ProductChangeRequestStatus,
     AdminSellerPage,
     AdminSettlementRequest,
     AdminSettlementRequestPage,
@@ -80,6 +82,46 @@ export function updateAdminProductStatus(
         method: 'PATCH',
         body: { status, rejectionReason },
     })
+}
+
+export function getAdminProductChangeRequests(
+    status: ProductChangeRequestStatus = 'PENDING',
+    page = 1,
+    signal?: AbortSignal,
+) {
+    const query = new URLSearchParams({
+        status,
+        page: String(page),
+        size: String(ADMIN_PAGE_SIZE),
+    })
+    return apiRequest<import('../types/api').PageResponse<ProductChangeRequest>>(
+        `/admin/product-change-requests?${query.toString()}`,
+        { signal },
+    )
+}
+
+export function getAdminProductChangeRequest(
+    requestId: number,
+    signal?: AbortSignal,
+) {
+    return apiRequest<ProductChangeRequest>(
+        `/admin/product-change-requests/${requestId}`,
+        { signal },
+    )
+}
+
+export function reviewAdminProductChangeRequest(
+    requestId: number,
+    status: Extract<ProductChangeRequestStatus, 'APPROVED' | 'REJECTED'>,
+    rejectionReason?: string,
+) {
+    return apiRequest<ProductChangeRequest>(
+        `/admin/product-change-requests/${requestId}/status`,
+        {
+            method: 'PATCH',
+            body: { status, rejectionReason },
+        },
+    )
 }
 
 export function getAdminMembers(options: AdminPageOptions = {}) {

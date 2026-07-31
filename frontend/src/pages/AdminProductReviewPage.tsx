@@ -1,6 +1,6 @@
 import { ArrowLeft, Check, LoaderCircle, Search, X } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
     getAdminProduct,
     getAdminProducts,
@@ -80,6 +80,7 @@ export function AdminProductReviewListPage() {
                     </div>
                     <strong className="text-sm">총 {totalElements.toLocaleString()}건</strong>
                 </div>
+                <Link className="mt-5 inline-flex border border-line px-4 py-2 text-xs font-bold" to="/admin/product-change-requests">변경 심사 관리</Link>
             </div>
 
             <form

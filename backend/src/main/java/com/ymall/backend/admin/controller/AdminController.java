@@ -17,11 +17,14 @@ import com.ymall.backend.admin.dto.AdminMemberResponse;
 import com.ymall.backend.admin.dto.AdminOrderResponse;
 import com.ymall.backend.admin.dto.AdminProductResponse;
 import com.ymall.backend.admin.dto.AdminProductStatusUpdateRequest;
+import com.ymall.backend.admin.dto.AdminProductChangeStatusUpdateRequest;
 import com.ymall.backend.admin.dto.AdminSellerResponse;
 import com.ymall.backend.admin.service.AdminService;
 import com.ymall.backend.global.common.ApiResponse;
 import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.product.entity.ProductStatus;
+import com.ymall.backend.product.dto.ProductChangeRequestResponse;
+import com.ymall.backend.product.service.ProductChangeReviewService;
 import com.ymall.backend.global.security.MemberPrincipal;
 import com.ymall.backend.payment.refund.dto.PaymentRefundRequest;
 import com.ymall.backend.payment.refund.dto.PaymentRefundResponse;
@@ -34,6 +37,7 @@ public class AdminController {
 
     private final AdminService adminService;
     private final PaymentRefundService paymentRefundService;
+    private final ProductChangeReviewService productChangeReviewService;
 
     @GetMapping("/products")
     public ApiResponse<PageResponse<AdminProductResponse>> getProducts(
@@ -60,6 +64,35 @@ public class AdminController {
         return ApiResponse.success(
             adminService.updateProductStatus(productId, request),
             "상품 승인 상태를 변경했습니다."
+        );
+    }
+
+    @GetMapping("/product-change-requests")
+    public ApiResponse<PageResponse<ProductChangeRequestResponse>> getProductChangeRequests(
+        @RequestParam(defaultValue = "PENDING") ProductStatus status,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.success(
+            productChangeReviewService.getRequests(status, page, size)
+        );
+    }
+
+    @GetMapping("/product-change-requests/{requestId}")
+    public ApiResponse<ProductChangeRequestResponse> getProductChangeRequest(
+        @PathVariable Long requestId
+    ) {
+        return ApiResponse.success(productChangeReviewService.getRequest(requestId));
+    }
+
+    @PatchMapping("/product-change-requests/{requestId}/status")
+    public ApiResponse<ProductChangeRequestResponse> reviewProductChangeRequest(
+        @PathVariable Long requestId,
+        @Valid @RequestBody AdminProductChangeStatusUpdateRequest request
+    ) {
+        return ApiResponse.success(
+            productChangeReviewService.review(requestId, request),
+            "상품 변경 심사를 처리했습니다."
         );
     }
 

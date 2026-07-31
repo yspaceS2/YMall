@@ -158,7 +158,8 @@ public class OrderService {
                 product,
                 product.getName(),
                 calculateUnitPrice(product),
-                cartItem.getQuantity()
+                cartItem.getQuantity(),
+                product.getEffectiveShippingFee()
             ));
             product.decreaseStock(cartItem.getQuantity());
         }
@@ -197,9 +198,7 @@ public class OrderService {
     }
 
     private BigDecimal calculateUnitPrice(Product product) {
-        BigDecimal discountPercentage = product.getDiscountPercentage() == null
-            ? BigDecimal.ZERO
-            : product.getDiscountPercentage();
+        BigDecimal discountPercentage = product.getEffectiveDiscountPercentage();
         return product.getPrice()
             .multiply(ONE_HUNDRED.subtract(discountPercentage))
             .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);

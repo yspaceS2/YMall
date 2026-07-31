@@ -50,6 +50,9 @@ public class OrderItem {
     @Column(nullable = false, precision = 22, scale = 2)
     private BigDecimal lineTotal;
 
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal shippingFee;
+
     @Column(name = "refunded_quantity", nullable = false)
     private int refundedQuantity;
 
@@ -69,7 +72,13 @@ public class OrderItem {
     @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
 
-    public OrderItem(Product product, String productName, BigDecimal unitPrice, Integer quantity) {
+    public OrderItem(
+        Product product,
+        String productName,
+        BigDecimal unitPrice,
+        Integer quantity,
+        BigDecimal shippingFee
+    ) {
         if (quantity == null || quantity < 1) {
             throw new IllegalArgumentException("주문 수량은 1개 이상이어야 합니다.");
         }
@@ -78,8 +87,13 @@ public class OrderItem {
         this.unitPrice = unitPrice;
         this.quantity = quantity;
         this.lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        this.shippingFee = shippingFee == null ? BigDecimal.ZERO : shippingFee;
         this.fulfillmentStatus = OrderItemFulfillmentStatus.PENDING;
         this.refundedQuantity = 0;
+    }
+
+    public OrderItem(Product product, String productName, BigDecimal unitPrice, Integer quantity) {
+        this(product, productName, unitPrice, quantity, BigDecimal.ZERO);
     }
 
     void assignOrder(Order order) {

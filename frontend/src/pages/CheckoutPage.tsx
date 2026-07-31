@@ -37,7 +37,7 @@ export function CheckoutPage() {
         return () => controller.abort()
     }, [])
 
-    const totalAmount = useMemo(
+    const productAmount = useMemo(
         () => items.reduce(
             (total, item) => total
                 + getDiscountedPrice(item.price, item.discountPercentage) * item.quantity,
@@ -45,6 +45,11 @@ export function CheckoutPage() {
         ),
         [items],
     )
+    const shippingFee = useMemo(
+        () => items.reduce((total, item) => total + item.shippingFee, 0),
+        [items],
+    )
+    const totalAmount = productAmount + shippingFee
 
     async function submitOrder() {
         if (items.length === 0 || selectedAddressId === null || isSubmitting) return
@@ -121,6 +126,10 @@ export function CheckoutPage() {
                             <span className="text-xs font-bold">결제 예정 금액</span>
                             <strong className="text-xl">{formatPrice(totalAmount)}</strong>
                         </div>
+                        <dl className="mb-6 grid gap-2 text-xs text-muted">
+                            <div className="flex justify-between"><dt>상품 금액</dt><dd className="text-ink">{formatPrice(productAmount)}</dd></div>
+                            <div className="flex justify-between"><dt>배송비</dt><dd className="text-ink">{shippingFee === 0 ? '무료' : formatPrice(shippingFee)}</dd></div>
+                        </dl>
                         <button
                             className="grid h-13 w-full place-items-center border-0 bg-ink text-sm font-extrabold text-white disabled:bg-[#aaa]"
                             type="button"

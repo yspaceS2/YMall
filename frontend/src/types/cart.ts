@@ -7,6 +7,9 @@ export interface CartItem {
     thumbnailUrl: string | null
     price: number
     discountPercentage: number
+    freeShipping: boolean
+    shippingFee: number
+    estimatedDeliveryDays: number
     stock: number
     productStatus: ProductStatus
     quantity: number

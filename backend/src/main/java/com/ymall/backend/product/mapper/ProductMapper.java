@@ -1,5 +1,6 @@
 package com.ymall.backend.product.mapper;
 
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 
@@ -37,10 +38,13 @@ public interface ProductMapper {
     @Mapping(source = "id", target = "productId")
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "category.name", target = "categoryName")
+    @Mapping(source = "effectiveDiscountPercentage", target = "discountPercentage")
     ProductListResponse toProductListResponse(Product product);
 
     @Mapping(source = "id", target = "productId")
     @Mapping(source = "category", target = "category")
+    @Mapping(source = "effectiveDiscountPercentage", target = "discountPercentage")
+    @Mapping(source = "effectiveShippingFee", target = "shippingFee")
     @Mapping(target = "images", expression = "java(toSortedProductImageResponses(product.getImages()))")
     @Mapping(target = "detailImages", expression = "java(toSortedProductDetailImageResponses(product.getDetailImages()))")
     ProductDetailResponse toProductDetailResponse(Product product);
@@ -73,6 +77,11 @@ public interface ProductMapper {
             request.brand(),
             request.price(),
             request.discountPercentage(),
+            request.discountStartDate(),
+            request.discountEndDate(),
+            request.freeShipping(),
+            request.shippingFee() == null ? BigDecimal.ZERO : request.shippingFee(),
+            request.estimatedDeliveryDays(),
             null,
             request.stock(),
             request.thumbnailUrl(),

@@ -1,5 +1,7 @@
 package com.ymall.backend.product.repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -19,6 +21,11 @@ import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
+
+    List<Product> findByDiscountPercentageGreaterThanAndDiscountEndDateBefore(
+        BigDecimal discountPercentage,
+        LocalDate date
+    );
 
     boolean existsByIdAndStatus(Long productId, ProductStatus status);
 

@@ -221,6 +221,11 @@ class ProductApiIntegrationTest {
               "brand": "Apple",
               "price": 1200,
               "discountPercentage": 10,
+              "discountStartDate": "2026-01-01",
+              "discountEndDate": "2099-12-31",
+              "freeShipping": true,
+              "shippingFee": 0,
+              "estimatedDeliveryDays": 3,
               "stock": 20,
               "thumbnailUrl": "thumbnail",
               "images": [
@@ -255,6 +260,11 @@ class ProductApiIntegrationTest {
               "brand": "Apple",
               "price": 900,
               "discountPercentage": 5,
+              "discountStartDate": "2026-01-01",
+              "discountEndDate": "2099-12-31",
+              "freeShipping": false,
+              "shippingFee": 3000,
+              "estimatedDeliveryDays": 2,
               "stock": 10,
               "thumbnailUrl": "updated-thumbnail",
               "images": [

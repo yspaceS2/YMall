@@ -33,6 +33,10 @@ import {
     AdminProductReviewDetailPage,
     AdminProductReviewListPage,
 } from './pages/AdminProductReviewPage'
+import {
+    AdminProductChangeReviewDetailPage,
+    AdminProductChangeReviewListPage,
+} from './pages/AdminProductChangeReviewPage'
 import { AccessDeniedPage } from './pages/AccessDeniedPage'
 
 function App() {
@@ -123,6 +127,8 @@ function AdminPortalRoutes() {
             />
             <Route path="products" element={<AdminProductReviewListPage />} />
             <Route path="products/:productId" element={<AdminProductReviewDetailPage />} />
+            <Route path="product-change-requests" element={<AdminProductChangeReviewListPage />} />
+            <Route path="product-change-requests/:requestId" element={<AdminProductChangeReviewDetailPage />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
     )

@@ -160,8 +160,13 @@ class ProductControllerTest {
               "brand": "Apple",
               "price": 1200,
               "discountPercentage": 10,
+              "discountStartDate": "2026-07-01",
+              "discountEndDate": "2026-08-01",
               "stock": 20,
               "thumbnailUrl": "thumbnail",
+              "freeShipping": true,
+              "shippingFee": 0,
+              "estimatedDeliveryDays": 3,
               "images": [
                 {
                   "originalUrl": "original",

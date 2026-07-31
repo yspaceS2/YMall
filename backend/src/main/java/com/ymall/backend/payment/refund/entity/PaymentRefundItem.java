@@ -45,6 +45,9 @@ public class PaymentRefundItem {
         this.orderItem = orderItem;
         this.quantity = quantity;
         this.amount = orderItem.getUnitPrice().multiply(BigDecimal.valueOf(quantity));
+        if (quantity == orderItem.getRefundableQuantity()) {
+            this.amount = this.amount.add(orderItem.getShippingFee());
+        }
     }
 
     void assignRefund(PaymentRefund refund) {

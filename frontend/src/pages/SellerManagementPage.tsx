@@ -33,8 +33,13 @@ const emptyProduct: SellerProductRequest = {
     brand: '',
     price: 0,
     discountPercentage: 0,
+    discountStartDate: null,
+    discountEndDate: null,
     stock: 0,
     thumbnailUrl: '',
+    freeShipping: true,
+    shippingFee: 0,
+    estimatedDeliveryDays: 3,
     images: [],
     detailImages: [],
 }
@@ -154,8 +159,13 @@ export function SellerManagementPage() {
                 brand: product.brand ?? '',
                 price: product.price,
                 discountPercentage: product.discountPercentage,
+                discountStartDate: product.discountStartDate,
+                discountEndDate: product.discountEndDate,
                 stock: product.stock,
                 thumbnailUrl: product.thumbnailUrl ?? '',
+                freeShipping: product.freeShipping,
+                shippingFee: product.shippingFee,
+                estimatedDeliveryDays: product.estimatedDeliveryDays,
                 images: product.images.map((image) => ({
                     originalUrl: image.originalUrl,
                     imageUrl: image.imageUrl,
@@ -261,6 +271,22 @@ export function SellerManagementPage() {
                             <NumberField label="가격" value={productForm.price} onChange={(value) => setProductForm({ ...productForm, price: value })} min={1} />
                             <NumberField label="재고" value={productForm.stock} onChange={(value) => setProductForm({ ...productForm, stock: value })} min={0} />
                             <NumberField label="할인율" value={productForm.discountPercentage} onChange={(value) => setProductForm({ ...productForm, discountPercentage: value })} min={0} max={100} />
+                            <DateField label="할인 시작" value={productForm.discountStartDate} onChange={(value) => setProductForm({ ...productForm, discountStartDate: value })} required={productForm.discountPercentage > 0} />
+                            <DateField label="할인 종료" value={productForm.discountEndDate} onChange={(value) => setProductForm({ ...productForm, discountEndDate: value })} required={productForm.discountPercentage > 0} />
+                            <label className="flex h-11 items-center gap-2 text-xs font-bold">
+                                <input
+                                    type="checkbox"
+                                    checked={productForm.freeShipping}
+                                    onChange={(event) => setProductForm({
+                                        ...productForm,
+                                        freeShipping: event.target.checked,
+                                        shippingFee: event.target.checked ? 0 : productForm.shippingFee,
+                                    })}
+                                />
+                                무료배송
+                            </label>
+                            {!productForm.freeShipping && <NumberField label="배송비" value={productForm.shippingFee} onChange={(value) => setProductForm({ ...productForm, shippingFee: value })} min={1} />}
+                            <NumberField label="예상 배송기간(일)" value={productForm.estimatedDeliveryDays} onChange={(value) => setProductForm({ ...productForm, estimatedDeliveryDays: value })} min={1} max={30} />
                             <label className="grid gap-2 text-xs font-bold min-[701px]:col-span-2">설명<textarea className="min-h-24 border border-line p-3 font-normal" value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} /></label>
                             <div className="flex gap-2">
                                 <button className="h-11 bg-ink px-6 text-xs font-bold text-white disabled:opacity-50" disabled={isSaving} type="submit">{editingProductId ? '상품 수정' : '상품 등록'}</button>
@@ -320,6 +346,10 @@ function Field({ label, value, onChange, required = false, disabled = false }: {
 
 function NumberField({ label, value, onChange, min, max }: { label: string; value: number; onChange: (value: number) => void; min: number; max?: number }) {
     return <label className="grid gap-2 text-xs font-bold">{label}<input className="h-11 border border-line px-3 font-normal" type="number" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} required /></label>
+}
+
+function DateField({ label, value, onChange, required }: { label: string; value: string | null; onChange: (value: string | null) => void; required: boolean }) {
+    return <label className="grid gap-2 text-xs font-bold">{label}<input className="h-11 border border-line bg-surface px-3 font-normal text-ink" type="date" value={value ?? ''} required={required} onChange={(event) => onChange(event.target.value || null)} /></label>
 }
 
 function ImageUrlListField({

@@ -19,6 +19,7 @@ export interface OrderItem {
     quantity: number
     refundedQuantity: number
     totalPrice: number
+    shippingFee: number
     fulfillmentStatus: OrderItemFulfillmentStatus
 }
 
@@ -27,6 +28,8 @@ export interface Order {
     paymentOrderId: string
     status: OrderStatus
     totalAmount: number
+    productAmount: number
+    shippingFee: number
     items: OrderItem[]
     deliveryAddress: OrderDeliveryAddress | null
     refundSupported: boolean

@@ -12,6 +12,7 @@ public record OrderItemResponse(
     Integer quantity,
     Integer refundedQuantity,
     BigDecimal totalPrice,
+    BigDecimal shippingFee,
     OrderItemFulfillmentStatus fulfillmentStatus
 ) {
 }

@@ -1,6 +1,7 @@
 package com.ymall.backend.product.entity;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +60,10 @@ public class Product {
     @Column(precision = 5, scale = 2)
     private BigDecimal discountPercentage;
 
+    private LocalDate discountStartDate;
+
+    private LocalDate discountEndDate;
+
     @Column(precision = 3, scale = 2)
     private BigDecimal rating;
 
@@ -67,6 +72,15 @@ public class Product {
 
     @Column(columnDefinition = "TEXT")
     private String thumbnailUrl;
+
+    @Column(nullable = false)
+    private boolean freeShipping;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal shippingFee;
+
+    @Column(nullable = false)
+    private Integer estimatedDeliveryDays;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -94,6 +108,11 @@ public class Product {
         String brand,
         BigDecimal price,
         BigDecimal discountPercentage,
+        LocalDate discountStartDate,
+        LocalDate discountEndDate,
+        boolean freeShipping,
+        BigDecimal shippingFee,
+        Integer estimatedDeliveryDays,
         BigDecimal rating,
         Integer stock,
         String thumbnailUrl,
@@ -104,11 +123,51 @@ public class Product {
         this.description = description;
         this.brand = brand;
         this.price = price;
-        this.discountPercentage = discountPercentage;
+        this.discountPercentage = normalizeDiscountPercentage(discountPercentage);
+        this.discountStartDate = discountStartDate;
+        this.discountEndDate = discountEndDate;
+        this.freeShipping = freeShipping;
+        this.shippingFee = freeShipping ? BigDecimal.ZERO : shippingFee;
+        this.estimatedDeliveryDays = estimatedDeliveryDays;
         this.rating = rating;
         this.stock = stock;
         this.thumbnailUrl = thumbnailUrl;
         this.status = status;
+    }
+
+    public Product(
+        Category category,
+        String name,
+        String description,
+        String brand,
+        BigDecimal price,
+        BigDecimal discountPercentage,
+        BigDecimal rating,
+        Integer stock,
+        String thumbnailUrl,
+        ProductStatus status
+    ) {
+        this(
+            category,
+            name,
+            description,
+            brand,
+            price,
+            discountPercentage,
+            discountPercentage != null && discountPercentage.signum() > 0
+                ? LocalDate.of(2000, 1, 1)
+                : null,
+            discountPercentage != null && discountPercentage.signum() > 0
+                ? LocalDate.of(2100, 1, 1)
+                : null,
+            true,
+            BigDecimal.ZERO,
+            3,
+            rating,
+            stock,
+            thumbnailUrl,
+            status
+        );
     }
 
     public void addImage(ProductImage image) {
@@ -155,6 +214,11 @@ public class Product {
         String brand,
         BigDecimal price,
         BigDecimal discountPercentage,
+        LocalDate discountStartDate,
+        LocalDate discountEndDate,
+        boolean freeShipping,
+        BigDecimal shippingFee,
+        Integer estimatedDeliveryDays,
         Integer stock,
         String thumbnailUrl
     ) {
@@ -163,9 +227,106 @@ public class Product {
         this.description = description;
         this.brand = brand;
         this.price = price;
-        this.discountPercentage = discountPercentage;
+        this.discountPercentage = normalizeDiscountPercentage(discountPercentage);
+        this.discountStartDate = discountStartDate;
+        this.discountEndDate = discountEndDate;
+        this.freeShipping = freeShipping;
+        this.shippingFee = freeShipping ? BigDecimal.ZERO : shippingFee;
+        this.estimatedDeliveryDays = estimatedDeliveryDays;
         this.stock = stock;
         this.thumbnailUrl = thumbnailUrl;
+    }
+
+    public void update(
+        Category category,
+        String name,
+        String description,
+        String brand,
+        BigDecimal price,
+        BigDecimal discountPercentage,
+        Integer stock,
+        String thumbnailUrl
+    ) {
+        update(
+            category,
+            name,
+            description,
+            brand,
+            price,
+            discountPercentage,
+            null,
+            null,
+            true,
+            BigDecimal.ZERO,
+            3,
+            stock,
+            thumbnailUrl
+        );
+    }
+
+    public void updateOperationalPolicy(
+        BigDecimal price,
+        BigDecimal discountPercentage,
+        LocalDate discountStartDate,
+        LocalDate discountEndDate,
+        boolean freeShipping,
+        BigDecimal shippingFee,
+        Integer estimatedDeliveryDays,
+        Integer stock
+    ) {
+        this.price = price;
+        this.discountPercentage = normalizeDiscountPercentage(discountPercentage);
+        this.discountStartDate = discountStartDate;
+        this.discountEndDate = discountEndDate;
+        this.freeShipping = freeShipping;
+        this.shippingFee = freeShipping ? BigDecimal.ZERO : shippingFee;
+        this.estimatedDeliveryDays = estimatedDeliveryDays;
+        this.stock = stock;
+    }
+
+    public void applyApprovedContent(
+        Category category,
+        String name,
+        String description,
+        String brand,
+        String thumbnailUrl
+    ) {
+        this.category = category;
+        this.name = name;
+        this.description = description;
+        this.brand = brand;
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
+    public BigDecimal getEffectiveDiscountPercentage() {
+        return getEffectiveDiscountPercentage(LocalDate.now());
+    }
+
+    public BigDecimal getEffectiveDiscountPercentage(LocalDate date) {
+        if (discountPercentage == null || discountPercentage.signum() <= 0) {
+            return BigDecimal.ZERO;
+        }
+        if (discountStartDate == null
+            || discountEndDate == null
+            || date.isBefore(discountStartDate)
+            || date.isAfter(discountEndDate)) {
+            return BigDecimal.ZERO;
+        }
+        return discountPercentage;
+    }
+
+    public void expireDiscount() {
+        discountPercentage = BigDecimal.ZERO;
+        discountStartDate = null;
+        discountEndDate = null;
+    }
+
+    public BigDecimal getEffectiveShippingFee() {
+        return freeShipping || shippingFee == null ? BigDecimal.ZERO : shippingFee;
+    }
+
+    private static BigDecimal normalizeDiscountPercentage(BigDecimal discountPercentage) {
+        return discountPercentage == null ? BigDecimal.ZERO : discountPercentage;
     }
 
     /**
