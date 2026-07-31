@@ -42,6 +42,10 @@ import {
     SellerReturnRequestDetailPage,
     SellerReturnRequestsPage,
 } from './pages/SellerReturnRequestsPage'
+import {
+    SellerProductQuestionDetailPage,
+    SellerProductQuestionListPage,
+} from './pages/SellerProductQuestionsPage'
 
 function App() {
     return (
@@ -108,6 +112,9 @@ function SellerPortalRoutes() {
             <Route path="orders/:orderId" element={<SellerOrderDetailPage />} />
             <Route path="returns" element={<SellerReturnRequestsPage />} />
             <Route path="returns/:returnRequestId" element={<SellerReturnRequestDetailPage />} />
+            <Route path="questions" element={<SellerProductQuestionListPage />} />
+            <Route path="questions/:questionId" element={<SellerProductQuestionDetailPage />} />
+            <Route path="notifications" element={<NotificationPage />} />
             <Route path="*" element={<Navigate to="/seller" replace />} />
         </Routes>
     )
@@ -135,6 +142,7 @@ function AdminPortalRoutes() {
             <Route path="products/:productId" element={<AdminProductReviewDetailPage />} />
             <Route path="product-change-requests" element={<AdminProductChangeReviewListPage />} />
             <Route path="product-change-requests/:requestId" element={<AdminProductChangeReviewDetailPage />} />
+            <Route path="notifications" element={<NotificationPage />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
     )

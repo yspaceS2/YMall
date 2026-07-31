@@ -31,6 +31,18 @@ export function markAllNotificationsAsRead() {
     })
 }
 
+export function deleteNotification(notificationId: number) {
+    return apiRequest<void>(`/notifications/${notificationId}`, {
+        method: 'DELETE',
+    })
+}
+
+export function deleteAllNotifications() {
+    return apiRequest<void>('/notifications', {
+        method: 'DELETE',
+    })
+}
+
 export function notifyNotificationsChanged() {
     window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT))
 }

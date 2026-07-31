@@ -25,6 +25,13 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     @Modifying(clearAutomatically = true)
     @Query("""
+        delete from Notification notification
+        where notification.member.id = :memberId
+        """)
+    int deleteAllByMemberId(@Param("memberId") Long memberId);
+
+    @Modifying(clearAutomatically = true)
+    @Query("""
         update Notification notification
         set notification.readAt = :readAt
         where notification.member.id = :memberId

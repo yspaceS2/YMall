@@ -1,6 +1,7 @@
 package com.ymall.backend.integration.notification;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -220,6 +221,29 @@ class NotificationApiIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.unreadCount").value(0));
+
+        mockMvc.perform(delete("/api/notifications/{notificationId}", notificationId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(otherToken)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("NOTIFICATION_NOT_FOUND"));
+
+        mockMvc.perform(delete("/api/notifications")
+                .header(HttpHeaders.AUTHORIZATION, bearer(sellerToken)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+
+        mockMvc.perform(delete("/api/notifications/{notificationId}", notificationId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(delete("/api/notifications")
+                .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/notifications")
+                .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.content.length()").value(0));
     }
 
     @Test

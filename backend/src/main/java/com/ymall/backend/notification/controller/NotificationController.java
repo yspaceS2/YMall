@@ -1,7 +1,9 @@
 package com.ymall.backend.notification.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -61,5 +63,22 @@ public class NotificationController {
             notificationService.markAllAsRead(principal.memberId()),
             "모든 알림을 읽음 처리했습니다."
         );
+    }
+
+    @DeleteMapping("/{notificationId}")
+    public ResponseEntity<Void> deleteNotification(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long notificationId
+    ) {
+        notificationService.delete(principal.memberId(), notificationId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAllNotifications(
+        @AuthenticationPrincipal MemberPrincipal principal
+    ) {
+        notificationService.deleteAll(principal.memberId());
+        return ResponseEntity.noContent().build();
     }
 }

@@ -9,6 +9,8 @@ export type NotificationType =
     | 'RETURN_REQUESTED'
     | 'RETURN_APPROVED'
     | 'RETURN_REJECTED'
+    | 'PRODUCT_QUESTION_CREATED'
+    | 'PRODUCT_QUESTION_ANSWERED'
 
 export interface Notification {
     notificationId: number
