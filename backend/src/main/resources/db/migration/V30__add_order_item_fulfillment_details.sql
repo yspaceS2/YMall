@@ -15,5 +15,13 @@ ALTER TABLE order_items
     ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMP,
     ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP;
 
+UPDATE order_items
+SET carrier = shipping_carrier
+WHERE carrier IS NULL
+  AND shipping_carrier IS NOT NULL;
+
+ALTER TABLE order_items
+    ALTER COLUMN tracking_number TYPE VARCHAR(100);
+
 CREATE INDEX IF NOT EXISTS idx_order_items_fulfillment_status
     ON order_items (fulfillment_status);

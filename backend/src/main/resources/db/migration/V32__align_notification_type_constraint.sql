@@ -10,10 +10,12 @@ BEGIN
                     'PAYMENT_COMPLETED',
                     'PAYMENT_FAILED',
                     'ORDER_CANCELED',
-                    'ORDER_SELLER_CANCELED',
                     'ORDER_PREPARING',
                     'ORDER_SHIPPED',
                     'ORDER_DELIVERED',
+                    'RETURN_REQUESTED',
+                    'RETURN_APPROVED',
+                    'RETURN_REJECTED',
                     'PRODUCT_QUESTION_CREATED',
                     'PRODUCT_QUESTION_ANSWERED'
                 ));

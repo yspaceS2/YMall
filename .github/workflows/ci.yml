@@ -31,6 +31,22 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ymall_migration_test
+          POSTGRES_USER: ymall_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ymall_test -d ymall_migration_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      MIGRATION_TEST_DATABASE_URL: jdbc:postgresql://localhost:5432/ymall_migration_test
+      MIGRATION_TEST_DATABASE_USERNAME: ymall_test
     defaults:
       run:
         working-directory: backend
