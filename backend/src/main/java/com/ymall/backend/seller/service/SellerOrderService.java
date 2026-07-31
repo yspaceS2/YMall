@@ -54,6 +54,7 @@ public class SellerOrderService {
     private final PaymentRepository paymentRepository;
     private final SellerProfileService sellerProfileService;
     private final OrderOutboxService orderOutboxService;
+    private final SellerDeliveryAddressPrivacyPolicy deliveryAddressPrivacyPolicy;
 
     public PageResponse<SellerOrderResponse> getOrders(
         Long memberId,
@@ -118,7 +119,7 @@ public class SellerOrderService {
             sellerAmount(items),
             order.getCreatedAt(),
             refundSupported,
-            SellerDeliveryAddressResponse.from(order.getDeliveryAddress()),
+            toDeliveryAddressResponse(order, profile.getId()),
             items
         );
     }
@@ -232,7 +233,7 @@ public class SellerOrderService {
                 order.getId(),
                 PaymentResult.SUCCESS
             ),
-            SellerDeliveryAddressResponse.from(order.getDeliveryAddress()),
+            toDeliveryAddressResponse(order, profile.getId()),
             items
         );
     }
@@ -275,6 +276,17 @@ public class SellerOrderService {
         return ownedItems(order, sellerProfileId).stream()
             .map(this::toItemResponse)
             .toList();
+    }
+
+    private SellerDeliveryAddressResponse toDeliveryAddressResponse(
+        Order order,
+        Long sellerProfileId
+    ) {
+        List<OrderItem> sellerItems = ownedItems(order, sellerProfileId);
+        return SellerDeliveryAddressResponse.from(
+            order.getDeliveryAddress(),
+            deliveryAddressPrivacyPolicy.shouldMask(sellerItems)
+        );
     }
 
     private BigDecimal sellerAmount(List<SellerOrderItemResponse> items) {

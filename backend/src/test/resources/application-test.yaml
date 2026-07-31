@@ -74,6 +74,9 @@ ymall:
       timeout: 30m
       batch-size: 100
       poll-interval: 1h
+  seller:
+    order-privacy:
+      delivery-address-retention: 90d
   ai:
     review-summary:
       enabled: false

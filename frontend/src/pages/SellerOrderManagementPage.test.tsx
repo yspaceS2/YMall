@@ -30,6 +30,7 @@ const order: SellerOrderDetail = {
         postalCode: '12345',
         roadAddress: '서울시 테스트로 1',
         detailAddress: '101호',
+        masked: false,
     },
     items: [
         {
@@ -205,6 +206,35 @@ describe('SellerOrderManagementPage', () => {
                 },
             )
         })
+    })
+
+    it('보존 기간이 지난 배송 개인정보를 마스킹 안내로 표시한다', async () => {
+        mocks.getSellerOrder.mockResolvedValue({
+            ...order,
+            deliveryAddress: {
+                recipientName: '***',
+                recipientPhone: '***',
+                postalCode: '***',
+                roadAddress: '***',
+                detailAddress: null,
+                masked: true,
+            },
+        })
+        render(
+            <MemoryRouter initialEntries={['/seller/orders/101']}>
+                <Routes>
+                    <Route
+                        path="/seller/orders/:orderId"
+                        element={<SellerOrderDetailPage />}
+                    />
+                </Routes>
+            </MemoryRouter>,
+        )
+
+        expect(await screen.findByText(
+            '배송 완료 후 보존 기간이 지나 개인정보가 마스킹되었습니다.',
+        )).toBeInTheDocument()
+        expect(screen.queryByText('테스트 구매자')).not.toBeInTheDocument()
     })
 
     it('판매자 환불 다이얼로그를 판매 취소 업무 문구로 표시한다', async () => {
