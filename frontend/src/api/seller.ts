@@ -17,7 +17,13 @@ import type {
     FulfillmentStatus,
 } from '../types/seller'
 import { apiRequest } from './client'
-import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
+import type {
+    PaymentRefund,
+    PaymentRefundRequest,
+    ReturnRequest,
+    ReturnRequestStatus,
+} from '../types/order'
+import type { PageResponse } from '../types/api'
 
 export function getSellerProfile(signal?: AbortSignal) {
     return apiRequest<SellerProfile>('/seller/profile', { signal })
@@ -150,4 +156,62 @@ export function requestSellerRefund(orderId: number, request: PaymentRefundReque
 
 export function getSellerRefunds(orderId: number, signal?: AbortSignal) {
     return apiRequest<PaymentRefund[]>(`/seller/orders/${orderId}/refunds`, { signal })
+}
+
+interface SellerReturnRequestOptions {
+    page?: number
+    size?: number
+    status?: ReturnRequestStatus | ''
+    keyword?: string
+    signal?: AbortSignal
+}
+
+export function getSellerReturnRequests(options: SellerReturnRequestOptions = {}) {
+    const {
+        page = 1,
+        size = SELLER_PAGE_SIZE,
+        status,
+        keyword = '',
+        signal,
+    } = options
+    const query = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+        keyword,
+    })
+    if (status) query.set('status', status)
+    return apiRequest<PageResponse<ReturnRequest>>(
+        `/seller/return-requests?${query.toString()}`,
+        { signal },
+    )
+}
+
+export function getSellerReturnRequest(
+    returnRequestId: number,
+    signal?: AbortSignal,
+) {
+    return apiRequest<ReturnRequest>(
+        `/seller/return-requests/${returnRequestId}`,
+        { signal },
+    )
+}
+
+export function approveSellerReturnRequest(
+    returnRequestId: number,
+    response: string,
+) {
+    return apiRequest<ReturnRequest>(
+        `/seller/return-requests/${returnRequestId}/approval`,
+        { method: 'PATCH', body: { response } },
+    )
+}
+
+export function rejectSellerReturnRequest(
+    returnRequestId: number,
+    response: string,
+) {
+    return apiRequest<ReturnRequest>(
+        `/seller/return-requests/${returnRequestId}/rejection`,
+        { method: 'PATCH', body: { response } },
+    )
 }

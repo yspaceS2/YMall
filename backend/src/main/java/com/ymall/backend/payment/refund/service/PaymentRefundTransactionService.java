@@ -71,7 +71,8 @@ public class PaymentRefundTransactionService {
             memberId,
             MemberRole.ROLE_USER,
             request,
-            item -> true
+            item -> true,
+            false
         );
     }
 
@@ -90,7 +91,28 @@ public class PaymentRefundTransactionService {
             memberId,
             MemberRole.ROLE_SELLER,
             request,
-            item -> isOwnedBySeller(item, profile.getId())
+            item -> isOwnedBySeller(item, profile.getId()),
+            false
+        );
+    }
+
+    @Transactional
+    public PaymentRefundPreparation prepareSellerReturn(
+        Long memberId,
+        Long orderId,
+        PaymentRefundRequest request
+    ) {
+        SellerProfile profile = sellerProfileRepository.findByMemberId(memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_PROFILE_NOT_FOUND));
+        Order order = orderRepository.findSellerOrderByIdForUpdate(orderId, profile.getId())
+            .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND));
+        return prepareRefund(
+            order,
+            memberId,
+            MemberRole.ROLE_SELLER,
+            request,
+            item -> isOwnedBySeller(item, profile.getId()),
+            true
         );
     }
 
@@ -107,7 +129,8 @@ public class PaymentRefundTransactionService {
             memberId,
             MemberRole.ROLE_ADMIN,
             request,
-            item -> true
+            item -> true,
+            false
         );
     }
 
@@ -116,7 +139,8 @@ public class PaymentRefundTransactionService {
         Long memberId,
         MemberRole role,
         PaymentRefundRequest request,
-        Predicate<OrderItem> itemAccess
+        Predicate<OrderItem> itemAccess,
+        boolean deliveredReturn
     ) {
         Long orderId = order.getId();
         PaymentRefund existing = refundRepository.findByOrderIdAndIdempotencyKey(
@@ -129,12 +153,17 @@ public class PaymentRefundTransactionService {
                     .anyMatch(item -> !itemAccess.test(item.getOrderItem()))) {
                 throw new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND);
             }
+            if (existing.getStatus() == PaymentRefundStatus.UNKNOWN) {
+                throw new BusinessException(
+                    ErrorCode.PAYMENT_REFUND_RECONCILIATION_REQUIRED
+                );
+            }
             return PaymentRefundPreparation.existing(
                 toResponse(existing, item -> itemAccess.test(item.getOrderItem()))
             );
         }
 
-        validateOrderStatus(order);
+        validateOrderStatus(order, deliveredReturn);
         Payment payment = paymentRepository
             .findFirstByOrderIdAndResultOrderByProcessedAtDesc(orderId, PaymentResult.SUCCESS)
             .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_REFUND_NOT_ALLOWED));
@@ -156,11 +185,12 @@ public class PaymentRefundTransactionService {
             order,
             request.items(),
             pendingQuantities,
-            itemAccess
+            itemAccess,
+            deliveredReturn
         );
         BigDecimal remainingAmount = remainingAmount(order, priorRefunds);
         BigDecimal requestedAmount = quantities.stream()
-            .map(this::refundAmount)
+            .map(quantity -> calculateRefundAmount(quantity, pendingQuantities))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (requestedAmount.signum() <= 0
             || requestedAmount.compareTo(remainingAmount) > 0) {
@@ -178,9 +208,11 @@ public class PaymentRefundTransactionService {
             memberId,
             role
         );
-        quantities.forEach(quantity ->
-            refund.addItem(new PaymentRefundItem(quantity.item(), quantity.quantity()))
-        );
+        quantities.forEach(quantity -> refund.addItem(new PaymentRefundItem(
+            quantity.item(),
+            quantity.quantity(),
+            calculateRefundAmount(quantity, pendingQuantities)
+        )));
         refundRepository.save(refund);
 
         return new PaymentRefundPreparation(
@@ -203,7 +235,62 @@ public class PaymentRefundTransactionService {
         Order order = orderRepository.findByIdForUpdate(refund.getOrder().getId())
             .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
         validateGatewayResult(refund, order, gatewayResult);
+        return completeConfirmedRefund(refund, order, gatewayResult);
+    }
 
+    @Transactional(readOnly = true)
+    public List<PaymentRefundReconciliationCandidate> getUnknownRefunds(Long orderId) {
+        return refundRepository.findAllByOrderIdOrderByCreatedAtDesc(orderId)
+            .stream()
+            .filter(refund -> refund.getStatus() == PaymentRefundStatus.UNKNOWN)
+            .map(refund -> new PaymentRefundReconciliationCandidate(
+                refund.getId(),
+                refund.getPayment().getPaymentKey()
+            ))
+            .toList();
+    }
+
+    @Transactional
+    public boolean reconcile(Long refundId, PaymentGatewayResult gatewayResult) {
+        PaymentRefund refund = refundRepository.findByIdForUpdate(refundId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_REFUND_NOT_FOUND));
+        if (refund.getStatus() != PaymentRefundStatus.UNKNOWN) {
+            return true;
+        }
+        Order order = orderRepository.findByIdForUpdate(refund.getOrder().getId())
+            .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+        if (!hasMatchingPaymentIdentity(refund, order, gatewayResult)) {
+            return false;
+        }
+
+        BigDecimal balanceBeforeRefund = expectedBalanceBefore(refund, order);
+        BigDecimal balanceAfterRefund = balanceBeforeRefund.subtract(refund.getAmount());
+        boolean cancellationApplied = isCancellationStatus(gatewayResult.status())
+            && balanceAfterRefund.compareTo(gatewayResult.balanceAmount()) == 0;
+        if (cancellationApplied) {
+            completeConfirmedRefund(refund, order, gatewayResult);
+            return true;
+        }
+
+        boolean cancellationNotApplied =
+            (gatewayResult.status() == PaymentGatewayStatus.DONE
+                || gatewayResult.status() == PaymentGatewayStatus.PARTIAL_CANCELED)
+                && balanceBeforeRefund.compareTo(gatewayResult.balanceAmount()) == 0;
+        if (cancellationNotApplied) {
+            refund.resolveUnknownAsFailed(
+                "REFUND_NOT_APPLIED",
+                "The payment provider confirmed that the refund was not applied."
+            );
+            return true;
+        }
+        return false;
+    }
+
+    private PaymentRefundResponse completeConfirmedRefund(
+        PaymentRefund refund,
+        Order order,
+        PaymentGatewayResult gatewayResult
+    ) {
         Map<Long, Product> products = productRepository.findAllByIdForUpdate(
             refund.getItems().stream()
                 .map(item -> item.getOrderItem().getProduct().getId())
@@ -286,9 +373,13 @@ public class PaymentRefundTransactionService {
             .toList();
     }
 
-    private void validateOrderStatus(Order order) {
-        if (order.getStatus() != OrderStatus.PAID
-            && order.getStatus() != OrderStatus.PARTIALLY_REFUNDED) {
+    private void validateOrderStatus(Order order, boolean deliveredReturn) {
+        boolean returnApproval = deliveredReturn
+            && order.getStatus() == OrderStatus.DELIVERED;
+        if (!returnApproval
+            && order.getStatus() != OrderStatus.PAID
+            && order.getStatus() != OrderStatus.PARTIALLY_REFUNDED
+            && order.getStatus() != OrderStatus.PREPARING) {
             throw new BusinessException(ErrorCode.PAYMENT_REFUND_NOT_ALLOWED);
         }
     }
@@ -311,7 +402,8 @@ public class PaymentRefundTransactionService {
         Order order,
         List<PaymentRefundItemRequest> requests,
         Map<Long, Integer> pendingQuantities,
-        Predicate<OrderItem> itemAccess
+        Predicate<OrderItem> itemAccess,
+        boolean deliveredReturn
     ) {
         Map<Long, OrderItem> items = order.getItems().stream()
             .collect(Collectors.toMap(OrderItem::getId, Function.identity()));
@@ -343,12 +435,22 @@ public class PaymentRefundTransactionService {
                     - pendingQuantities.getOrDefault(item.getId(), 0);
             if (item == null
                 || !itemAccess.test(item)
-                || item.getEffectiveFulfillmentStatus() != OrderItemFulfillmentStatus.PENDING
+                || !isRefundableFulfillmentStatus(item, deliveredReturn)
                 || request.quantity() > available) {
                 throw new BusinessException(ErrorCode.PAYMENT_REFUND_AMOUNT_EXCEEDED);
             }
             return new RefundQuantity(item, request.quantity());
         }).toList();
+    }
+
+    private boolean isRefundableFulfillmentStatus(
+        OrderItem item,
+        boolean deliveredReturn
+    ) {
+        OrderItemFulfillmentStatus status = item.getEffectiveFulfillmentStatus();
+        return status == OrderItemFulfillmentStatus.PENDING
+            || status == OrderItemFulfillmentStatus.PREPARING
+            || (deliveredReturn && status == OrderItemFulfillmentStatus.DELIVERED);
     }
 
     private BigDecimal remainingAmount(Order order, List<PaymentRefund> refunds) {
@@ -364,13 +466,18 @@ public class PaymentRefundTransactionService {
         return order.getTotalAmount().subtract(refunded).subtract(pending);
     }
 
-    private BigDecimal refundAmount(RefundQuantity quantity) {
-        BigDecimal amount = quantity.item().getUnitPrice()
+    private BigDecimal calculateRefundAmount(
+        RefundQuantity quantity,
+        Map<Long, Integer> pendingQuantities
+    ) {
+        OrderItem item = quantity.item();
+        BigDecimal amount = item.getUnitPrice()
             .multiply(BigDecimal.valueOf(quantity.quantity()));
-        if (quantity.quantity() == quantity.item().getRefundableQuantity()) {
-            return amount.add(quantity.item().getShippingFee());
-        }
-        return amount;
+        int availableQuantity = item.getRefundableQuantity()
+            - pendingQuantities.getOrDefault(item.getId(), 0);
+        return quantity.quantity() == availableQuantity
+            ? amount.add(item.getShippingFee())
+            : amount;
     }
 
     private void validateGatewayResult(
@@ -378,22 +485,45 @@ public class PaymentRefundTransactionService {
         Order order,
         PaymentGatewayResult result
     ) {
-        BigDecimal expectedBalance = remainingAmount(
-            order,
-            refundRepository.findAllByOrderIdOrderByCreatedAtDesc(order.getId())
-        );
-        boolean valid = result != null
+        BigDecimal expectedBalance = expectedBalanceBefore(refund, order)
+            .subtract(refund.getAmount());
+        boolean valid = hasMatchingPaymentIdentity(refund, order, result)
+            && expectedBalance.compareTo(result.balanceAmount()) == 0
+            && isCancellationStatus(result.status());
+        if (!valid) {
+            throw new BusinessException(ErrorCode.PAYMENT_REFUND_PROVIDER_MISMATCH);
+        }
+    }
+
+    private BigDecimal expectedBalanceBefore(PaymentRefund refund, Order order) {
+        BigDecimal previouslyRefundedAmount = refundRepository
+            .findAllByOrderIdOrderByCreatedAtDesc(order.getId())
+            .stream()
+            .filter(previousRefund ->
+                !previousRefund.getId().equals(refund.getId())
+                    && previousRefund.getStatus() == PaymentRefundStatus.SUCCEEDED
+            )
+            .map(PaymentRefund::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return order.getTotalAmount().subtract(previouslyRefundedAmount);
+    }
+
+    private boolean hasMatchingPaymentIdentity(
+        PaymentRefund refund,
+        Order order,
+        PaymentGatewayResult result
+    ) {
+        return result != null
             && refund.getPayment().getPaymentKey().equals(result.paymentKey())
             && order.getPaymentOrderId().equals(result.orderId())
             && result.totalAmount() != null
             && order.getTotalAmount().compareTo(result.totalAmount()) == 0
-            && result.balanceAmount() != null
-            && expectedBalance.compareTo(result.balanceAmount()) == 0
-            && (result.status() == PaymentGatewayStatus.CANCELED
-                || result.status() == PaymentGatewayStatus.PARTIAL_CANCELED);
-        if (!valid) {
-            throw new BusinessException(ErrorCode.PAYMENT_REFUND_PROVIDER_MISMATCH);
-        }
+            && result.balanceAmount() != null;
+    }
+
+    private boolean isCancellationStatus(PaymentGatewayStatus status) {
+        return status == PaymentGatewayStatus.CANCELED
+            || status == PaymentGatewayStatus.PARTIAL_CANCELED;
     }
 
     PaymentRefundResponse toResponse(PaymentRefund refund) {

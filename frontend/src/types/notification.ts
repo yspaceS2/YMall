@@ -6,6 +6,9 @@ export type NotificationType =
     | 'ORDER_PREPARING'
     | 'ORDER_SHIPPED'
     | 'ORDER_DELIVERED'
+    | 'RETURN_REQUESTED'
+    | 'RETURN_APPROVED'
+    | 'RETURN_REJECTED'
 
 export interface Notification {
     notificationId: number

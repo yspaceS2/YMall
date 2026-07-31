@@ -42,12 +42,17 @@ public class PaymentRefundItem {
     private BigDecimal amount;
 
     public PaymentRefundItem(OrderItem orderItem, int quantity) {
+        this(
+            orderItem,
+            quantity,
+            orderItem.getUnitPrice().multiply(BigDecimal.valueOf(quantity))
+        );
+    }
+
+    public PaymentRefundItem(OrderItem orderItem, int quantity, BigDecimal amount) {
         this.orderItem = orderItem;
         this.quantity = quantity;
-        this.amount = orderItem.getUnitPrice().multiply(BigDecimal.valueOf(quantity));
-        if (quantity == orderItem.getRefundableQuantity()) {
-            this.amount = this.amount.add(orderItem.getShippingFee());
-        }
+        this.amount = amount;
     }
 
     void assignRefund(PaymentRefund refund) {

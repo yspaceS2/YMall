@@ -1,11 +1,13 @@
 package com.ymall.backend.payment.refund.service;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
 
+import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.payment.exception.PaymentException;
 import com.ymall.backend.payment.gateway.PaymentCancelCommand;
@@ -26,7 +28,10 @@ public class PaymentRefundService {
         Long orderId,
         PaymentRefundRequest request
     ) {
-        return execute(transactionService.prepareUser(memberId, orderId, request));
+        return executeWithReconciliation(
+            orderId,
+            () -> transactionService.prepareUser(memberId, orderId, request)
+        );
     }
 
     public PaymentRefundResponse refundSeller(
@@ -34,7 +39,21 @@ public class PaymentRefundService {
         Long orderId,
         PaymentRefundRequest request
     ) {
-        return execute(transactionService.prepareSeller(memberId, orderId, request));
+        return executeWithReconciliation(
+            orderId,
+            () -> transactionService.prepareSeller(memberId, orderId, request)
+        );
+    }
+
+    public PaymentRefundResponse refundSellerReturn(
+        Long memberId,
+        Long orderId,
+        PaymentRefundRequest request
+    ) {
+        return executeWithReconciliation(
+            orderId,
+            () -> transactionService.prepareSellerReturn(memberId, orderId, request)
+        );
     }
 
     public PaymentRefundResponse refundAdmin(
@@ -42,7 +61,47 @@ public class PaymentRefundService {
         Long orderId,
         PaymentRefundRequest request
     ) {
-        return execute(transactionService.prepareAdmin(memberId, orderId, request));
+        return executeWithReconciliation(
+            orderId,
+            () -> transactionService.prepareAdmin(memberId, orderId, request)
+        );
+    }
+
+    private PaymentRefundResponse executeWithReconciliation(
+        Long orderId,
+        Supplier<PaymentRefundPreparation> preparationSupplier
+    ) {
+        try {
+            return execute(preparationSupplier.get());
+        } catch (BusinessException exception) {
+            if (exception.getErrorCode()
+                != ErrorCode.PAYMENT_REFUND_RECONCILIATION_REQUIRED) {
+                throw exception;
+            }
+            reconcileUnknownRefunds(orderId);
+            return execute(preparationSupplier.get());
+        }
+    }
+
+    private void reconcileUnknownRefunds(Long orderId) {
+        List<PaymentRefundReconciliationCandidate> candidates =
+            transactionService.getUnknownRefunds(orderId);
+        if (candidates.isEmpty()) {
+            throw new BusinessException(
+                ErrorCode.PAYMENT_REFUND_RECONCILIATION_REQUIRED
+            );
+        }
+
+        for (PaymentRefundReconciliationCandidate candidate : candidates) {
+            PaymentGatewayResult result = paymentGateway.findByPaymentKey(
+                candidate.paymentKey()
+            );
+            if (!transactionService.reconcile(candidate.refundId(), result)) {
+                throw new BusinessException(
+                    ErrorCode.PAYMENT_REFUND_RECONCILIATION_REQUIRED
+                );
+            }
+        }
     }
 
     private PaymentRefundResponse execute(PaymentRefundPreparation preparation) {
@@ -66,6 +125,14 @@ public class PaymentRefundService {
                 exception.getProviderCode(),
                 exception.getProviderMessage(),
                 outcomeUnknown
+            );
+            throw exception;
+        } catch (BusinessException exception) {
+            transactionService.recordFailure(
+                preparation.refundId(),
+                exception.getErrorCode().name(),
+                exception.getMessage(),
+                true
             );
             throw exception;
         } catch (RuntimeException exception) {
