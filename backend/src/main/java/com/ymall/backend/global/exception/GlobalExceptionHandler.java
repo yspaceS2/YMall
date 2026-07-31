@@ -3,6 +3,7 @@ package com.ymall.backend.global.exception;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -66,5 +67,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(ErrorCode.INVALID_REQUEST.getStatus())
             .body(ErrorResponse.of(ErrorCode.INVALID_REQUEST, message));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException() {
+        return ResponseEntity
+            .status(ErrorCode.FILE_SIZE_EXCEEDED.getStatus())
+            .body(ErrorResponse.from(ErrorCode.FILE_SIZE_EXCEEDED));
     }
 }

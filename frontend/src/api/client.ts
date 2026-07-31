@@ -25,8 +25,9 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     const { body, auth = true, headers: initialHeaders, ...requestInit } = options
     const headers = new Headers(initialHeaders)
     const token = auth ? getAccessToken() : null
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
 
-    if (body !== undefined) {
+    if (body !== undefined && !isFormData) {
         headers.set('Content-Type', 'application/json')
     }
     if (token) {
@@ -44,7 +45,11 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
             ...requestInit,
             credentials: requestInit.credentials ?? 'include',
             headers: requestHeaders,
-            body: body === undefined ? undefined : JSON.stringify(body),
+            body: body === undefined
+                ? undefined
+                : isFormData
+                    ? body
+                    : JSON.stringify(body),
         })
     }
 

@@ -10,6 +10,11 @@ spring:
   application:
     name: backend
 
+  servlet:
+    multipart:
+      max-file-size: ${IMAGE_UPLOAD_MAX_FILE_SIZE:10MB}
+      max-request-size: ${IMAGE_UPLOAD_MAX_REQUEST_SIZE:10MB}
+
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:ymall}
     username: ${POSTGRES_USER:ymall_user}
@@ -123,6 +128,11 @@ ymall:
     max-requests: ${SIGNUP_EMAIL_VERIFICATION_MAX_REQUESTS:5}
     request-window: ${SIGNUP_EMAIL_VERIFICATION_REQUEST_WINDOW:30m}
     resend-interval: ${SIGNUP_EMAIL_VERIFICATION_RESEND_INTERVAL:1m}
+  file:
+    upload-dir: ${FILE_UPLOAD_DIR:./uploads}
+    image-url-prefix: ${FILE_IMAGE_URL_PREFIX:/images}
+    thumbnail-width: ${FILE_THUMBNAIL_WIDTH:300}
+    thumbnail-height: ${FILE_THUMBNAIL_HEIGHT:300}
   mail:
     from: ${MAIL_FROM}
   password-reset:

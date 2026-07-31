@@ -23,10 +23,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String urlPattern = fileStorageProperties.imageUrlPrefix() + "/**";
-        String uploadLocation = Path.of(fileStorageProperties.uploadDir()).toAbsolutePath().normalize().toUri().toString();
+        Path uploadRoot = Path.of(fileStorageProperties.uploadDir()).toAbsolutePath().normalize();
+        String publicUrlPattern = fileStorageProperties.imageUrlPrefix() + "/public/**";
+        String publicUploadLocation = uploadRoot.resolve("public").toUri().toString();
+        String legacyProductUrlPattern = fileStorageProperties.imageUrlPrefix() + "/products/**";
+        String legacyProductUploadLocation = uploadRoot.resolve("products").toUri().toString();
 
-        registry.addResourceHandler(urlPattern)
-            .addResourceLocations(uploadLocation);
+        registry.addResourceHandler(publicUrlPattern)
+            .addResourceLocations(publicUploadLocation);
+        registry.addResourceHandler(legacyProductUrlPattern)
+            .addResourceLocations(legacyProductUploadLocation);
     }
 }

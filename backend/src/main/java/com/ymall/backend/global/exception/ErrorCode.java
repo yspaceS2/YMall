@@ -113,6 +113,7 @@ public enum ErrorCode {
     CATEGORY_DELETE_NOT_ALLOWED(HttpStatus.CONFLICT, "하위 카테고리 또는 연결된 상품이 있어 삭제할 수 없습니다."),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청 값이 올바르지 않습니다."),
     FILE_EMPTY(HttpStatus.BAD_REQUEST, "업로드할 파일이 없습니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.CONTENT_TOO_LARGE, "이미지 파일이 허용된 최대 용량을 초과했습니다."),
     INVALID_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "지원하지 않는 이미지 형식입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다.");
 

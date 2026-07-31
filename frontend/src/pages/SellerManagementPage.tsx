@@ -1,12 +1,14 @@
 import { LoaderCircle, PackageCheck, Pencil, Store, Trash2 } from 'lucide-react'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { ApiError } from '../api/client'
+import { uploadProductImage } from '../api/files'
 import { getCategories } from '../api/products'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { SettlementAccountPanel } from '../components/seller/SettlementAccountPanel'
 import { SettlementRequestPanel } from '../components/seller/SettlementRequestPanel'
 import { ProductCategorySelector } from '../components/seller/ProductCategorySelector'
+import { ProductImageUploadField } from '../components/seller/ProductImageUploadField'
 import {
     createSellerProduct,
     createSellerProfile,
@@ -50,6 +52,10 @@ export function SellerManagementPage() {
     const [products, setProducts] = useState<SellerProductSummary[]>([])
     const [categories, setCategories] = useState<Category[]>([])
     const [productForm, setProductForm] = useState<SellerProductRequest>(emptyProduct)
+    const [thumbnailFiles, setThumbnailFiles] = useState<File[]>([])
+    const [productImageFiles, setProductImageFiles] = useState<File[]>([])
+    const [detailImageFiles, setDetailImageFiles] = useState<File[]>([])
+    const [imageInputVersion, setImageInputVersion] = useState(0)
     const [editingProductId, setEditingProductId] = useState<number | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
@@ -119,16 +125,58 @@ export function SellerManagementPage() {
         }
     }
 
+    function resetPendingImages() {
+        setThumbnailFiles([])
+        setProductImageFiles([])
+        setDetailImageFiles([])
+        setImageInputVersion((current) => current + 1)
+    }
+
+    async function uploadImages(files: File[]) {
+        const uploads = []
+        for (const file of files) {
+            uploads.push(await uploadProductImage(file))
+        }
+        return uploads
+    }
+
     async function saveProduct(event: FormEvent) {
         event.preventDefault()
         setIsSaving(true)
         setErrorMessage('')
         try {
+            const [thumbnailUpload, imageUploads, detailImageUploads] = await Promise.all([
+                thumbnailFiles[0]
+                    ? uploadProductImage(thumbnailFiles[0])
+                    : Promise.resolve(null),
+                uploadImages(productImageFiles),
+                uploadImages(detailImageFiles),
+            ])
+            const request: SellerProductRequest = {
+                ...productForm,
+                thumbnailUrl: thumbnailUpload?.thumbnailUrl ?? productForm.thumbnailUrl,
+                images: [
+                    ...productForm.images,
+                    ...imageUploads.map((upload, index) => ({
+                        originalUrl: upload.fileUrl,
+                        imageUrl: upload.fileUrl,
+                        sortOrder: productForm.images.length + index,
+                    })),
+                ],
+                detailImages: [
+                    ...productForm.detailImages,
+                    ...detailImageUploads.map((upload, index) => ({
+                        originalUrl: upload.fileUrl,
+                        imageUrl: upload.fileUrl,
+                        sortOrder: productForm.detailImages.length + index,
+                    })),
+                ],
+            }
             if (editingProductId) {
-                await updateSellerProduct(editingProductId, productForm)
+                await updateSellerProduct(editingProductId, request)
                 setMessage('상품이 수정되었으며 재승인을 기다립니다.')
             } else {
-                await createSellerProduct(productForm)
+                await createSellerProduct(request)
                 setMessage('상품이 등록되었으며 승인을 기다립니다.')
             }
             setEditingProductId(null)
@@ -136,6 +184,7 @@ export function SellerManagementPage() {
                 ...emptyProduct,
                 categoryId: findFirstLeafCategoryId(categories),
             })
+            resetPendingImages()
             const response = await getSellerProducts()
             setProducts(response.content)
             setHasMoreProducts(response.hasNext)
@@ -151,6 +200,7 @@ export function SellerManagementPage() {
         setErrorMessage('')
         try {
             const product = await getSellerProduct(productId)
+            resetPendingImages()
             setEditingProductId(productId)
             setProductForm({
                 categoryId: product.category.categoryId,
@@ -255,18 +305,51 @@ export function SellerManagementPage() {
                             </div>
                             <Field label="상품명" value={productForm.name} onChange={(value) => setProductForm({ ...productForm, name: value })} required />
                             <Field label="브랜드" value={productForm.brand} onChange={(value) => setProductForm({ ...productForm, brand: value })} />
-                            <Field label="대표 이미지 URL" value={productForm.thumbnailUrl} onChange={(value) => setProductForm({ ...productForm, thumbnailUrl: value })} />
-                            <ImageUrlListField
-                                label="상단 갤러리 이미지 URL"
-                                description="한 줄에 하나씩 입력하면 상품 상단의 작은 썸네일 순서로 표시됩니다."
-                                images={productForm.images}
-                                onChange={(images) => setProductForm({ ...productForm, images })}
+                            <p className="text-xs text-muted min-[701px]:col-span-2">
+                                선택한 이미지는 상품을 저장할 때 업로드됩니다. 업로드가 끝날 때까지 창을 닫지 마세요.
+                            </p>
+                            <ProductImageUploadField
+                                key={`thumbnail-${imageInputVersion}`}
+                                label="대표 이미지"
+                                description="상품 목록과 상세 화면에서 가장 먼저 보이는 대표 사진입니다."
+                                existingImages={productForm.thumbnailUrl
+                                    ? [{ imageUrl: productForm.thumbnailUrl }]
+                                    : []}
+                                maxFiles={1}
+                                multiple={false}
+                                onFilesChange={setThumbnailFiles}
+                                onExistingImageRemove={() => setProductForm({
+                                    ...productForm,
+                                    thumbnailUrl: '',
+                                })}
                             />
-                            <ImageUrlListField
-                                label="상세 설명 이미지 URL"
-                                description="한 줄에 하나씩 입력한 순서대로 상품정보 탭에 세로로 이어집니다."
-                                images={productForm.detailImages}
-                                onChange={(detailImages) => setProductForm({ ...productForm, detailImages })}
+                            <ProductImageUploadField
+                                key={`gallery-${imageInputVersion}`}
+                                label="추가 상품 이미지"
+                                description="상품 상세 상단에서 작은 썸네일로 보여 줄 사진입니다."
+                                existingImages={productForm.images}
+                                maxFiles={10}
+                                onFilesChange={setProductImageFiles}
+                                onExistingImageRemove={(index) => setProductForm({
+                                    ...productForm,
+                                    images: productForm.images
+                                        .filter((_, imageIndex) => imageIndex !== index)
+                                        .map((image, sortOrder) => ({ ...image, sortOrder })),
+                                })}
+                            />
+                            <ProductImageUploadField
+                                key={`detail-${imageInputVersion}`}
+                                label="상세 설명 이미지"
+                                description="상품정보 탭에 위에서 아래 순서로 이어지는 상세 설명 사진입니다."
+                                existingImages={productForm.detailImages}
+                                maxFiles={20}
+                                onFilesChange={setDetailImageFiles}
+                                onExistingImageRemove={(index) => setProductForm({
+                                    ...productForm,
+                                    detailImages: productForm.detailImages
+                                        .filter((_, imageIndex) => imageIndex !== index)
+                                        .map((image, sortOrder) => ({ ...image, sortOrder })),
+                                })}
                             />
                             <NumberField label="가격" value={productForm.price} onChange={(value) => setProductForm({ ...productForm, price: value })} min={1} />
                             <NumberField label="재고" value={productForm.stock} onChange={(value) => setProductForm({ ...productForm, stock: value })} min={0} />
@@ -290,7 +373,7 @@ export function SellerManagementPage() {
                             <label className="grid gap-2 text-xs font-bold min-[701px]:col-span-2">설명<textarea className="min-h-24 border border-line p-3 font-normal" value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} /></label>
                             <div className="flex gap-2">
                                 <button className="h-11 bg-ink px-6 text-xs font-bold text-white disabled:opacity-50" disabled={isSaving} type="submit">{editingProductId ? '상품 수정' : '상품 등록'}</button>
-                                {editingProductId && <button className="h-11 border border-line px-5 text-xs font-bold" type="button" onClick={() => { setEditingProductId(null); setProductForm({ ...emptyProduct, categoryId: findFirstLeafCategoryId(categories) }) }}>취소</button>}
+                                {editingProductId && <button className="h-11 border border-line px-5 text-xs font-bold" type="button" onClick={() => { setEditingProductId(null); setProductForm({ ...emptyProduct, categoryId: findFirstLeafCategoryId(categories) }); resetPendingImages() }}>취소</button>}
                             </div>
                         </form>
                         <div className="grid gap-3">
@@ -350,48 +433,4 @@ function NumberField({ label, value, onChange, min, max }: { label: string; valu
 
 function DateField({ label, value, onChange, required }: { label: string; value: string | null; onChange: (value: string | null) => void; required: boolean }) {
     return <label className="grid gap-2 text-xs font-bold">{label}<input className="h-11 border border-line bg-surface px-3 font-normal text-ink" type="date" value={value ?? ''} required={required} onChange={(event) => onChange(event.target.value || null)} /></label>
-}
-
-function ImageUrlListField({
-    label,
-    description,
-    images,
-    onChange,
-}: {
-    label: string
-    description: string
-    images: SellerProductRequest['images']
-    onChange: (images: SellerProductRequest['images']) => void
-}) {
-    const value = images.map((image) => image.imageUrl).join('\n')
-
-    const updateImages = (nextValue: string) => {
-        onChange(
-            nextValue
-                .split('\n')
-                .map((imageUrl) => imageUrl.trim())
-                .filter(Boolean)
-                .map((imageUrl, sortOrder) => ({
-                    originalUrl: imageUrl,
-                    imageUrl,
-                    sortOrder,
-                })),
-        )
-    }
-
-    return (
-        <label className="grid gap-2 text-xs font-bold min-[701px]:col-span-2">
-            {label}
-            <span className="font-normal text-muted">{description}</span>
-            <textarea
-                className="min-h-28 resize-y border border-line bg-surface p-3 font-mono text-xs font-normal text-ink"
-                value={value}
-                placeholder={'https://example.com/image-01.jpg\nhttps://example.com/image-02.jpg'}
-                onChange={(event) => updateImages(event.target.value)}
-            />
-            {images.length > 0 && (
-                <span className="font-normal text-muted">현재 {images.length}개 · 입력한 줄 순서대로 저장됩니다.</span>
-            )}
-        </label>
-    )
 }
