@@ -11,7 +11,7 @@ test('알림 배지와 개별·전체 읽음 처리를 확인한다', async ({ p
     await notificationLink.click()
     await expect(page.getByRole('heading', { name: '알림' })).toBeVisible()
 
-    await page.getByRole('button', { name: /주문이 생성되었습니다/ }).click()
+    await page.getByRole('button', { name: '주문이 생성되었습니다 알림 열기' }).click()
     await expect(page).toHaveURL(/\/orders\/9001\/result$/)
 
     await page.goto('/notifications')

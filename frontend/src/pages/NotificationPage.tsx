@@ -227,6 +227,7 @@ export function NotificationPage() {
                             <button
                                 className="min-w-0 text-left"
                                 type="button"
+                                aria-label={`${notification.title} 알림 열기`}
                                 onClick={() => openNotification(notification)}
                             >
                                 <span className="flex flex-wrap items-center justify-between gap-3">
