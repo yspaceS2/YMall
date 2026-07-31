@@ -14,6 +14,7 @@ import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.notification.dto.NotificationReadAllResponse;
 import com.ymall.backend.notification.dto.NotificationResponse;
@@ -70,6 +71,21 @@ public class NotificationService {
     }
 
     @Transactional
+    public void delete(Long memberId, Long notificationId) {
+        validatePersonalNotificationDeletion(memberId);
+        Notification notification = notificationRepository
+            .findByIdAndMemberId(notificationId, memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
+        notificationRepository.delete(notification);
+    }
+
+    @Transactional
+    public void deleteAll(Long memberId) {
+        validatePersonalNotificationDeletion(memberId);
+        notificationRepository.deleteAllByMemberId(memberId);
+    }
+
+    @Transactional
     public void create(NotificationEvent event) {
         if (notificationRepository.existsBySourceEventId(event.sourceEventId())) {
             return;
@@ -84,5 +100,13 @@ public class NotificationService {
             event.message(),
             event.targetUrl()
         ));
+    }
+
+    private void validatePersonalNotificationDeletion(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        if (member.getRole() != MemberRole.ROLE_USER) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
     }
 }

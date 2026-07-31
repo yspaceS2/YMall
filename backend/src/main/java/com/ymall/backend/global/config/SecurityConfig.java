@@ -97,6 +97,7 @@ public class SecurityConfig {
                 .requestMatchers(POST, "/api/payments/webhooks/toss").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers(GET, "/api/products/**", "/api/categories/**", "/images/**").permitAll()
+                .requestMatchers(POST, "/api/products/*/questions").authenticated()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/seller/**").hasAnyRole("SELLER", "ADMIN")
                 .requestMatchers(POST, "/api/files/images").hasAnyRole("SELLER", "ADMIN")

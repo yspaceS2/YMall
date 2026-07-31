@@ -31,6 +31,10 @@ vi.mock('../components/review/ReviewSummaryPanel', () => ({
     ReviewSummaryPanel: () => <div>AI 리뷰 요약</div>,
 }))
 
+vi.mock('../components/productquestion/ProductQuestionSection', () => ({
+    ProductQuestionSection: () => <div>등록된 상품 문의가 없습니다</div>,
+}))
+
 const product = {
     productId: 1,
     category: { categoryId: 1, name: '패션', slug: 'fashion' },

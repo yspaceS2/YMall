@@ -6,6 +6,16 @@ import { AuthContext, type AuthContextValue } from '../../auth/AuthContext'
 import { ThemeProvider } from '../../theme/ThemeProvider'
 import { ManagementLayout } from './ManagementLayout'
 
+vi.mock('../../api/notifications', () => ({
+    getUnreadNotificationCount: vi.fn().mockResolvedValue({ unreadCount: 0 }),
+    NOTIFICATIONS_CHANGED_EVENT: 'ymall:notifications-changed',
+}))
+
+vi.mock('../../api/productQuestions', () => ({
+    getSellerPendingQuestionCount: vi.fn().mockResolvedValue({ count: 0 }),
+    SELLER_QUESTION_COUNT_CHANGED_EVENT: 'ymall:seller-question-count-changed',
+}))
+
 function renderManagementLayout(
     role: 'member' | 'seller' | 'admin',
     initialPath?: string,

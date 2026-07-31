@@ -7,6 +7,7 @@ import { getProduct } from '../api/products'
 import { getProductReviews, getProductReviewSummary } from '../api/reviews'
 import { useAuth } from '../auth/useAuth'
 import { ReviewSummaryPanel } from '../components/review/ReviewSummaryPanel'
+import { ProductQuestionSection } from '../components/productquestion/ProductQuestionSection'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
 import { ProductWishlistButton } from '../components/wishlist/ProductWishlistButton'
@@ -50,7 +51,12 @@ export function ProductDetailPage() {
     })
     const [reviewSummaryRetryKey, setReviewSummaryRetryKey] = useState(0)
     const [retryKey, setRetryKey] = useState(0)
-    const [activeTab, setActiveTab] = useState<ProductDetailTab>('information')
+    const [activeTab, setActiveTab] = useState<ProductDetailTab>(() => {
+        const requestedTab = new URLSearchParams(location.search).get('tab')
+        return requestedTab === 'reviews' || requestedTab === 'qna'
+            ? requestedTab
+            : 'information'
+    })
     const reviewLoadMoreControllerRef = useRef<AbortController | null>(null)
 
     useEffect(() => {
@@ -307,12 +313,15 @@ export function ProductDetailPage() {
             </div>}
 
             {activeTab === 'qna' && (
-                <div className="pt-10" id="product-qna-panel" role="tabpanel" aria-labelledby="product-qna-tab">
-                    <div className="mb-8">
-                        <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">PRODUCT Q&amp;A</p>
-                        <h2 className="font-serif text-4xl tracking-tight">상품 Q&amp;A</h2>
-                    </div>
-                    <PageState variant="empty" title="등록된 상품 문의가 없습니다" description="상품 문의 작성과 판매자 답변 기능은 다음 단계에서 연결할 예정입니다." compact />
+                <div id="product-qna-panel" role="tabpanel" aria-labelledby="product-qna-tab">
+                    <ProductQuestionSection
+                        productId={product.productId}
+                        isAuthenticated={isAuthenticated}
+                        onLoginRequired={() => navigate('/login', {
+                            state: { from: `${location.pathname}${location.search}` },
+                        })}
+                        onSuccess={() => undefined}
+                    />
                 </div>
             )}
         </section>

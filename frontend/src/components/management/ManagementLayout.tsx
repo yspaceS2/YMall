@@ -6,6 +6,7 @@ import {
     LayoutDashboard,
     LogOut,
     Menu,
+    MessageSquareText,
     PackageSearch,
     ReceiptText,
     Tags,
@@ -13,8 +14,16 @@ import {
     X,
     type LucideIcon,
 } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import {
+    getUnreadNotificationCount,
+    NOTIFICATIONS_CHANGED_EVENT,
+} from '../../api/notifications'
+import {
+    getSellerPendingQuestionCount,
+    SELLER_QUESTION_COUNT_CHANGED_EVENT,
+} from '../../api/productQuestions'
 import ymallSymbolLight from '../../assets/brand/ymall-symbol-light.svg'
 import { useAuth } from '../../auth/useAuth'
 import { ThemeSelector } from '../ThemeSelector'
@@ -38,6 +47,8 @@ const sellerNavigation: NavigationItem[] = [
     { label: '대시보드', href: '/seller', icon: LayoutDashboard },
     { label: '주문·배송 관리', href: '/seller/orders', icon: ReceiptText },
     { label: '반품 관리', href: '/seller/returns', icon: Undo2 },
+    { label: '상품 문의 관리', href: '/seller/questions', icon: MessageSquareText },
+    { label: '알림', href: '/seller/notifications', icon: Bell },
 ]
 
 const adminNavigation: NavigationItem[] = [
@@ -49,6 +60,7 @@ const adminNavigation: NavigationItem[] = [
     },
     { label: '상품 승인 관리', href: '/admin/products', icon: PackageSearch },
     { label: '카테고리 관리', href: '/admin/categories', icon: Tags },
+    { label: '알림', href: '/admin/notifications', icon: Bell },
 ]
 
 export function ManagementLayout({
@@ -60,6 +72,8 @@ export function ManagementLayout({
 }) {
     const { logout } = useAuth()
     const [isNavigationOpen, setIsNavigationOpen] = useState(false)
+    const [pendingQuestionCount, setPendingQuestionCount] = useState(0)
+    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
     const location = useLocation()
     const isAdmin = role === 'admin'
     const isMember = role === 'member'
@@ -70,6 +84,61 @@ export function ManagementLayout({
             : sellerNavigation
     const roleRootPath = isMember ? '/mypage' : `/${role}`
     const centerName = isMember ? '마이페이지' : isAdmin ? '관리자 센터' : '판매자 센터'
+
+    useEffect(() => {
+        let active = true
+        let controller: AbortController | null = null
+        const loadUnreadCount = () => {
+            controller?.abort()
+            controller = new AbortController()
+            getUnreadNotificationCount(controller.signal)
+                .then((response) => {
+                    if (active) setUnreadNotificationCount(response.unreadCount)
+                })
+                .catch((error: unknown) => {
+                    if (error instanceof Error && error.name === 'AbortError') return
+                    if (active) setUnreadNotificationCount(0)
+                })
+        }
+
+        loadUnreadCount()
+        const intervalId = window.setInterval(loadUnreadCount, 30_000)
+        window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount)
+        return () => {
+            active = false
+            controller?.abort()
+            window.clearInterval(intervalId)
+            window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount)
+        }
+    }, [])
+
+    useEffect(() => {
+        if (role !== 'seller') return
+        let active = true
+        let controller: AbortController | null = null
+        const loadPendingCount = () => {
+            controller?.abort()
+            controller = new AbortController()
+            getSellerPendingQuestionCount(controller.signal)
+                .then((response) => {
+                    if (active) setPendingQuestionCount(response.count)
+                })
+                .catch((error: unknown) => {
+                    if (error instanceof Error && error.name === 'AbortError') return
+                    if (active) setPendingQuestionCount(0)
+                })
+        }
+
+        loadPendingCount()
+        const intervalId = window.setInterval(loadPendingCount, 30_000)
+        window.addEventListener(SELLER_QUESTION_COUNT_CHANGED_EVENT, loadPendingCount)
+        return () => {
+            active = false
+            controller?.abort()
+            window.clearInterval(intervalId)
+            window.removeEventListener(SELLER_QUESTION_COUNT_CHANGED_EVENT, loadPendingCount)
+        }
+    }, [role])
 
     return (
         <div className="min-h-screen bg-paper text-ink">
@@ -121,16 +190,42 @@ export function ManagementLayout({
                                     ? 'bg-lime text-[#171717]'
                                     : 'text-white/72 hover:bg-white/8 hover:text-white',
                             ].join(' ')
+                            const isQuestionMenu = role === 'seller'
+                                && item.href === '/seller/questions'
+                            const isNotificationMenu = item.href.endsWith('/notifications')
+                            const badgeCount = isQuestionMenu
+                                ? pendingQuestionCount
+                                : isNotificationMenu
+                                    ? unreadNotificationCount
+                                    : 0
+                            const href = isQuestionMenu && pendingQuestionCount > 0
+                                ? '/seller/questions?status=WAITING&page=1'
+                                : item.href
                             return (
                                 <li key={item.href}>
                                     <Link
                                         className={itemClassName}
-                                        to={item.href}
+                                        to={href}
                                         aria-current={isActive ? 'page' : undefined}
                                         onClick={() => setIsNavigationOpen(false)}
                                     >
                                         <Icon className="size-4.5" aria-hidden="true" />
                                         <span className="flex-1">{item.label}</span>
+                                        {badgeCount > 0 && (
+                                            <span
+                                                className={[
+                                                    'grid min-w-5.5 place-items-center rounded-full px-1.5 py-0.5 text-[10px] font-extrabold',
+                                                    isActive
+                                                        ? 'bg-[#171717] text-white'
+                                                        : 'bg-lime text-[#171717]',
+                                                ].join(' ')}
+                                                aria-label={isQuestionMenu
+                                                    ? `답변 대기 문의 ${badgeCount}건`
+                                                    : `읽지 않은 알림 ${badgeCount}건`}
+                                            >
+                                                {badgeCount > 99 ? '99+' : badgeCount}
+                                            </span>
+                                        )}
                                     </Link>
                                 </li>
                             )
