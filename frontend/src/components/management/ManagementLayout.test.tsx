@@ -102,11 +102,11 @@ describe('ManagementLayout', () => {
             .toHaveAttribute('aria-current', 'page')
     })
 
-    it('판매자에게 처리 대기 주문 상품 수와 필터 링크를 표시한다', async () => {
+    it('판매자에게 처리 대기 주문 수와 필터 링크를 표시한다', async () => {
         sellerApiMocks.getSellerPendingOrderCount.mockResolvedValueOnce({ count: 3 })
         renderManagementLayout('seller')
 
-        expect(await screen.findByLabelText('처리 대기 주문 상품 3건'))
+        expect(await screen.findByLabelText('처리 대기 주문 3건'))
             .toHaveTextContent('3')
         expect(screen.getByRole('link', { name: /주문·배송 관리/ }))
             .toHaveAttribute(

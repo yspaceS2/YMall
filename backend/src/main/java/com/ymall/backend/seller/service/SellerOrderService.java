@@ -95,7 +95,7 @@ public class SellerOrderService {
     public SellerPendingOrderCountResponse getPendingOrderCount(Long memberId) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         return new SellerPendingOrderCountResponse(
-            orderRepository.countSellerPendingFulfillmentItems(
+            orderRepository.countSellerPendingFulfillmentOrders(
                 profile.getId(),
                 SELLER_VISIBLE_STATUSES
             )

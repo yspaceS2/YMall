@@ -268,7 +268,7 @@ export function ManagementLayout({
                                                         : 'bg-lime text-[#171717]',
                                                 ].join(' ')}
                                                 aria-label={isOrderMenu
-                                                    ? `처리 대기 주문 상품 ${badgeCount}건`
+                                                    ? `처리 대기 주문 ${badgeCount}건`
                                                     : isQuestionMenu
                                                         ? `답변 대기 문의 ${badgeCount}건`
                                                         : `읽지 않은 알림 ${badgeCount}건`}

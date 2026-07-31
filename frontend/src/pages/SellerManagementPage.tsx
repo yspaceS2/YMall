@@ -511,7 +511,10 @@ export function SellerManagementPage() {
                                 </span>
                             </label>
                         </div>
-                        <ManagementListSearch placeholder="상품명 또는 브랜드를 검색하세요" />
+                        <ManagementListSearch
+                            key={productKeyword}
+                            placeholder="상품명 또는 브랜드를 검색하세요"
+                        />
                         <div className="grid gap-3">
                             {products.length === 0 ? (
                                 <p className="text-sm text-muted">등록한 상품이 없습니다.</p>

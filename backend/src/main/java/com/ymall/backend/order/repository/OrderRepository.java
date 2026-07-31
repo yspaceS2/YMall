@@ -197,7 +197,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     @Query("""
-        select count(item) from OrderItem item
+        select count(distinct item.order.id) from OrderItem item
         where item.product.sellerProfile.id = :sellerProfileId
           and (
               item.fulfillmentStatus is null
@@ -206,7 +206,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
           and item.refundedQuantity < item.quantity
           and item.order.status in :statuses
         """)
-    long countSellerPendingFulfillmentItems(
+    long countSellerPendingFulfillmentOrders(
         @Param("sellerProfileId") Long sellerProfileId,
         @Param("statuses") Collection<OrderStatus> statuses
     );

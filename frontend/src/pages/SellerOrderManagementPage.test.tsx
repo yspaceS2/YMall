@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SellerOrderDetail } from '../types/seller'
 import {
@@ -60,6 +60,21 @@ function pageResponse() {
         hasNext: false,
         hasPrevious: false,
     }
+}
+
+function OrderListWithKeywordNavigation() {
+    const navigate = useNavigate()
+    return (
+        <>
+            <button
+                type="button"
+                onClick={() => navigate('/seller/orders?keyword=두번째')}
+            >
+                검색 기록 이동
+            </button>
+            <SellerOrderListPage />
+        </>
+    )
 }
 
 describe('SellerOrderManagementPage', () => {
@@ -139,6 +154,24 @@ describe('SellerOrderManagementPage', () => {
                     keyword: '스니커즈',
                 }),
             )
+        })
+    })
+
+    it('URL 검색어가 바뀌면 검색창 표시값도 동기화한다', async () => {
+        const user = userEvent.setup()
+        render(
+            <MemoryRouter initialEntries={['/seller/orders?keyword=첫번째']}>
+                <OrderListWithKeywordNavigation />
+            </MemoryRouter>,
+        )
+
+        expect(await screen.findByRole('textbox', { name: '검색어' }))
+            .toHaveValue('첫번째')
+        await user.click(screen.getByRole('button', { name: '검색 기록 이동' }))
+
+        await waitFor(() => {
+            expect(screen.getByRole('textbox', { name: '검색어' }))
+                .toHaveValue('두번째')
         })
     })
 

@@ -117,7 +117,10 @@ export function SellerOrderListPage() {
                     고객 배송 정보는 주문 상세에서만 확인할 수 있습니다.
                 </p>
             </div>
-            <ManagementListSearch placeholder="주문번호 또는 상품명을 검색하세요" />
+            <ManagementListSearch
+                key={keyword}
+                placeholder="주문번호 또는 상품명을 검색하세요"
+            />
 
             {errorMessage && (
                 <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>

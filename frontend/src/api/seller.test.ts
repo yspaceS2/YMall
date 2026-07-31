@@ -74,7 +74,7 @@ describe('seller list filters', () => {
         expect(requestUrl.searchParams.get('fulfillmentStatus')).toBe('PENDING')
     })
 
-    it('처리 대기 주문 상품 수 API를 호출한다', async () => {
+    it('처리 대기 주문 수 API를 호출한다', async () => {
         const fetchMock = vi.fn().mockResolvedValue(successResponse({ count: 2 }))
         vi.stubGlobal('fetch', fetchMock)
 

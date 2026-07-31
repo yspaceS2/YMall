@@ -180,13 +180,19 @@ class SellerManagementApiIntegrationTest {
     }
 
     @Test
-    void sellerSearchesOrdersAndReadsPendingFulfillmentItemCount() throws Exception {
+    void sellerSearchesOrdersAndReadsPendingFulfillmentOrderCount() throws Exception {
         Product pendingProduct = saveProduct(firstProfile, "검색 대상 상품");
         Product preparingProduct = saveProduct(firstProfile, "이미 처리한 상품");
         Order pendingOrder = new Order(buyer, "pending-search-order");
         pendingOrder.addItem(new OrderItem(
             pendingProduct,
             pendingProduct.getName(),
+            pendingProduct.getPrice(),
+            1
+        ));
+        pendingOrder.addItem(new OrderItem(
+            pendingProduct,
+            "검색 대상 추가 상품",
             pendingProduct.getPrice(),
             1
         ));
