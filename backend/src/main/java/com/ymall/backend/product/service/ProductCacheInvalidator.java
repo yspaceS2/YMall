@@ -13,6 +13,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.ymall.backend.global.config.ProductCacheNames;
+import com.ymall.backend.home.config.HomeCacheNames;
 import com.ymall.backend.review.config.ReviewSummaryCacheNames;
 
 @Component
@@ -55,6 +56,7 @@ public class ProductCacheInvalidator {
     private void evict(Long productId) {
         evict(ProductCacheNames.DETAILS, productId);
         evict(ReviewSummaryCacheNames.BY_PRODUCT, productId);
+        clear(HomeCacheNames.MERCHANDISING);
     }
 
     private void evict(String cacheName, Long productId) {
@@ -67,6 +69,19 @@ public class ProductCacheInvalidator {
         } catch (RuntimeException exception) {
             log.warn("Product cache eviction failed. cache={}, productId={}, reason={}",
                 cacheName, productId, exception.getMessage());
+        }
+    }
+
+    private void clear(String cacheName) {
+        Cache cache = cacheManager.getCache(cacheName);
+        if (cache == null) {
+            return;
+        }
+        try {
+            cache.invalidate();
+        } catch (RuntimeException exception) {
+            log.warn("Cache clear failed. cache={}, reason={}",
+                cacheName, exception.getMessage());
         }
     }
 }

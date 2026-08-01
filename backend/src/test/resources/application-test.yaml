@@ -68,6 +68,7 @@ ymall:
   cache:
     product-detail-ttl: 10m
     review-summary-ttl: 30m
+    home-merchandising-ttl: 5m
   order:
     pending-expiration:
       enabled: false

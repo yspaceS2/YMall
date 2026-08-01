@@ -19,6 +19,7 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 
 import com.ymall.backend.review.config.ReviewSummaryCacheNames;
+import com.ymall.backend.home.config.HomeCacheNames;
 
 @Configuration
 @EnableCaching
@@ -30,17 +31,20 @@ public class CacheConfig implements CachingConfigurer {
     private final GenericJacksonJsonRedisSerializer valueSerializer;
     private final Duration productDetailTtl;
     private final Duration reviewSummaryTtl;
+    private final Duration homeMerchandisingTtl;
 
     public CacheConfig(
         RedisConnectionFactory connectionFactory,
         GenericJacksonJsonRedisSerializer valueSerializer,
         @Value("${ymall.cache.product-detail-ttl:10m}") Duration productDetailTtl,
-        @Value("${ymall.cache.review-summary-ttl:30m}") Duration reviewSummaryTtl
+        @Value("${ymall.cache.review-summary-ttl:30m}") Duration reviewSummaryTtl,
+        @Value("${ymall.cache.home-merchandising-ttl:5m}") Duration homeMerchandisingTtl
     ) {
         this.connectionFactory = connectionFactory;
         this.valueSerializer = valueSerializer;
         this.productDetailTtl = productDetailTtl;
         this.reviewSummaryTtl = reviewSummaryTtl;
+        this.homeMerchandisingTtl = homeMerchandisingTtl;
     }
 
     @Override
@@ -53,11 +57,13 @@ public class CacheConfig implements CachingConfigurer {
             );
         RedisCacheConfiguration productDetails = defaults.entryTtl(productDetailTtl);
         RedisCacheConfiguration reviewSummaries = defaults.entryTtl(reviewSummaryTtl);
+        RedisCacheConfiguration homeMerchandising = defaults.entryTtl(homeMerchandisingTtl);
 
         return RedisCacheManager.builder(connectionFactory)
             .cacheDefaults(defaults)
             .withCacheConfiguration(ProductCacheNames.DETAILS, productDetails)
             .withCacheConfiguration(ReviewSummaryCacheNames.BY_PRODUCT, reviewSummaries)
+            .withCacheConfiguration(HomeCacheNames.MERCHANDISING, homeMerchandising)
             .build();
     }
 

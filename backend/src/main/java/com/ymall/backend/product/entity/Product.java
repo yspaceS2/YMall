@@ -101,6 +101,8 @@ public class Product {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    private LocalDateTime approvedAt;
+
     public Product(
         Category category,
         String name,
@@ -133,6 +135,9 @@ public class Product {
         this.stock = stock;
         this.thumbnailUrl = thumbnailUrl;
         this.status = status;
+        if (status == ProductStatus.APPROVED) {
+            this.approvedAt = LocalDateTime.now();
+        }
     }
 
     public Product(
@@ -192,6 +197,7 @@ public class Product {
     public void approve() {
         this.status = ProductStatus.APPROVED;
         this.rejectionReason = null;
+        this.approvedAt = LocalDateTime.now();
     }
 
     public void reject(String rejectionReason) {

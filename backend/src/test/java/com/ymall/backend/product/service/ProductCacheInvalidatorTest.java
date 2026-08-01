@@ -19,6 +19,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.ymall.backend.global.config.ProductCacheNames;
+import com.ymall.backend.home.config.HomeCacheNames;
 import com.ymall.backend.review.config.ReviewSummaryCacheNames;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,6 +27,7 @@ class ProductCacheInvalidatorTest {
 
     @Mock private CacheManager cacheManager;
     @Mock private Cache cache;
+    @Mock private Cache homeCache;
 
     @AfterEach
     void tearDown() {
@@ -38,6 +40,8 @@ class ProductCacheInvalidatorTest {
     @Test
     void evictsProductDetailOnlyAfterTransactionCommit() {
         when(cacheManager.getCache(ProductCacheNames.DETAILS)).thenReturn(cache);
+        when(cacheManager.getCache(ReviewSummaryCacheNames.BY_PRODUCT)).thenReturn(null);
+        when(cacheManager.getCache(HomeCacheNames.MERCHANDISING)).thenReturn(homeCache);
         ProductCacheInvalidator invalidator = new ProductCacheInvalidator(cacheManager);
         TransactionSynchronizationManager.setActualTransactionActive(true);
         TransactionSynchronizationManager.initSynchronization();
@@ -49,6 +53,7 @@ class ProductCacheInvalidatorTest {
             TransactionSynchronizationManager.getSynchronizations();
         synchronizations.forEach(TransactionSynchronization::afterCommit);
         verify(cache).evictIfPresent(1L);
+        verify(homeCache).invalidate();
     }
 
     @Test
@@ -61,6 +66,7 @@ class ProductCacheInvalidatorTest {
         verify(cache).evictIfPresent(1L);
         verify(cache).evictIfPresent(2L);
         verify(cacheManager, never()).getCache(ReviewSummaryCacheNames.BY_PRODUCT);
+        verify(cacheManager, never()).getCache(HomeCacheNames.MERCHANDISING);
     }
 
     @Test
