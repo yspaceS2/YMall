@@ -50,13 +50,13 @@ describe('캐러셀 접근성', () => {
 
         act(() => vi.advanceTimersByTime(3_000))
         fireEvent.click(screen.getByRole('button', { name: '다음 이벤트' }))
-        expect(screen.getByRole('heading', { name: /나를 위한\s+매일의 루틴/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: /매일을 채우는\s+뷰티 루틴/ })).toBeInTheDocument()
 
         act(() => vi.advanceTimersByTime(3_000))
-        expect(screen.getByRole('heading', { name: /나를 위한\s+매일의 루틴/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: /매일을 채우는\s+뷰티 루틴/ })).toBeInTheDocument()
 
         act(() => vi.advanceTimersByTime(2_500))
-        expect(screen.getByRole('heading', { name: /집 안에 더하는\s+작은 변화/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: /신선함을 담은\s+오늘의 식탁/ })).toBeInTheDocument()
     })
 
     it('마지막에서 첫 슬라이드로 갈 때도 같은 진행 방향을 유지한다', () => {
@@ -67,11 +67,11 @@ describe('캐러셀 접근성', () => {
         )
 
         const nextButton = screen.getByRole('button', { name: '다음 이벤트' })
-        fireEvent.click(nextButton)
-        fireEvent.click(nextButton)
-        fireEvent.click(nextButton)
+        for (let index = 0; index < 8; index += 1) {
+            fireEvent.click(nextButton)
+        }
 
-        expect(screen.getByRole('heading', { name: /새로운 계절,\s+가벼운 옷차림/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: /새로운 계절의\s+패션 컬렉션/ })).toBeInTheDocument()
         expect(screen.getByRole('region', { name: '이벤트 프로모션' }).querySelector('[data-carousel-direction]')).toHaveAttribute('data-carousel-direction', 'forward')
     })
 
@@ -86,13 +86,13 @@ describe('캐러셀 접근성', () => {
         const carousel = screen.getByRole('region', { name: '이벤트 프로모션' })
         fireEvent.mouseEnter(carousel)
         act(() => vi.advanceTimersByTime(6_000))
-        expect(screen.getByRole('heading', { name: /새로운 계절,\s+가벼운 옷차림/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: /새로운 계절의\s+패션 컬렉션/ })).toBeInTheDocument()
 
         fireEvent.mouseLeave(carousel)
         const nextButton = screen.getByRole('button', { name: '다음 이벤트' })
         fireEvent.focus(nextButton)
         act(() => vi.advanceTimersByTime(6_000))
-        expect(screen.getByRole('heading', { name: /새로운 계절,\s+가벼운 옷차림/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: /새로운 계절의\s+패션 컬렉션/ })).toBeInTheDocument()
     })
 
     it('모바일에서 왼쪽으로 스와이프하면 다음 슬라이드로 이동한다', () => {
@@ -106,6 +106,6 @@ describe('캐러셀 접근성', () => {
         fireEvent.touchStart(carousel, { touches: [{ clientX: 180 }] })
         fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 80 }] })
 
-        expect(screen.getByRole('heading', { name: /나를 위한\s+매일의 루틴/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: /매일을 채우는\s+뷰티 루틴/ })).toBeInTheDocument()
     })
 })

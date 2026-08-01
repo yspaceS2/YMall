@@ -127,11 +127,12 @@ describe('메인 상품 큐레이션', () => {
             </MemoryRouter>,
         )
 
-        expect(screen.getByRole('heading', { name: /새로운 계절,\s+가벼운 옷차림/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: /새로운 계절의\s+패션 컬렉션/ })).toBeInTheDocument()
 
         await user.click(screen.getByRole('button', { name: '다음 이벤트' }))
 
-        expect(screen.getByRole('heading', { name: /나를 위한\s+매일의 루틴/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: /매일을 채우는\s+뷰티 루틴/ })).toBeInTheDocument()
+        expect(screen.getByRole('link', { name: '뷰티 컬렉션 보기' })).toHaveAttribute('href', '/?categoryId=3')
     })
 
     it('API 상품을 네 개 큐레이션 섹션에 표시하고 상세 페이지로 연결한다', async () => {
@@ -149,9 +150,7 @@ describe('메인 상품 큐레이션', () => {
         expect(screen.getByRole('link', { name: /신상품 무선 스피커/ })).toHaveAttribute('href', '/products/41')
     })
 
-    it('카테고리별 슬라이드를 공통 캐러셀 조작으로 전환한다', async () => {
-        const user = userEvent.setup()
-
+    it('카테고리 베스트 상품을 한 슬라이드에 두 개씩 표시한다', async () => {
         render(
             <MemoryRouter>
                 <HomeMerchandisingSections />
@@ -159,9 +158,8 @@ describe('메인 상품 큐레이션', () => {
         )
 
         expect(await screen.findByRole('heading', { name: '카테고리 베스트 재킷' })).toBeInTheDocument()
-        expect(document.querySelector('a[href="/products/12"]')).toHaveAttribute('tabindex', '-1')
-        await user.click(screen.getByRole('button', { name: '다음 카테고리 베스트' }))
         expect(screen.getByRole('heading', { name: '카테고리 베스트 세럼' })).toBeInTheDocument()
+        expect(document.querySelector('a[href="/products/11"]')).toHaveAttribute('tabindex', '0')
         expect(document.querySelector('a[href="/products/12"]')).toHaveAttribute('tabindex', '0')
     })
 

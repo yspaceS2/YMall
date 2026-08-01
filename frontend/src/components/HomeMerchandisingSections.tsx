@@ -138,6 +138,9 @@ function MerchandisingCarousel({
                         <p className="mt-3 max-w-150 text-sm text-muted">{description}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
+                        <span className="mr-2 text-[11px] font-extrabold tracking-[.12em] text-muted" aria-live="polite">
+                            {String(activeIndex + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}
+                        </span>
                         <button className="inline-grid size-10 place-items-center rounded-full border border-line disabled:opacity-35" type="button" aria-label={`이전 ${ariaLabel}`} disabled={!canNavigate} onClick={showPrevious}>
                             <ChevronLeft className="size-4" aria-hidden="true" />
                         </button>
@@ -168,12 +171,6 @@ function MerchandisingCarousel({
                                 key={slide.key}
                                 onAnimationEnd={index === activeIndex ? finishTransition : undefined}
                             >
-                                <div className="mb-4 flex items-center justify-between gap-4">
-                                    <b className="text-sm">{slide.label}</b>
-                                    <span className="text-[10px] font-bold tracking-[.12em] text-muted">
-                                        {String(index + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}
-                                    </span>
-                                </div>
                                 <div className={`grid gap-4 ${slide.products.length > 1 ? 'min-[1001px]:grid-cols-2' : ''}`}>
                                     {slide.products.map((product) => (
                                         <MerchandisingProductCard
@@ -188,19 +185,17 @@ function MerchandisingCarousel({
                     </div>
                 </div>
 
-                <div className="mt-6 flex gap-2 overflow-x-auto pb-1" aria-label={`${ariaLabel} 슬라이드 선택`}>
+                <div className="mt-6 flex items-center justify-center gap-2" aria-label={`${ariaLabel} 슬라이드 선택`}>
                     {slides.map((slide, index) => (
                         <button
-                            className={`shrink-0 border-b-2 px-1 pb-2 text-xs transition-colors ${activeIndex === index ? 'border-ink font-extrabold text-ink' : 'border-line text-muted'}`}
+                            className={`size-2.5 shrink-0 rounded-full border-0 p-0 transition-[background-color,transform] ${activeIndex === index ? 'scale-110 bg-ink' : 'bg-line hover:bg-muted'}`}
                             type="button"
                             aria-label={`${slide.label} 보기`}
                             aria-current={activeIndex === index ? 'true' : undefined}
                             key={slide.key}
                             disabled={!canNavigate}
                             onClick={() => showSlide(index)}
-                        >
-                            {slide.label}
-                        </button>
+                        />
                     ))}
                 </div>
             </div>
@@ -218,12 +213,30 @@ function groupSlides(groups: HomeMerchandisingGroup[]): MerchandisingSlide[] {
         }))
 }
 
-function productSlides(products: HomeMerchandisingProduct[], prefix: string): MerchandisingSlide[] {
-    return products.map((product) => ({
-        key: `${prefix}-${product.productId}`,
-        label: product.categoryName,
-        products: [product],
-    }))
+function pairedGroupSlides(groups: HomeMerchandisingGroup[]): MerchandisingSlide[] {
+    const populatedGroups = groups.filter((group) => group.products.length > 0)
+
+    return Array.from({ length: Math.ceil(populatedGroups.length / 2) }, (_, index) => {
+        const pairedGroups = populatedGroups.slice(index * 2, index * 2 + 2)
+
+        return {
+            key: `category-pair-${pairedGroups.map((group) => group.categoryId).join('-')}`,
+            label: pairedGroups.map((group) => group.categoryName).join(' · '),
+            products: pairedGroups.flatMap((group) => group.products),
+        }
+    })
+}
+
+function pairedProductSlides(products: HomeMerchandisingProduct[], prefix: string): MerchandisingSlide[] {
+    return Array.from({ length: Math.ceil(products.length / 2) }, (_, index) => {
+        const pairedProducts = products.slice(index * 2, index * 2 + 2)
+
+        return {
+            key: `${prefix}-${pairedProducts.map((product) => product.productId).join('-')}`,
+            label: pairedProducts.map((product) => product.categoryName).join(' · '),
+            products: pairedProducts,
+        }
+    })
 }
 
 function hasMerchandisingData(data: HomeMerchandising) {
@@ -261,10 +274,10 @@ export function HomeMerchandisingSections() {
             return null
         }
         return {
-            categoryBest: groupSlides(state.data.categoryBest),
-            grocery: groupSlides(state.data.grocery),
+            categoryBest: pairedGroupSlides(state.data.categoryBest),
+            grocery: pairedGroupSlides(state.data.grocery),
             fashion: groupSlides(state.data.fashion),
-            newArrivals: productSlides(state.data.newArrivals, 'new'),
+            newArrivals: pairedProductSlides(state.data.newArrivals, 'new'),
         }
     }, [state.data])
 

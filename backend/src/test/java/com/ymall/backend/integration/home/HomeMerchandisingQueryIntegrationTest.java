@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -94,6 +95,29 @@ class HomeMerchandisingQueryIntegrationTest {
             .doesNotContain(fullyRefunded.getId(), canceled.getId());
         assertThat(fashionRows).extracting(HomeMerchandisingRow::salesQuantity)
             .containsExactly(2L, 1L);
+    }
+
+    @Test
+    void limitsNewArrivalsToFourTwoProductSlides() {
+        Category category = categoryRepository.save(
+            new Category("신상품 조회", "home-new-arrivals", null, 1, 1, true)
+        );
+        List<Product> products = new ArrayList<>();
+        for (int index = 1; index <= 9; index += 1) {
+            products.add(productRepository.save(product(category, "신상품 " + index)));
+        }
+        productRepository.flush();
+
+        List<HomeMerchandisingRow> newArrivals = queryRepository.findMerchandising(
+                OffsetDateTime.now(ZoneOffset.UTC).minusDays(30)
+            ).stream()
+            .filter(row -> row.section() == HomeMerchandisingSection.NEW_ARRIVAL)
+            .toList();
+
+        assertThat(newArrivals).hasSize(8);
+        assertThat(newArrivals).extracting(HomeMerchandisingRow::productId)
+            .doesNotContain(products.get(0).getId())
+            .contains(products.subList(1, 9).stream().map(Product::getId).toArray(Long[]::new));
     }
 
     private Product product(Category category, String name) {
