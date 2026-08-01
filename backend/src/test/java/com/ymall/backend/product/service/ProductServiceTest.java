@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
@@ -213,6 +215,32 @@ class ProductServiceTest {
         assertThat(suggestions).hasSize(1);
         then(productSuggestionFinder).should()
             .findMatches("ㄴㅌㅂ", Set.of(2L), 8);
+    }
+
+    @Test
+    @DisplayName("퍼지 검색에서 매우 큰 페이지 번호를 안전하게 처리한다")
+    void fuzzySearchWithMaximumPageNumber() {
+        given(productRepository.searchPublicProducts(
+            eq("notebookx"),
+            eq(""),
+            eq(ProductStatus.APPROVED),
+            eq(false),
+            eq(Set.of(-1L)),
+            any(Pageable.class)
+        )).willReturn(Page.empty());
+        given(productSuggestionFinder.findMatches("notebookx", Set.of(), 100))
+            .willReturn(List.of());
+
+        var result = productService.searchProducts(
+            "notebookx",
+            null,
+            Integer.MAX_VALUE,
+            100
+        );
+
+        assertThat(result.content()).isEmpty();
+        assertThat(result.page()).isEqualTo(Integer.MAX_VALUE);
+        assertThat(result.totalElements()).isZero();
     }
 
     private ProductCreateRequest createRequest() {

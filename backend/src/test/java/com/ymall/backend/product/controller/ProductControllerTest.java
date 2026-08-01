@@ -110,6 +110,17 @@ class ProductControllerTest {
             .andExpect(jsonPath("$.data[0].matchType").value("CHOSEONG"));
     }
 
+    @Test
+    @DisplayName("상품 추천 검색어가 100자를 초과하면 400을 반환한다")
+    void rejectTooLongProductSuggestionKeyword() throws Exception {
+        mockMvc.perform(get("/api/products/suggestions")
+                .param("keyword", "가".repeat(101)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        then(productService).shouldHaveNoInteractions();
+    }
+
     /**
      * 상품 생성 API는 유효한 요청 본문을 받으면 201 Created를 반환한다.
      * 생성 응답 메시지는 프론트에서 사용자 피드백으로 사용할 수 있다.

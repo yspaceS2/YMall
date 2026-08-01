@@ -147,7 +147,10 @@ public class ProductService {
         );
         int pageNumber = Math.max(page, 1);
         int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        int fromIndex = Math.min((pageNumber - 1) * pageSize, matches.size());
+        long requestedOffset = (long) (pageNumber - 1) * pageSize;
+        int fromIndex = requestedOffset >= matches.size()
+            ? matches.size()
+            : (int) requestedOffset;
         int toIndex = Math.min(fromIndex + pageSize, matches.size());
         List<ProductSearchMatch> pageMatches = matches.subList(fromIndex, toIndex);
 
