@@ -18,3 +18,21 @@ test('모바일에서 이벤트 캐러셀을 스와이프해 다음 슬라이드
 
     await expect(carousel.getByRole('heading', { name: /나를 위한\s+매일의 루틴/ })).toBeVisible()
 })
+
+test('모바일 홈 큐레이션을 전환하고 다크 테마에서도 표시한다', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await installMockApi(page)
+    await page.goto('/')
+
+    const categoryBest = page.getByRole('region', { name: '카테고리 베스트' })
+    await expect(categoryBest.getByRole('heading', { name: '테스트 무선 키보드' })).toBeVisible()
+
+    await categoryBest.getByRole('button', { name: '다음 카테고리 베스트' }).click()
+    await expect(categoryBest.getByRole('heading', { name: '테스트 무선 스피커' })).toBeVisible()
+
+    await page.getByRole('button', { name: /테마 선택:/ }).click()
+    await page.getByRole('menuitemradio', { name: '다크 모드' }).click()
+
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    await expect(page.getByRole('region', { name: '새로 들어온 상품' })).toBeVisible()
+})

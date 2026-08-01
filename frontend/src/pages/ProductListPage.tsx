@@ -3,9 +3,8 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getCategories, getProducts } from '../api/products'
 import { HomeEventCarousel } from '../components/HomeEventCarousel'
-import { FashionEditorialCarousel, GroceryEditorialCarousel } from '../components/HomeEditorialCarousels'
+import { HomeMerchandisingSections } from '../components/HomeMerchandisingSections'
 import { ProductCard } from '../components/ProductCard'
-import { TodayRecommendationCarousel } from '../components/TodayRecommendationCarousel'
 import { PageState } from '../components/ui/PageState'
 import type { Category, PageResponse, ProductSummary } from '../types/product'
 import { findCategoryPath, getCategoryChildren } from '../utils/productCategory'
@@ -63,12 +62,20 @@ export function ProductListPage() {
     const { products, error } = result
 
     useEffect(() => {
+        if (!showCatalog) {
+            return
+        }
+
         const controller = new AbortController()
         getCategories(controller.signal).then(setCategories).catch(() => setCategories([]))
         return () => controller.abort()
-    }, [])
+    }, [showCatalog])
 
     useEffect(() => {
+        if (!showCatalog) {
+            return
+        }
+
         const controller = new AbortController()
 
         getProducts({ page, size: PAGE_SIZE, keyword: query || undefined, categoryId, signal: controller.signal })
@@ -80,7 +87,7 @@ export function ProductListPage() {
             })
 
         return () => controller.abort()
-    }, [categoryId, page, query, requestKey])
+    }, [categoryId, page, query, requestKey, showCatalog])
 
     function selectCategory(nextCategoryId?: number) {
         const nextSearchParams = new URLSearchParams(searchParams)
@@ -124,9 +131,7 @@ export function ProductListPage() {
     return (
         <>
             {showHomeMerchandising && <HomeEventCarousel />}
-            {showHomeMerchandising && products && <TodayRecommendationCarousel products={products.content} />}
-            {showHomeMerchandising && <GroceryEditorialCarousel />}
-            {showHomeMerchandising && <FashionEditorialCarousel />}
+            {showHomeMerchandising && <HomeMerchandisingSections />}
 
             {showCatalog && <section className="mx-auto max-w-360 border-t border-line px-4 pt-12 pb-20 min-[601px]:px-[clamp(20px,5vw,72px)] min-[601px]:pt-18 min-[601px]:pb-27.5">
                 <div className="flex flex-col items-start justify-between gap-6 min-[601px]:flex-row min-[601px]:items-end">
