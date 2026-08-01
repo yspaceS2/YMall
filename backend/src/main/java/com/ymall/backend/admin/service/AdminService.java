@@ -29,6 +29,7 @@ import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.search.KoreanSearchNormalizer;
 import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.seller.repository.SellerProfileRepository;
 
@@ -58,9 +59,20 @@ public class AdminService {
         return PageResponse.from(
             (normalizedKeyword.isEmpty()
                 ? productRepository.findByStatus(status, pageable)
-                : productRepository.searchAdminProducts(status, normalizedKeyword, pageable))
+                : productRepository.searchAdminProducts(
+                    status,
+                    normalizedKeyword,
+                    choseongKeyword(normalizedKeyword),
+                    pageable
+                ))
                 .map(adminMapper::toProductListResponse)
         );
+    }
+
+    private String choseongKeyword(String normalizedKeyword) {
+        return KoreanSearchNormalizer.isChoseongQuery(normalizedKeyword)
+            ? normalizedKeyword
+            : "";
     }
 
     public AdminProductResponse getProduct(Long productId) {
@@ -168,7 +180,7 @@ public class AdminService {
     }
 
     private String normalizeProductSearchKeyword(String keyword) {
-        return keyword == null ? "" : keyword.replaceAll("\\s+", "");
+        return KoreanSearchNormalizer.normalize(keyword);
     }
 
     private Long parseOrderId(String keyword) {

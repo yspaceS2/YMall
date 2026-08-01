@@ -27,7 +27,9 @@ import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.product.dto.CategoryResponse;
 import com.ymall.backend.product.dto.ProductDetailResponse;
 import com.ymall.backend.product.dto.ProductListResponse;
+import com.ymall.backend.product.dto.ProductSuggestionResponse;
 import com.ymall.backend.product.entity.ProductStatus;
+import com.ymall.backend.product.search.ProductSearchMatchType;
 import com.ymall.backend.product.service.ProductService;
 
 @WebMvcTest(ProductController.class)
@@ -85,6 +87,27 @@ class ProductControllerTest {
             .andExpect(jsonPath("$.data.category.categoryId").value(1))
             .andExpect(jsonPath("$.data.name").value("iPhone 15"))
             .andExpect(jsonPath("$.data.status").value("APPROVED"));
+    }
+
+    @Test
+    @DisplayName("상품 추천 검색어를 조회한다")
+    void getProductSuggestions() throws Exception {
+        given(productService.getProductSuggestions("ㄴㅌㅂ", null, 8)).willReturn(List.of(
+            new ProductSuggestionResponse(
+                1L,
+                "노트북 파우치",
+                "thumbnail",
+                ProductSearchMatchType.CHOSEONG
+            )
+        ));
+
+        mockMvc.perform(get("/api/products/suggestions")
+                .param("keyword", "ㄴㅌㅂ")
+                .param("size", "8"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data[0].productId").value(1))
+            .andExpect(jsonPath("$.data[0].name").value("노트북 파우치"))
+            .andExpect(jsonPath("$.data[0].matchType").value("CHOSEONG"));
     }
 
     /**

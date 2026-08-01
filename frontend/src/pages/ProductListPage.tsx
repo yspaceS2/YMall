@@ -1,11 +1,12 @@
 import { Search, SlidersHorizontal } from 'lucide-react'
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getCategories, getProducts } from '../api/products'
 import { HomeEventCarousel } from '../components/HomeEventCarousel'
 import { HomeMerchandisingSections } from '../components/HomeMerchandisingSections'
 import { ProductCard } from '../components/ProductCard'
 import { PageState } from '../components/ui/PageState'
+import { useProductSearchSuggestions } from '../hooks/useProductSearchSuggestions'
 import type { Category, PageResponse, ProductSummary } from '../types/product'
 import { findCategoryPath, getCategoryChildren } from '../utils/productCategory'
 
@@ -49,8 +50,9 @@ export function ProductListPage() {
             : rootCategories,
         [categories, rootCategories, tabContextCategory],
     )
-    const catalogTitle = selectedCategory?.name
-        ?? (query ? `'${query}' 검색 결과` : '전체 상품')
+    const catalogTitle = selectedCategory && query
+        ? `${selectedCategory.name} 내 '${query}' 검색 결과`
+        : selectedCategory?.name ?? (query ? `'${query}' 검색 결과` : '전체 상품')
     const [retryKey, setRetryKey] = useState(0)
     const requestKey = `${page}:${categoryId ?? 'all'}:${query}:${retryKey}`
     const [result, setResult] = useState<{
@@ -103,11 +105,9 @@ export function ProductListPage() {
         setSearchParams(nextSearchParams)
     }
 
-    function submitSearch(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault()
+    function submitSearch(nextKeywordValue: string) {
         const nextSearchParams = new URLSearchParams(searchParams)
-        const nextKeyword = String(new FormData(event.currentTarget).get('keyword') ?? '').trim()
-        nextSearchParams.delete('categoryId')
+        const nextKeyword = nextKeywordValue.trim()
         nextSearchParams.delete('page')
         nextSearchParams.delete('view')
         if (nextKeyword) {
@@ -172,10 +172,13 @@ export function ProductListPage() {
                             {products?.totalElements ?? 0}개의 상품
                         </p>
                     </div>
-                    <form className="flex w-full border-b border-ink min-[601px]:max-w-97.5" onSubmit={submitSearch}>
-                        <input className="w-full border-0 bg-transparent px-1 py-3 text-[13px] outline-0" defaultValue={query} key={query} name="keyword" placeholder="찾고 있는 상품을 검색해보세요" aria-label="상품 검색" />
-                        <button className="border-0 bg-transparent" type="submit" aria-label="검색"><Search className="size-5" /></button>
-                    </form>
+                    <CatalogProductSearch
+                        categoryId={categoryId}
+                        categoryName={selectedCategory?.name}
+                        initialKeyword={query}
+                        key={query}
+                        onSearch={submitSearch}
+                    />
                 </div>
 
                 <div className="mt-9.5 mb-8 flex items-center justify-between border-b border-line">
@@ -227,5 +230,136 @@ export function ProductListPage() {
                 )}
             </section>}
         </>
+    )
+}
+
+function CatalogProductSearch({
+    categoryId,
+    categoryName,
+    initialKeyword,
+    onSearch,
+}: {
+    categoryId?: number
+    categoryName?: string
+    initialKeyword: string
+    onSearch: (keyword: string) => void
+}) {
+    const containerRef = useRef<HTMLFormElement>(null)
+    const [keyword, setKeyword] = useState(initialKeyword)
+    const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(true)
+    const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
+    const {
+        suggestions,
+        isLoading,
+        hasError,
+        shouldShowSuggestions,
+    } = useProductSearchSuggestions(keyword, isSuggestionsOpen, categoryId)
+
+    useEffect(() => {
+        const closeOnOutsidePointer = (event: PointerEvent) => {
+            const target = event.target
+            if (!(target instanceof Node)) return
+            if (!containerRef.current?.contains(target)) setIsSuggestionsOpen(false)
+        }
+        document.addEventListener('pointerdown', closeOnOutsidePointer)
+        return () => document.removeEventListener('pointerdown', closeOnOutsidePointer)
+    }, [])
+
+    const search = (nextKeyword: string) => {
+        setKeyword(nextKeyword)
+        setIsSuggestionsOpen(false)
+        setActiveSuggestionIndex(-1)
+        onSearch(nextKeyword)
+    }
+
+    const submit = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+        search(keyword)
+    }
+
+    return (
+        <form
+            ref={containerRef}
+            className="relative flex w-full border-b border-ink min-[601px]:max-w-97.5"
+            role="search"
+            aria-label="상품 목록 검색"
+            onSubmit={submit}
+        >
+            <input
+                className="w-full border-0 bg-transparent px-1 py-3 text-[13px] outline-0"
+                value={keyword}
+                onChange={(event) => {
+                    setKeyword(event.target.value)
+                    setIsSuggestionsOpen(true)
+                    setActiveSuggestionIndex(-1)
+                }}
+                onFocus={() => setIsSuggestionsOpen(true)}
+                onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                        setIsSuggestionsOpen(false)
+                        return
+                    }
+                    if (suggestions.length === 0) return
+                    if (event.key === 'ArrowDown') {
+                        event.preventDefault()
+                        setActiveSuggestionIndex((index) => (index + 1) % suggestions.length)
+                    } else if (event.key === 'ArrowUp') {
+                        event.preventDefault()
+                        setActiveSuggestionIndex((index) => index <= 0 ? suggestions.length - 1 : index - 1)
+                    } else if (event.key === 'Enter' && activeSuggestionIndex >= 0) {
+                        event.preventDefault()
+                        search(suggestions[activeSuggestionIndex].name)
+                    }
+                }}
+                placeholder={categoryName
+                    ? `${categoryName} 카테고리에서 검색해보세요`
+                    : '찾고 있는 상품을 검색해보세요'}
+                aria-label="상품 검색"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="catalog-product-search-suggestions"
+                aria-expanded={shouldShowSuggestions}
+                aria-activedescendant={activeSuggestionIndex >= 0
+                    ? `catalog-product-search-suggestion-${suggestions[activeSuggestionIndex].productId}`
+                    : undefined}
+            />
+            <button className="border-0 bg-transparent" type="submit" aria-label="검색">
+                <Search className="size-5" />
+            </button>
+
+            {shouldShowSuggestions && (
+                <div
+                    className="absolute top-full right-0 left-0 z-20 mt-2 overflow-hidden rounded-xl border border-line bg-paper shadow-[0_16px_40px_rgba(20,20,16,.16)]"
+                    id="catalog-product-search-suggestions"
+                    role="listbox"
+                    aria-label="상품 목록 추천 검색어"
+                >
+                    {isLoading && <p className="px-4 py-3 text-sm text-muted" role="status">추천 검색어를 찾는 중입니다.</p>}
+                    {!isLoading && hasError && <p className="px-4 py-3 text-sm text-muted" role="status">추천 검색어를 불러오지 못했습니다.</p>}
+                    {!isLoading && !hasError && suggestions.length === 0 && (
+                        <p className="px-4 py-3 text-sm text-muted" role="status">일치하는 추천 검색어가 없습니다.</p>
+                    )}
+                    {!isLoading && suggestions.map((suggestion, index) => (
+                        <button
+                            key={suggestion.productId}
+                            id={`catalog-product-search-suggestion-${suggestion.productId}`}
+                            className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors ${
+                                index === activeSuggestionIndex ? 'bg-surface' : 'hover:bg-surface'
+                            }`}
+                            type="button"
+                            role="option"
+                            aria-selected={index === activeSuggestionIndex}
+                            onMouseEnter={() => setActiveSuggestionIndex(index)}
+                            onClick={() => search(suggestion.name)}
+                        >
+                            <span className="min-w-0 flex-1 truncate font-semibold">{suggestion.name}</span>
+                            {suggestion.matchType === 'FUZZY' && (
+                                <span className="shrink-0 text-[10px] font-bold text-muted">유사 검색</span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </form>
     )
 }

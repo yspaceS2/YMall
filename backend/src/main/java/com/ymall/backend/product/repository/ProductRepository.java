@@ -2,6 +2,7 @@ package com.ymall.backend.product.repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -39,7 +40,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         select product from Product product
         where product.status = :status
           and (
-              lower(replace(product.name, ' ', '')) like lower(concat('%', :keyword, '%'))
+              product.searchNormalizedName like concat('%', :keyword, '%')
+              or (:choseongKeyword <> '' and product.searchChosung like concat('%', :choseongKeyword, '%'))
               or lower(replace(coalesce(product.brand, ''), ' ', ''))
                   like lower(concat('%', :keyword, '%'))
               or lower(replace(coalesce(product.sellerProfile.storeName, ''), ' ', ''))
@@ -49,6 +51,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> searchAdminProducts(
         @Param("status") ProductStatus status,
         @Param("keyword") String keyword,
+        @Param("choseongKeyword") String choseongKeyword,
         Pageable pageable
     );
 
@@ -66,11 +69,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("""
         select product from Product product
         where product.status = :status
-          and lower(replace(product.name, ' ', '')) like lower(concat('%', :keyword, '%'))
+          and (:filterCategory = false or product.category.id in :categoryIds)
+          and (
+              product.searchNormalizedName like concat('%', :keyword, '%')
+              or (:choseongKeyword <> '' and product.searchChosung like concat('%', :choseongKeyword, '%'))
+          )
         """)
     Page<Product> searchPublicProducts(
         @Param("keyword") String keyword,
+        @Param("choseongKeyword") String choseongKeyword,
         @Param("status") ProductStatus status,
+        @Param("filterCategory") boolean filterCategory,
+        @Param("categoryIds") Set<Long> categoryIds,
         Pageable pageable
     );
 
@@ -94,7 +104,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
           and (:maximumStock is null or product.stock <= :maximumStock)
           and (
               :keyword = ''
-              or lower(replace(product.name, ' ', '')) like lower(concat('%', :keyword, '%'))
+              or product.searchNormalizedName like concat('%', :keyword, '%')
+              or (:choseongKeyword <> '' and product.searchChosung like concat('%', :choseongKeyword, '%'))
               or lower(replace(coalesce(product.brand, ''), ' ', ''))
                   like lower(concat('%', :keyword, '%'))
           )
@@ -103,12 +114,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         @Param("sellerProfileId") Long sellerProfileId,
         @Param("excludedStatus") ProductStatus excludedStatus,
         @Param("keyword") String keyword,
+        @Param("choseongKeyword") String choseongKeyword,
         @Param("filterCategory") boolean filterCategory,
         @Param("categoryIds") Set<Long> categoryIds,
         @Param("minimumStock") Integer minimumStock,
         @Param("maximumStock") Integer maximumStock,
         Pageable pageable
     );
+
+    @EntityGraph(attributePaths = "category")
+    List<Product> findTop500ByStatusOrderByUpdatedAtDesc(ProductStatus status);
+
+    @EntityGraph(attributePaths = "category")
+    List<Product> findByIdIn(Collection<Long> productIds);
 
     @EntityGraph(attributePaths = {"category", "images", "sellerProfile"})
     Optional<Product> findByIdAndSellerProfileIdAndStatusNot(

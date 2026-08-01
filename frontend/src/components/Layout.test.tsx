@@ -9,6 +9,7 @@ import { Layout } from './Layout'
 
 const getUnreadNotificationCount = vi.fn()
 const getCategories = vi.fn()
+const getProductSuggestions = vi.fn()
 const getCart = vi.fn()
 
 vi.mock('../api/cart', () => ({
@@ -23,6 +24,7 @@ vi.mock('../api/notifications', () => ({
 
 vi.mock('../api/products', () => ({
     getCategories: (...args: unknown[]) => getCategories(...args),
+    getProductSuggestions: (...args: unknown[]) => getProductSuggestions(...args),
 }))
 
 function renderLayout(role: MemberRole | null) {
@@ -52,6 +54,7 @@ describe('Layout 역할별 메뉴', () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 3 })
         getCart.mockResolvedValue({ items: [] })
         getCategories.mockResolvedValue([])
+        getProductSuggestions.mockResolvedValue([])
 
         renderLayout('ROLE_USER')
 
@@ -66,6 +69,7 @@ describe('Layout 역할별 메뉴', () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
         getCart.mockResolvedValue({ items: [] })
         getCategories.mockResolvedValue([])
+        getProductSuggestions.mockResolvedValue([])
 
         renderLayout('ROLE_SELLER')
 
@@ -77,6 +81,7 @@ describe('Layout 역할별 메뉴', () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
         getCart.mockResolvedValue({ items: [] })
         getCategories.mockResolvedValue([])
+        getProductSuggestions.mockResolvedValue([])
 
         renderLayout('ROLE_ADMIN')
 
@@ -88,6 +93,7 @@ describe('Layout 역할별 메뉴', () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
         getCart.mockResolvedValue({ items: [] })
         getCategories.mockResolvedValue([])
+        getProductSuggestions.mockResolvedValue([])
         const user = userEvent.setup()
         const { logout } = renderLayout('ROLE_USER')
 
@@ -130,6 +136,7 @@ describe('Layout 역할별 메뉴', () => {
                 displayOrder: 1,
             },
         ])
+        getProductSuggestions.mockResolvedValue([])
         const user = userEvent.setup()
 
         renderLayout('ROLE_USER')
@@ -138,7 +145,7 @@ describe('Layout 역할별 메뉴', () => {
         expect(screen.queryByRole('search', { name: '통합 상품 검색' })).not.toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: '검색 열기' }))
         expect(screen.getByRole('search', { name: '통합 상품 검색' })).toBeInTheDocument()
-        expect(screen.getByRole('textbox', { name: '상품 검색' })).toHaveFocus()
+        expect(screen.getByRole('combobox', { name: '상품 검색' })).toHaveFocus()
         await user.click(document.body)
         expect(screen.queryByRole('search', { name: '통합 상품 검색' })).not.toBeInTheDocument()
         expect(screen.getByRole('link', { name: '찜한 상품' })).toHaveAttribute('href', '/mypage/wishlist')
@@ -163,5 +170,30 @@ describe('Layout 역할별 메뉴', () => {
         expect(screen.getByRole('link', { name: '아우터' })).toBeInTheDocument()
         expect(screen.getAllByRole('link', { name: '내 정보' })).not.toHaveLength(0)
         expect(screen.getByRole('button', { name: '전체 카테고리 닫기' })).toBeInTheDocument()
+    })
+
+    it('추천 검색어를 표시하고 키보드로 선택한다', async () => {
+        getUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
+        getCart.mockResolvedValue({ items: [] })
+        getCategories.mockResolvedValue([])
+        getProductSuggestions.mockResolvedValue([
+            {
+                productId: 11,
+                name: '노트북 파우치',
+                thumbnailUrl: null,
+                matchType: 'CHOSEONG',
+            },
+        ])
+        const user = userEvent.setup()
+
+        renderLayout('ROLE_USER')
+        await user.click(screen.getByRole('button', { name: '검색 열기' }))
+        const searchInput = screen.getByRole('combobox', { name: '상품 검색' })
+        await user.type(searchInput, 'ㄴㅌㅂ')
+
+        expect(await screen.findByRole('option', { name: '노트북 파우치' })).toBeInTheDocument()
+        await user.keyboard('{ArrowDown}{Enter}')
+
+        expect(screen.queryByRole('listbox', { name: '추천 검색어' })).not.toBeInTheDocument()
     })
 })

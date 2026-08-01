@@ -1,5 +1,7 @@
 package com.ymall.backend.product.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,6 +22,7 @@ import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.product.dto.ProductCreateRequest;
 import com.ymall.backend.product.dto.ProductDetailResponse;
 import com.ymall.backend.product.dto.ProductListResponse;
+import com.ymall.backend.product.dto.ProductSuggestionResponse;
 import com.ymall.backend.product.dto.ProductUpdateRequest;
 import com.ymall.backend.product.service.ProductService;
 
@@ -46,10 +49,20 @@ public class ProductController {
     @GetMapping("/search")
     public ApiResponse<PageResponse<ProductListResponse>> searchProducts(
         @RequestParam String keyword,
+        @RequestParam(required = false) Long categoryId,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size
     ) {
-        return ApiResponse.success(productService.searchProducts(keyword, page, size));
+        return ApiResponse.success(productService.searchProducts(keyword, categoryId, page, size));
+    }
+
+    @GetMapping("/suggestions")
+    public ApiResponse<List<ProductSuggestionResponse>> getProductSuggestions(
+        @RequestParam String keyword,
+        @RequestParam(required = false) Long categoryId,
+        @RequestParam(defaultValue = "8") int size
+    ) {
+        return ApiResponse.success(productService.getProductSuggestions(keyword, categoryId, size));
     }
 
     @PostMapping
