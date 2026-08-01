@@ -53,7 +53,7 @@ public class AdminService {
         int size,
         String keyword
     ) {
-        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        String normalizedKeyword = normalizeProductSearchKeyword(keyword);
         Pageable pageable = createPageable(page, size);
         return PageResponse.from(
             (normalizedKeyword.isEmpty()
@@ -165,6 +165,10 @@ public class AdminService {
 
     private String normalizeKeyword(String keyword) {
         return keyword == null ? "" : keyword.trim();
+    }
+
+    private String normalizeProductSearchKeyword(String keyword) {
+        return keyword == null ? "" : keyword.replaceAll("\\s+", "");
     }
 
     private Long parseOrderId(String keyword) {

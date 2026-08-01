@@ -39,9 +39,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         select product from Product product
         where product.status = :status
           and (
-              lower(product.name) like lower(concat('%', :keyword, '%'))
-              or lower(coalesce(product.brand, '')) like lower(concat('%', :keyword, '%'))
-              or lower(coalesce(product.sellerProfile.storeName, ''))
+              lower(replace(product.name, ' ', '')) like lower(concat('%', :keyword, '%'))
+              or lower(replace(coalesce(product.brand, ''), ' ', ''))
+                  like lower(concat('%', :keyword, '%'))
+              or lower(replace(coalesce(product.sellerProfile.storeName, ''), ' ', ''))
                   like lower(concat('%', :keyword, '%'))
           )
         """)
@@ -62,9 +63,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     );
 
     @EntityGraph(attributePaths = "category")
-    Page<Product> findByNameContainingIgnoreCaseAndStatus(
-        String keyword,
-        ProductStatus status,
+    @Query("""
+        select product from Product product
+        where product.status = :status
+          and lower(replace(product.name, ' ', '')) like lower(concat('%', :keyword, '%'))
+        """)
+    Page<Product> searchPublicProducts(
+        @Param("keyword") String keyword,
+        @Param("status") ProductStatus status,
         Pageable pageable
     );
 
@@ -88,8 +94,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
           and (:maximumStock is null or product.stock <= :maximumStock)
           and (
               :keyword = ''
-              or lower(product.name) like lower(concat('%', :keyword, '%'))
-              or lower(coalesce(product.brand, '')) like lower(concat('%', :keyword, '%'))
+              or lower(replace(product.name, ' ', '')) like lower(concat('%', :keyword, '%'))
+              or lower(replace(coalesce(product.brand, ''), ' ', ''))
+                  like lower(concat('%', :keyword, '%'))
           )
         """)
     Page<Product> searchSellerProducts(

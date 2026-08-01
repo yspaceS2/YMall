@@ -68,15 +68,20 @@ public class ProductService {
 
     public PageResponse<ProductListResponse> searchProducts(String keyword, int page, int size) {
         Pageable pageable = createPageable(page, size);
+        String normalizedKeyword = normalizeSearchKeyword(keyword);
 
         return PageResponse.from(
-            productRepository.findByNameContainingIgnoreCaseAndStatus(
-                    keyword,
+            productRepository.searchPublicProducts(
+                    normalizedKeyword,
                     ProductStatus.APPROVED,
                     pageable
                 )
                 .map(productMapper::toProductListResponse)
         );
+    }
+
+    private String normalizeSearchKeyword(String keyword) {
+        return keyword == null ? "" : keyword.replaceAll("\\s+", "");
     }
 
     public List<CategoryResponse> getCategories() {

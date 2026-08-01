@@ -88,6 +88,21 @@ class ProductApiIntegrationTest {
     }
 
     @Test
+    @DisplayName("상품 검색은 상품명과 검색어의 공백을 무시한다")
+    void searchProductsIgnoringWhitespace() throws Exception {
+        Category category = categoryRepository.save(new Category("audio", "audio"));
+        productRepository.save(createProduct(category, "무선 블루투스 스피커", ProductStatus.APPROVED));
+
+        mockMvc.perform(get("/api/products/search")
+                .param("keyword", "무선블루투스스피커")
+                .param("page", "1")
+                .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].name").value("무선 블루투스 스피커"));
+    }
+
+    @Test
     @DisplayName("상위 카테고리 조회는 활성 하위 카테고리의 승인 상품을 포함한다")
     void getProductsByParentCategory() throws Exception {
         Category fashion = categoryRepository.save(

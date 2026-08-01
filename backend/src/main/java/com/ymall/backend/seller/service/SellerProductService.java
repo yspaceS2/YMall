@@ -63,7 +63,7 @@ public class SellerProductService {
             Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
             Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        String normalizedKeyword = keyword == null ? "" : keyword.replaceAll("\\s+", "");
         boolean filterCategory = categoryId != null;
         Set<Long> categoryIds = filterCategory
             ? getActiveCategoryTreeIds(categoryId)

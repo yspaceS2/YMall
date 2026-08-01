@@ -168,7 +168,7 @@ class SellerManagementApiIntegrationTest {
         saveProduct(secondProfile, childCategory, "다른 판매자 카메라 노트북", "YTech", 2);
 
         mockMvc.perform(get("/api/seller/products")
-                .param("keyword", "카메라")
+                .param("keyword", "카메라노트북")
                 .param("categoryId", category.getId().toString())
                 .param("stockCondition", "LTE")
                 .param("stockQuantity", "5")
