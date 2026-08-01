@@ -1,39 +1,33 @@
 import { ArrowUpRight, ChevronLeft, ChevronRight, Gift, Pause, Play } from 'lucide-react'
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useCarouselPause } from '../hooks/useCarouselPause'
+import { getCarouselSlideMotionClass, useCarousel } from '../hooks/useCarousel'
 import type { ProductSummary } from '../types/product'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
 
 export function TodayRecommendationCarousel({ products }: { products: ProductSummary[] }) {
     const recommendedProducts = products.slice(0, 3)
-    const [activeIndex, setActiveIndex] = useState(0)
-    const { isPaused, isUserPaused, toggleUserPaused, interactionProps } = useCarouselPause()
-
-    useEffect(() => {
-        if (isPaused || recommendedProducts.length < 2) {
-            return
-        }
-        const intervalId = window.setInterval(() => {
-            setActiveIndex((index) => (index + 1) % recommendedProducts.length)
-        }, 6_500)
-        return () => window.clearInterval(intervalId)
-    }, [isPaused, recommendedProducts.length])
+    const {
+        activeIndex,
+        previousIndex,
+        direction,
+        canNavigate,
+        isReducedMotion,
+        isUserPaused,
+        showPrevious,
+        showNext,
+        showSlide,
+        toggleUserPaused,
+        finishTransition,
+        interactionProps,
+    } = useCarousel({ slideCount: recommendedProducts.length, intervalMs: 6_500 })
 
     if (recommendedProducts.length === 0) {
         return null
     }
 
-    const showPrevious = () => {
-        setActiveIndex((index) => (index - 1 + recommendedProducts.length) % recommendedProducts.length)
-    }
-    const showNext = () => {
-        setActiveIndex((index) => (index + 1) % recommendedProducts.length)
-    }
-
     return (
         <section
-            className="overflow-hidden bg-[#f0f1eb] py-16 text-[#171717] min-[601px]:py-24"
+            className="touch-pan-y overflow-hidden bg-[#f0f1eb] py-16 text-[#171717] min-[601px]:py-24"
             aria-roledescription="carousel"
             aria-label="오늘의 추천 아이템"
             {...interactionProps}
@@ -46,17 +40,18 @@ export function TodayRecommendationCarousel({ products }: { products: ProductSum
                         <p className="mt-3 text-sm text-[#686962]">오늘 눈여겨볼 YMall의 추천 상품</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button className="inline-grid size-11 place-items-center rounded-full border border-[#171717]/20 disabled:opacity-35" type="button" aria-label="이전 추천 상품" disabled={recommendedProducts.length < 2} onClick={showPrevious}>
+                        <button className="inline-grid size-11 place-items-center rounded-full border border-[#171717]/20 disabled:opacity-35" type="button" aria-label="이전 추천 상품" disabled={!canNavigate} onClick={showPrevious}>
                             <ChevronLeft className="size-4" aria-hidden="true" />
                         </button>
-                        <button className="inline-grid size-11 place-items-center rounded-full border border-[#171717]/20 disabled:opacity-35" type="button" aria-label="다음 추천 상품" disabled={recommendedProducts.length < 2} onClick={showNext}>
+                        <button className="inline-grid size-11 place-items-center rounded-full border border-[#171717]/20 disabled:opacity-35" type="button" aria-label="다음 추천 상품" disabled={!canNavigate} onClick={showNext}>
                             <ChevronRight className="size-4" aria-hidden="true" />
                         </button>
                         <button
-                            className="inline-grid size-11 place-items-center rounded-full border border-[#171717]/20"
+                            className="inline-grid size-11 place-items-center rounded-full border border-[#171717]/20 disabled:opacity-35"
                             type="button"
                             aria-label={isUserPaused ? '추천 상품 자동 재생' : '추천 상품 자동 재생 일시 정지'}
                             aria-pressed={isUserPaused}
+                            disabled={!canNavigate}
                             onClick={toggleUserPaused}
                         >
                             {isUserPaused ? <Play className="size-4" aria-hidden="true" /> : <Pause className="size-4" aria-hidden="true" />}
@@ -65,18 +60,22 @@ export function TodayRecommendationCarousel({ products }: { products: ProductSum
                 </div>
 
                 <div className="overflow-hidden">
-                    <div
-                        className="flex transition-transform duration-600 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none"
-                        style={{ transform: `translateX(-${(activeIndex % recommendedProducts.length) * 100}%)` }}
-                    >
+                    <div className="relative min-h-112" data-carousel-direction={direction}>
                         {recommendedProducts.map((product, index) => {
                             const productPrice = getDiscountedPrice(product.price, product.discountPercentage)
                             return (
-                                <article className="min-w-full" aria-hidden={activeIndex % recommendedProducts.length !== index} key={product.productId}>
+                                <article
+                                    className={`${getCarouselSlideMotionClass({ index, activeIndex, previousIndex, direction, isReducedMotion })} min-h-112 w-full`}
+                                    aria-hidden={activeIndex !== index}
+                                    aria-label={`${index + 1} / ${recommendedProducts.length}`}
+                                    aria-roledescription="slide"
+                                    key={product.productId}
+                                    onAnimationEnd={index === activeIndex ? finishTransition : undefined}
+                                >
                                     <Link
                                         className="group grid min-h-112 overflow-hidden rounded-[26px] bg-[#171717] text-white shadow-[0_24px_60px_rgba(25,25,20,.16)] min-[801px]:grid-cols-[1.2fr_.8fr]"
                                         to={`/products/${product.productId}`}
-                                        tabIndex={activeIndex % recommendedProducts.length === index ? 0 : -1}
+                                        tabIndex={activeIndex === index ? 0 : -1}
                                     >
                                         <div className="relative min-h-80 overflow-hidden bg-[#ddd]">
                                             {product.thumbnailUrl ? (
@@ -118,12 +117,13 @@ export function TodayRecommendationCarousel({ products }: { products: ProductSum
                 <div className="mt-6 grid grid-cols-3 gap-2 min-[601px]:gap-4" aria-label="추천 상품 슬라이드">
                     {recommendedProducts.map((product, index) => (
                         <button
-                            className={`min-w-0 border-t-2 px-1 pt-3 text-left transition-colors ${activeIndex % recommendedProducts.length === index ? 'border-[#171717]' : 'border-[#c9cac2] text-[#777870]'}`}
+                            className={`min-w-0 border-t-2 px-1 pt-3 text-left transition-colors ${activeIndex === index ? 'border-[#171717]' : 'border-[#c9cac2] text-[#777870]'}`}
                             type="button"
                             aria-label={`${index + 1}번 추천 상품 보기`}
-                            aria-current={activeIndex % recommendedProducts.length === index ? 'true' : undefined}
+                            aria-current={activeIndex === index ? 'true' : undefined}
                             key={product.productId}
-                            onClick={() => setActiveIndex(index)}
+                            disabled={!canNavigate}
+                            onClick={() => showSlide(index)}
                         >
                             <span className="block truncate text-[10px] font-extrabold tracking-[.1em]">{product.brand}</span>
                             <span className="mt-1 block truncate text-xs font-bold min-[601px]:text-sm">{product.name}</span>

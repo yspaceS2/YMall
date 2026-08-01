@@ -88,3 +88,46 @@
 :root[data-theme="dark"] .bg-ink.text-white {
     color: var(--color-paper);
 }
+
+@keyframes carousel-slide-in-forward {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+@keyframes carousel-slide-out-forward {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+}
+
+@keyframes carousel-slide-in-backward {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+
+@keyframes carousel-slide-out-backward {
+    from { transform: translateX(0); }
+    to { transform: translateX(100%); }
+}
+
+.carousel-slide-in-forward,
+.carousel-slide-in-backward,
+.carousel-slide-out-forward,
+.carousel-slide-out-backward {
+    animation-duration: 700ms;
+    animation-timing-function: cubic-bezier(.22, .61, .36, 1);
+    animation-fill-mode: both;
+}
+
+.carousel-slide-in-forward { animation-name: carousel-slide-in-forward; }
+.carousel-slide-out-forward { animation-name: carousel-slide-out-forward; }
+.carousel-slide-in-backward { animation-name: carousel-slide-in-backward; }
+.carousel-slide-out-backward { animation-name: carousel-slide-out-backward; }
+
+@media (prefers-reduced-motion: reduce) {
+    .carousel-slide-in-forward,
+    .carousel-slide-in-backward,
+    .carousel-slide-out-forward,
+    .carousel-slide-out-backward {
+        animation: none;
+    }
+}
