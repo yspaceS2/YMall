@@ -210,7 +210,7 @@ function SettlementListFilters({ role }: { role: 'seller' | 'admin' }) {
 
     return (
         <form
-            className={`my-6 grid gap-3 min-[701px]:grid-cols-2 ${
+            className={`my-6 grid gap-x-5 gap-y-3 min-[701px]:grid-cols-2 ${
                 role === 'admin'
                     ? 'min-[1101px]:grid-cols-[minmax(140px,0.8fr)_minmax(160px,1fr)_minmax(150px,0.9fr)_minmax(320px,1.7fr)_96px]'
                     : 'min-[1101px]:grid-cols-[minmax(140px,0.8fr)_minmax(320px,1.7fr)_minmax(150px,0.9fr)_96px]'
@@ -229,7 +229,7 @@ function SettlementListFilters({ role }: { role: 'seller' | 'admin' }) {
                 />
             </label>
             {role === 'admin' && (
-                <label className="grid gap-2 text-xs font-bold">
+                <label className="grid gap-2 text-xs font-bold min-[701px]:ml-4">
                     판매자
                     <input
                         className="h-11 border border-line bg-surface px-3 text-sm text-ink"
