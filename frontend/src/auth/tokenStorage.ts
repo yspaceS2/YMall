@@ -3,6 +3,7 @@ import type { MemberRole } from '../types/auth'
 const ACCESS_TOKEN_KEY = 'ymall.accessToken'
 
 export const AUTH_CHANGED_EVENT = 'ymall:auth-changed'
+export const AUTH_LOGOUT_COMPLETED_EVENT = 'ymall:auth-logout-completed'
 export const AUTH_UNAUTHORIZED_EVENT = 'ymall:auth-unauthorized'
 
 export function getAccessToken() {

@@ -6,6 +6,7 @@ import type { LoginRequest } from '../types/auth'
 import { AuthContext } from './AuthContext'
 import {
     AUTH_CHANGED_EVENT,
+    AUTH_LOGOUT_COMPLETED_EVENT,
     AUTH_UNAUTHORIZED_EVENT,
     clearAccessToken,
     getAccessToken,
@@ -120,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setIsAuthenticated(false)
             setRole(null)
             navigate('/', { replace: true })
+            window.dispatchEvent(new Event(AUTH_LOGOUT_COMPLETED_EVENT))
         }
     }, [navigate])
 

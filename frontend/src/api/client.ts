@@ -53,21 +53,28 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
         })
     }
 
-    let response = await request(token)
+    let requestToken = token
+    let response = await request(requestToken)
     if (response.status === 401 && auth && path !== '/members/tokens/refresh') {
-        const refreshedToken = await refreshAccessToken()
-        if (refreshedToken) {
-            setAccessToken(refreshedToken)
-            response = await request(refreshedToken)
+        const latestToken = getAccessToken()
+        if (latestToken && latestToken !== requestToken) {
+            requestToken = latestToken
+            response = await request(requestToken)
+        } else {
+            const refreshedToken = await refreshAccessToken()
+            if (refreshedToken) {
+                setAccessToken(refreshedToken)
+                requestToken = refreshedToken
+                response = await request(requestToken)
+            }
         }
     }
 
     if (!response.ok) {
         const error = (await response.json().catch(() => null)) as ErrorResponse | null
         if (response.status === 401 && auth) {
-            const currentToken = getAccessToken()
-            if (currentToken) {
-                clearAccessTokenIfMatches(currentToken)
+            if (requestToken) {
+                clearAccessTokenIfMatches(requestToken)
             }
             if (getAccessToken() === null) {
                 notifyUnauthorized()

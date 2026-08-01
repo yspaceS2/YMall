@@ -27,14 +27,15 @@ export function ThemeSelector() {
     return (
         <div className="relative" onBlur={closeWhenFocusLeaves}>
             <button
-                className="inline-grid size-8 place-items-center border border-line bg-surface transition-colors hover:border-ink"
+                className="group inline-flex min-w-12 flex-col items-center justify-center gap-1 p-1 text-[10px] font-bold"
                 type="button"
                 aria-label={`테마 선택: ${themeOptions.find((option) => option.value === preference)?.label}`}
                 aria-expanded={isOpen}
                 aria-haspopup="menu"
                 onClick={() => setIsOpen((open) => !open)}
             >
-                <ActiveIcon className="size-4" aria-hidden="true" />
+                <ActiveIcon className="size-5 transition-transform group-hover:scale-110" aria-hidden="true" />
+                <span className="hidden min-[901px]:inline">테마</span>
             </button>
             {isOpen && (
                 <div

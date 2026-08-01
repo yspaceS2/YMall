@@ -65,6 +65,7 @@ export function LoginPage() {
 
         try {
             await login({ email, password })
+            showToast('로그인되었습니다.', 'success')
             navigate(destination, { replace: true })
         } catch (error) {
             showToast(
@@ -88,6 +89,7 @@ export function LoginPage() {
             <GoogleOneTapPrompt
                     onAuthenticated={(token) => {
                         completeOAuthLogin(token.accessToken)
+                        showToast('로그인되었습니다.', 'success')
                         navigate(destination, { replace: true })
                     }}
                     onSignupRequired={() => {

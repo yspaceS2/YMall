@@ -1,5 +1,6 @@
 import { CircleAlert, CircleCheck, Info, X } from 'lucide-react'
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { AUTH_LOGOUT_COMPLETED_EVENT } from '../auth/tokenStorage'
 import { ToastContext, type ToastTone } from './ToastContext'
 
 interface ToastItem {
@@ -40,6 +41,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         ])
         window.setTimeout(() => dismissToast(id), 4_000)
     }, [dismissToast])
+
+    useEffect(() => {
+        const handleLogoutCompleted = () => {
+            showToast('로그아웃되었습니다.', 'success')
+        }
+        window.addEventListener(AUTH_LOGOUT_COMPLETED_EVENT, handleLogoutCompleted)
+        return () => {
+            window.removeEventListener(
+                AUTH_LOGOUT_COMPLETED_EVENT,
+                handleLogoutCompleted,
+            )
+        }
+    }, [showToast])
 
     const value = useMemo(() => ({ showToast }), [showToast])
 
