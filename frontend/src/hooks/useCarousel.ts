@@ -39,9 +39,8 @@ export function useCarousel({ slideCount, intervalMs }: UseCarouselOptions) {
     }, [moveTo, safeActiveIndex])
 
     const showNext = useCallback(() => {
-        const isWrappingToFirst = safeActiveIndex === slideCount - 1
-        moveTo(safeActiveIndex + 1, isWrappingToFirst ? 'backward' : 'forward')
-    }, [moveTo, safeActiveIndex, slideCount])
+        moveTo(safeActiveIndex + 1, 'forward')
+    }, [moveTo, safeActiveIndex])
 
     const showSlide = useCallback((index: number) => {
         moveTo(index, index < safeActiveIndex ? 'backward' : 'forward')

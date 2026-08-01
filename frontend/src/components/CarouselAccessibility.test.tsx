@@ -59,7 +59,7 @@ describe('캐러셀 접근성', () => {
         expect(screen.getByRole('heading', { name: /집 안에 더하는\s+작은 변화/ })).toBeInTheDocument()
     })
 
-    it('마지막에서 첫 슬라이드로 갈 때 한 화면 우측 방향을 사용한다', () => {
+    it('마지막에서 첫 슬라이드로 갈 때도 같은 진행 방향을 유지한다', () => {
         render(
             <MemoryRouter>
                 <HomeEventCarousel />
@@ -72,7 +72,7 @@ describe('캐러셀 접근성', () => {
         fireEvent.click(nextButton)
 
         expect(screen.getByRole('heading', { name: /새로운 계절,\s+가벼운 옷차림/ })).toBeInTheDocument()
-        expect(screen.getByRole('region', { name: '이벤트 프로모션' }).querySelector('[data-carousel-direction]')).toHaveAttribute('data-carousel-direction', 'backward')
+        expect(screen.getByRole('region', { name: '이벤트 프로모션' }).querySelector('[data-carousel-direction]')).toHaveAttribute('data-carousel-direction', 'forward')
     })
 
     it('호버와 키보드 포커스 중에는 자동 재생을 멈춘다', () => {
