@@ -53,6 +53,30 @@ const homeMerchandising = {
                 name: '테스트 무선 스피커',
             }],
         },
+        {
+            categoryId: 3,
+            categoryName: '패션',
+            categorySlug: 'fashion',
+            products: [{
+                ...merchandisingProduct,
+                productId: 6,
+                categoryId: 3,
+                categoryName: '패션',
+                name: '테스트 패션 재킷',
+            }],
+        },
+        {
+            categoryId: 4,
+            categoryName: '뷰티',
+            categorySlug: 'beauty',
+            products: [{
+                ...merchandisingProduct,
+                productId: 7,
+                categoryId: 4,
+                categoryName: '뷰티',
+                name: '테스트 수분 크림',
+            }],
+        },
     ],
     grocery: [{
         categoryId: 3,
