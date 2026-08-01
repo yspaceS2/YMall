@@ -51,7 +51,7 @@ class HomeMerchandisingQueryIntegrationTest {
             new Category("여성패션", "women-fashion", fashion, 2, 1, true)
         );
         Category living = categoryRepository.save(
-            new Category("생활", "living", null, 1, 2, true)
+            new Category("홈 조회 생활", "home-query-living", null, 1, 2, true)
         );
         Product mostlyRefunded = productRepository.save(product(women, "부분 환불 상품"));
         Product netBest = productRepository.save(product(women, "실판매 베스트"));
