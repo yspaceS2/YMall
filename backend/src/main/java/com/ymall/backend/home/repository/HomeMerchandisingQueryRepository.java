@@ -12,6 +12,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class HomeMerchandisingQueryRepository {
 
+    private static final int NEW_ARRIVAL_LIMIT = 8;
+
     private static final String MERCHANDISING_QUERY = """
         WITH category_tree AS (
             SELECT leaf.id AS category_id,
@@ -190,7 +192,7 @@ public class HomeMerchandisingQueryRepository {
                    0,
                    new_arrival_ranked.*
             FROM new_arrival_ranked
-            WHERE product_rank <= 3
+            WHERE product_rank <= :newArrivalLimit
         )
         SELECT section_type,
                group_category_id,
@@ -221,7 +223,10 @@ public class HomeMerchandisingQueryRepository {
     public List<HomeMerchandisingRow> findMerchandising(OffsetDateTime soldAfter) {
         return jdbcTemplate.query(
             MERCHANDISING_QUERY,
-            Map.of("soldAfter", soldAfter),
+            Map.of(
+                "soldAfter", soldAfter,
+                "newArrivalLimit", NEW_ARRIVAL_LIMIT
+            ),
             (resultSet, rowNumber) -> new HomeMerchandisingRow(
                 HomeMerchandisingSection.valueOf(resultSet.getString("section_type")),
                 resultSet.getObject("group_category_id", Long.class),

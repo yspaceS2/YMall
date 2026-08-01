@@ -1,53 +1,79 @@
 import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import automotiveToolsImage from '../assets/home/categories/automotive-tools.jpg'
+import beautyImage from '../assets/home/categories/beauty.jpg'
+import booksHobbyImage from '../assets/home/categories/books-hobby.jpg'
+import digitalAppliancesImage from '../assets/home/categories/digital-appliances.jpg'
+import fashionImage from '../assets/home/categories/fashion.jpg'
+import foodImage from '../assets/home/categories/food.jpg'
+import furnitureInteriorImage from '../assets/home/categories/furniture-interior.jpg'
+import livingKitchenImage from '../assets/home/categories/living-kitchen.jpg'
 import { getCarouselSlideMotionClass, useCarousel } from '../hooks/useCarousel'
 
 const eventSlides = [
     {
-        eyebrow: 'SEASON EVENT 01',
-        title: '새로운 계절,\n가벼운 옷차림',
-        description: '일상에 자연스럽게 스며드는 이번 시즌 패션 셀렉션',
-        link: '/?keyword=패션',
-        linkLabel: '패션 셀렉션 보기',
-        background: 'bg-[#d9ff43] text-[#171717]',
-        visual: (
-            <div className="relative size-full" aria-hidden="true">
-                <div className="absolute top-[10%] right-[12%] h-[72%] w-[42%] rotate-6 bg-[#171717]" />
-                <div className="absolute right-[34%] bottom-[9%] h-[62%] w-[34%] -rotate-8 border-2 border-[#171717] bg-[#f8f8f5]" />
-                <span className="absolute right-[22%] bottom-[20%] font-serif text-[clamp(80px,13vw,180px)] leading-none text-[#d9ff43]">Y</span>
-            </div>
-        ),
+        eyebrow: 'CATEGORY 01 · FASHION',
+        title: '새로운 계절의\n패션 컬렉션',
+        description: '매일의 옷차림에 자연스럽게 스며드는 아이템을 만나보세요.',
+        link: '/?categoryId=2',
+        linkLabel: '패션 컬렉션 보기',
+        image: fashionImage,
     },
     {
-        eyebrow: 'BEAUTY WEEK',
-        title: '나를 위한\n매일의 루틴',
-        description: '기초부터 포인트 메이크업까지, 오늘의 뷰티 큐레이션',
-        link: '/?keyword=뷰티',
-        linkLabel: '뷰티 아이템 보기',
-        background: 'bg-[#efd6e4] text-[#2b1721]',
-        visual: (
-            <div className="relative size-full" aria-hidden="true">
-                <div className="absolute top-[10%] right-[16%] size-[58%] rounded-full bg-[#c97298]" />
-                <div className="absolute right-[17%] bottom-[10%] h-[62%] w-[18%] rounded-t-full bg-[#2b1721]" />
-                <div className="absolute right-[40%] bottom-[12%] h-[48%] w-[22%] border-2 border-[#2b1721] bg-[#fff6fa]" />
-            </div>
-        ),
+        eyebrow: 'CATEGORY 02 · BEAUTY',
+        title: '매일을 채우는\n뷰티 루틴',
+        description: '기초 케어부터 메이크업까지 나를 위한 아이템을 모았습니다.',
+        link: '/?categoryId=3',
+        linkLabel: '뷰티 컬렉션 보기',
+        image: beautyImage,
     },
     {
-        eyebrow: 'HOME REFRESH',
-        title: '집 안에 더하는\n작은 변화',
-        description: '머무는 시간이 즐거워지는 가구와 생활 아이템',
-        link: '/?keyword=가구',
-        linkLabel: '홈 컬렉션 보기',
-        background: 'bg-[#c9d9d0] text-[#13251d]',
-        visual: (
-            <div className="relative size-full" aria-hidden="true">
-                <div className="absolute right-[10%] bottom-[12%] h-[42%] w-[68%] rounded-t-[48%] bg-[#315b48]" />
-                <div className="absolute right-[18%] bottom-[8%] h-[11%] w-[8%] bg-[#13251d]" />
-                <div className="absolute right-[61%] bottom-[8%] h-[11%] w-[8%] bg-[#13251d]" />
-                <div className="absolute top-[13%] right-[21%] size-[24%] rounded-full border-2 border-[#13251d]" />
-            </div>
-        ),
+        eyebrow: 'CATEGORY 03 · FOOD',
+        title: '신선함을 담은\n오늘의 식탁',
+        description: '좋은 재료로 채우는 맛있고 건강한 한 끼를 준비해 보세요.',
+        link: '/?categoryId=4',
+        linkLabel: '식품 컬렉션 보기',
+        image: foodImage,
+    },
+    {
+        eyebrow: 'CATEGORY 04 · INTERIOR',
+        title: '머물고 싶은\n나만의 공간',
+        description: '취향과 편안함을 담은 가구와 인테리어를 제안합니다.',
+        link: '/?categoryId=5',
+        linkLabel: '가구·인테리어 보기',
+        image: furnitureInteriorImage,
+    },
+    {
+        eyebrow: 'CATEGORY 05 · LIVING',
+        title: '일상을 가볍게\n생활의 발견',
+        description: '주방부터 생활까지 매일 손이 가는 아이템을 골랐습니다.',
+        link: '/?categoryId=6',
+        linkLabel: '생활·주방 컬렉션 보기',
+        image: livingKitchenImage,
+    },
+    {
+        eyebrow: 'CATEGORY 06 · DIGITAL',
+        title: '하루를 바꾸는\n디지털 라이프',
+        description: '일과 휴식을 더 편리하게 만드는 디지털 기기를 만나보세요.',
+        link: '/?categoryId=7',
+        linkLabel: '가전·디지털 컬렉션 보기',
+        image: digitalAppliancesImage,
+    },
+    {
+        eyebrow: 'CATEGORY 07 · AUTOMOTIVE',
+        title: '차와 작업을 위한\n든든한 도구',
+        description: '관리부터 작업까지 믿고 사용할 자동차용품과 공구입니다.',
+        link: '/?categoryId=8',
+        linkLabel: '자동차·공구 컬렉션 보기',
+        image: automotiveToolsImage,
+    },
+    {
+        eyebrow: 'CATEGORY 08 · HOBBY',
+        title: '취향을 넓히는\n책과 새로운 취미',
+        description: '읽고 만들며 나만의 즐거움과 새로운 취향을 발견해 보세요.',
+        link: '/?categoryId=9',
+        linkLabel: '도서·취미 컬렉션 보기',
+        image: booksHobbyImage,
     },
 ]
 
@@ -76,29 +102,35 @@ export function HomeEventCarousel() {
             <div className="relative min-h-100 min-[901px]:min-h-130" data-carousel-direction={direction}>
                 {eventSlides.map((slide, index) => (
                     <article
-                        className={`${getCarouselSlideMotionClass({ index, activeIndex, previousIndex, direction, isReducedMotion })} min-h-100 w-full overflow-hidden min-[901px]:min-h-130 ${slide.background}`}
+                        className={`${getCarouselSlideMotionClass({ index, activeIndex, previousIndex, direction, isReducedMotion })} min-h-100 w-full overflow-hidden bg-[#f6f1e8] text-[#171717] min-[901px]:min-h-130`}
                         aria-hidden={activeIndex !== index}
                         aria-label={`${index + 1} / ${eventSlides.length}`}
                         aria-roledescription="slide"
                         key={slide.eyebrow}
                         onAnimationEnd={index === activeIndex ? finishTransition : undefined}
                     >
-                        <div className="relative z-10 grid min-h-100 grid-cols-1 min-[901px]:min-h-130 min-[901px]:grid-cols-[1.05fr_.95fr]">
-                            <div className="flex flex-col justify-center px-6 py-16 min-[601px]:px-[clamp(40px,8vw,120px)]">
-                                <p className="mb-5 text-[11px] font-extrabold tracking-[.2em]">{slide.eyebrow}</p>
-                                <h1 className="max-w-180 whitespace-pre-line font-serif text-[clamp(44px,7vw,86px)] leading-[.94] font-medium tracking-[-.055em]">
-                                    {slide.title}
-                                </h1>
-                                <p className="mt-7 max-w-130 text-sm leading-6 opacity-75 min-[601px]:text-base">{slide.description}</p>
-                                <Link className="mt-9 inline-flex w-fit items-center gap-3 border-b border-current pb-2 text-xs font-extrabold" to={slide.link} tabIndex={activeIndex === index ? 0 : -1}>
-                                    {slide.linkLabel}
-                                    <ArrowRight className="size-4" aria-hidden="true" />
-                                </Link>
+                        <Link
+                            className="absolute inset-0 z-10 block text-inherit no-underline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[#171717]"
+                            to={slide.link}
+                            aria-label={slide.linkLabel}
+                            tabIndex={activeIndex === index ? 0 : -1}
+                        >
+                            <img className="absolute inset-0 size-full object-cover object-[68%_center]" src={slide.image} alt="" aria-hidden="true" />
+                            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(248,246,240,.98)_0%,rgba(248,246,240,.96)_42%,rgba(248,246,240,.42)_67%,rgba(248,246,240,.08)_100%)] min-[901px]:bg-[linear-gradient(90deg,rgba(248,246,240,.98)_0%,rgba(248,246,240,.95)_38%,rgba(248,246,240,.26)_61%,rgba(248,246,240,0)_78%)]" aria-hidden="true" />
+                            <div className="relative grid min-h-100 grid-cols-1 min-[901px]:min-h-130 min-[901px]:grid-cols-[1.05fr_.95fr]">
+                                <div className="flex max-w-210 flex-col justify-center px-6 py-16 min-[601px]:px-[clamp(40px,8vw,120px)]">
+                                    <p className="mb-5 text-[11px] font-extrabold tracking-[.2em]">{slide.eyebrow}</p>
+                                    <h1 className="max-w-180 break-keep whitespace-pre-line font-serif text-[clamp(38px,4.5vw,68px)] leading-[1.02] font-medium tracking-[-.045em] text-balance">
+                                        {slide.title}
+                                    </h1>
+                                    <p className="mt-6 max-w-[38ch] break-keep text-sm leading-6 text-pretty opacity-75 min-[601px]:text-base min-[601px]:leading-7">{slide.description}</p>
+                                    <span className="mt-8 inline-flex w-fit items-center gap-3 border-b border-current pb-2 text-xs font-extrabold whitespace-nowrap">
+                                        {slide.linkLabel}
+                                        <ArrowRight className="size-4" aria-hidden="true" />
+                                    </span>
+                                </div>
                             </div>
-                            <div className="absolute inset-y-0 right-0 hidden w-[52%] min-[601px]:block min-[901px]:relative min-[901px]:w-auto">
-                                {slide.visual}
-                            </div>
-                        </div>
+                        </Link>
                     </article>
                 ))}
             </div>

@@ -20,6 +20,79 @@ const product = {
     status: 'APPROVED',
 }
 
+const merchandisingProduct = {
+    productId: product.productId,
+    categoryId: product.categoryId,
+    categoryName: product.categoryName,
+    name: product.name,
+    brand: product.brand,
+    price: product.price,
+    discountPercentage: product.discountPercentage,
+    rating: product.rating,
+    thumbnailUrl: product.thumbnailUrl,
+    salesQuantity: 25,
+}
+
+const homeMerchandising = {
+    categoryBest: [
+        {
+            categoryId: 1,
+            categoryName: '생활',
+            categorySlug: 'life',
+            products: [merchandisingProduct],
+        },
+        {
+            categoryId: 2,
+            categoryName: '가전',
+            categorySlug: 'digital',
+            products: [{
+                ...merchandisingProduct,
+                productId: 2,
+                categoryId: 2,
+                categoryName: '가전',
+                name: '테스트 무선 스피커',
+            }],
+        },
+        {
+            categoryId: 3,
+            categoryName: '패션',
+            categorySlug: 'fashion',
+            products: [{
+                ...merchandisingProduct,
+                productId: 6,
+                categoryId: 3,
+                categoryName: '패션',
+                name: '테스트 패션 재킷',
+            }],
+        },
+        {
+            categoryId: 4,
+            categoryName: '뷰티',
+            categorySlug: 'beauty',
+            products: [{
+                ...merchandisingProduct,
+                productId: 7,
+                categoryId: 4,
+                categoryName: '뷰티',
+                name: '테스트 수분 크림',
+            }],
+        },
+    ],
+    grocery: [{
+        categoryId: 3,
+        categoryName: '신선식품',
+        categorySlug: 'fresh-food',
+        products: [{ ...merchandisingProduct, productId: 3, name: '테스트 토마토' }],
+    }],
+    fashion: [{
+        categoryId: 4,
+        categoryName: '여성의류',
+        categorySlug: 'women',
+        products: [{ ...merchandisingProduct, productId: 4, name: '테스트 재킷' }],
+    }],
+    newArrivals: [{ ...merchandisingProduct, productId: 5, name: '테스트 신상품' }],
+}
+
 const cartItem = {
     cartItemId: 1,
     productId: 1,
@@ -183,6 +256,9 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
         }
         if (path === '/categories' && method === 'GET') {
             return ok(route, [{ categoryId: 1, name: '생활', slug: 'life' }])
+        }
+        if (path === '/home/merchandising' && method === 'GET') {
+            return ok(route, homeMerchandising)
         }
         if ((path === '/products' || path === '/products/search') && method === 'GET') {
             return ok(route, pageResponse([product], 12))
