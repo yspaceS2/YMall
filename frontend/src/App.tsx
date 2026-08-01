@@ -1,11 +1,10 @@
 import type { ReactNode } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireRole } from './auth/RequireRole'
 import { Layout } from './components/Layout'
 import { ManagementLayout } from './components/management/ManagementLayout'
 import { AdminSellerApplicationPanel } from './components/admin/AdminSellerApplicationPanel'
-import { SellerApplicationPanel } from './components/member/SellerApplicationPanel'
 import { SettlementManagementPanel } from './components/seller/SettlementManagementPanel'
 import { AdminSettlementRequestList } from './components/settlement/SettlementRequestList'
 import { CartPage } from './pages/CartPage'
@@ -13,6 +12,7 @@ import { CheckoutPage } from './pages/CheckoutPage'
 import { LoginPage } from './pages/LoginPage'
 import { MyPage } from './pages/MyPage'
 import { NotificationPage } from './pages/NotificationPage'
+import { OrderDetailPage } from './pages/OrderDetailPage'
 import { OrderHistoryPage } from './pages/OrderHistoryPage'
 import { OrderResultPage } from './pages/OrderResultPage'
 import { PaymentPage } from './pages/PaymentPage'
@@ -24,12 +24,17 @@ import {
     SellerOrderDetailPage,
     SellerOrderListPage,
 } from './pages/SellerOrderManagementPage'
+import { SellerProductListPage } from './pages/SellerResourcePages'
 import { SignupPage } from './pages/SignupPage'
 import { TossPaymentFailPage } from './pages/TossPaymentFailPage'
 import { TossPaymentSuccessPage } from './pages/TossPaymentSuccessPage'
 import { OAuth2CallbackPage } from './pages/OAuth2CallbackPage'
 import { OAuthSignupPage } from './pages/OAuthSignupPage'
 import { AdminManagementPage } from './pages/AdminManagementPage'
+import {
+    AdminResourceDetailPage,
+    AdminResourceListPage,
+} from './pages/AdminResourcePages'
 import { AdminCategoryManagementPage } from './pages/AdminCategoryManagementPage'
 import {
     AdminProductReviewDetailPage,
@@ -92,16 +97,15 @@ function MemberPortalRoutes() {
     return (
         <Routes>
             <Route index element={<MyPage />} />
+            <Route path="profile" element={<MyPage />} />
+            <Route path="email" element={<MyPage />} />
+            <Route path="social" element={<MyPage />} />
+            <Route path="wishlist" element={<MyPage />} />
+            <Route path="addresses" element={<MyPage />} />
             <Route path="orders" element={<OrderHistoryPage />} />
+            <Route path="orders/:orderId" element={<OrderDetailPage />} />
             <Route path="notifications" element={<NotificationPage />} />
-            <Route
-                path="seller-application"
-                element={
-                    <PortalPage>
-                        <SellerApplicationPanel />
-                    </PortalPage>
-                }
-            />
+            <Route path="seller-application" element={<MyPage />} />
             <Route path="*" element={<Navigate to="/mypage" replace />} />
         </Routes>
     )
@@ -110,7 +114,14 @@ function MemberPortalRoutes() {
 function SellerPortalRoutes() {
     return (
         <Routes>
-            <Route index element={<SellerManagementPage />} />
+            <Route index element={<SellerManagementPage section="dashboard" />} />
+            <Route path="profile" element={<SellerManagementPage section="profile" />} />
+            <Route path="products" element={<SellerProductListPage />} />
+            <Route
+                path="products/new"
+                element={<SellerManagementPage section="products" productFormOnly />}
+            />
+            <Route path="products/:productId" element={<SellerProductEditorRoute />} />
             <Route path="orders" element={<SellerOrderListPage />} />
             <Route path="orders/:orderId" element={<SellerOrderDetailPage />} />
             <Route path="returns" element={<SellerReturnRequestsPage />} />
@@ -134,7 +145,17 @@ function SellerPortalRoutes() {
 function AdminPortalRoutes() {
     return (
         <Routes>
-            <Route index element={<AdminManagementPage />} />
+            <Route index element={<AdminManagementPage section="dashboard" />} />
+            <Route path="members" element={<AdminResourceListPage resource="members" />} />
+            <Route
+                path="members/:resourceId"
+                element={<AdminResourceDetailPage resource="members" />}
+            />
+            <Route path="sellers" element={<AdminResourceListPage resource="sellers" />} />
+            <Route
+                path="sellers/:resourceId"
+                element={<AdminResourceDetailPage resource="sellers" />}
+            />
             <Route
                 path="seller-applications"
                 element={
@@ -153,6 +174,11 @@ function AdminPortalRoutes() {
             <Route path="products/:productId" element={<AdminProductReviewDetailPage />} />
             <Route path="product-change-requests" element={<AdminProductChangeReviewListPage />} />
             <Route path="product-change-requests/:requestId" element={<AdminProductChangeReviewDetailPage />} />
+            <Route path="orders" element={<AdminResourceListPage resource="orders" />} />
+            <Route
+                path="orders/:resourceId"
+                element={<AdminResourceDetailPage resource="orders" />}
+            />
             <Route path="notifications" element={<NotificationPage />} />
             <Route
                 path="settlement"
@@ -164,6 +190,23 @@ function AdminPortalRoutes() {
             />
             <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
+    )
+}
+
+function SellerProductEditorRoute() {
+    const { productId } = useParams()
+    const parsedProductId = Number(productId)
+
+    if (!Number.isInteger(parsedProductId) || parsedProductId <= 0) {
+        return <Navigate to="/seller/products" replace />
+    }
+
+    return (
+        <SellerManagementPage
+            section="products"
+            productFormOnly
+            initialProductId={parsedProductId}
+        />
     )
 }
 

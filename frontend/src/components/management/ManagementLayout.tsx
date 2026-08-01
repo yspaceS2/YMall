@@ -3,14 +3,21 @@ import {
     Bell,
     BriefcaseBusiness,
     ClipboardCheck,
+    Heart,
     LayoutDashboard,
     LogOut,
+    Mail,
+    MapPin,
     Menu,
     MessageSquareText,
+    PackageCheck,
     PackageSearch,
     ReceiptText,
+    Store,
     Tags,
     Undo2,
+    UserRound,
+    Users,
     WalletCards,
     X,
     type LucideIcon,
@@ -43,6 +50,11 @@ interface NavigationItem {
 
 const memberNavigation: NavigationItem[] = [
     { label: '대시보드', href: '/mypage', icon: LayoutDashboard },
+    { label: '회원정보', href: '/mypage/profile', icon: UserRound },
+    { label: '이메일 변경', href: '/mypage/email', icon: Mail },
+    { label: '소셜 계정', href: '/mypage/social', icon: Users },
+    { label: '찜한 상품', href: '/mypage/wishlist', icon: Heart },
+    { label: '배송지 관리', href: '/mypage/addresses', icon: MapPin },
     { label: '주문·배송 조회', href: '/mypage/orders', icon: ReceiptText },
     { label: '알림', href: '/mypage/notifications', icon: Bell },
     { label: '판매자 신청', href: '/mypage/seller-application', icon: BriefcaseBusiness },
@@ -50,6 +62,8 @@ const memberNavigation: NavigationItem[] = [
 
 const sellerNavigation: NavigationItem[] = [
     { label: '대시보드', href: '/seller', icon: LayoutDashboard },
+    { label: '판매자 정보', href: '/seller/profile', icon: Store },
+    { label: '상품 관리', href: '/seller/products', icon: PackageCheck },
     { label: '주문·배송 관리', href: '/seller/orders', icon: ReceiptText },
     { label: '반품 관리', href: '/seller/returns', icon: Undo2 },
     { label: '상품 문의 관리', href: '/seller/questions', icon: MessageSquareText },
@@ -59,6 +73,8 @@ const sellerNavigation: NavigationItem[] = [
 
 const adminNavigation: NavigationItem[] = [
     { label: '대시보드', href: '/admin', icon: LayoutDashboard },
+    { label: '회원 관리', href: '/admin/members', icon: Users },
+    { label: '판매자 관리', href: '/admin/sellers', icon: Store },
     {
         label: '판매자 신청 관리',
         href: '/admin/seller-applications',
@@ -66,6 +82,7 @@ const adminNavigation: NavigationItem[] = [
     },
     { label: '상품 승인 관리', href: '/admin/products', icon: PackageSearch },
     { label: '카테고리 관리', href: '/admin/categories', icon: Tags },
+    { label: '주문 관리', href: '/admin/orders', icon: ReceiptText },
     { label: '알림', href: '/admin/notifications', icon: Bell },
     { label: '정산 관리', href: '/admin/settlement', icon: WalletCards },
 ]
@@ -77,7 +94,7 @@ export function ManagementLayout({
     role: ManagementRole
     children: ReactNode
 }) {
-    const { logout } = useAuth()
+    const { logout, role: authenticatedRole } = useAuth()
     const [isNavigationOpen, setIsNavigationOpen] = useState(false)
     const [pendingQuestionCount, setPendingQuestionCount] = useState(0)
     const [pendingOrderCount, setPendingOrderCount] = useState(0)
@@ -85,11 +102,14 @@ export function ManagementLayout({
     const location = useLocation()
     const isAdmin = role === 'admin'
     const isMember = role === 'member'
-    const navigation = isMember
+    const roleNavigation = isMember
         ? memberNavigation
         : isAdmin
             ? adminNavigation
             : sellerNavigation
+    const navigation = isMember && authenticatedRole !== 'ROLE_USER'
+        ? roleNavigation.filter((item) => item.href !== '/mypage/seller-application')
+        : roleNavigation
     const roleRootPath = isMember ? '/mypage' : `/${role}`
     const centerName = isMember ? '마이페이지' : isAdmin ? '관리자 센터' : '판매자 센터'
 
