@@ -1,7 +1,7 @@
 import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play, ShoppingBasket, Sparkles } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { useCarouselPause } from '../hooks/useCarouselPause'
+import { getCarouselSlideMotionClass, useCarousel } from '../hooks/useCarousel'
 
 interface EditorialSlide {
     eyebrow: string
@@ -34,32 +34,24 @@ function HomeEditorialCarousel({
     headingClassName = '',
     controlClassName = '',
 }: HomeEditorialCarouselProps) {
-    const [activeIndex, setActiveIndex] = useState(0)
-    const { isPaused, isUserPaused, toggleUserPaused, interactionProps } = useCarouselPause()
-
-    useEffect(() => {
-        if (isPaused || slides.length < 2) {
-            return
-        }
-
-        const intervalId = window.setInterval(() => {
-            setActiveIndex((index) => (index + 1) % slides.length)
-        }, 6_000)
-
-        return () => window.clearInterval(intervalId)
-    }, [isPaused, slides.length])
-
-    const showPrevious = () => {
-        setActiveIndex((index) => (index - 1 + slides.length) % slides.length)
-    }
-
-    const showNext = () => {
-        setActiveIndex((index) => (index + 1) % slides.length)
-    }
+    const {
+        activeIndex,
+        previousIndex,
+        direction,
+        canNavigate,
+        isReducedMotion,
+        isUserPaused,
+        showPrevious,
+        showNext,
+        showSlide,
+        toggleUserPaused,
+        finishTransition,
+        interactionProps,
+    } = useCarousel({ slideCount: slides.length, intervalMs: 6_000 })
 
     return (
         <section
-            className={`overflow-hidden py-16 min-[601px]:py-24 ${sectionClassName}`}
+            className={`touch-pan-y overflow-hidden py-16 min-[601px]:py-24 ${sectionClassName}`}
             aria-roledescription="carousel"
             aria-label={ariaLabel}
             {...interactionProps}
@@ -74,17 +66,18 @@ function HomeEditorialCarousel({
                         <p className="mt-3 max-w-150 text-sm opacity-65">{description}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                        <button className={`inline-grid size-11 place-items-center rounded-full border disabled:opacity-35 ${controlClassName}`} type="button" aria-label={`이전 ${ariaLabel}`} onClick={showPrevious}>
+                        <button className={`inline-grid size-11 place-items-center rounded-full border disabled:opacity-35 ${controlClassName}`} type="button" aria-label={`이전 ${ariaLabel}`} disabled={!canNavigate} onClick={showPrevious}>
                             <ChevronLeft className="size-4" aria-hidden="true" />
                         </button>
-                        <button className={`inline-grid size-11 place-items-center rounded-full border disabled:opacity-35 ${controlClassName}`} type="button" aria-label={`다음 ${ariaLabel}`} onClick={showNext}>
+                        <button className={`inline-grid size-11 place-items-center rounded-full border disabled:opacity-35 ${controlClassName}`} type="button" aria-label={`다음 ${ariaLabel}`} disabled={!canNavigate} onClick={showNext}>
                             <ChevronRight className="size-4" aria-hidden="true" />
                         </button>
                         <button
-                            className={`inline-grid size-11 place-items-center rounded-full border ${controlClassName}`}
+                            className={`inline-grid size-11 place-items-center rounded-full border disabled:opacity-35 ${controlClassName}`}
                             type="button"
                             aria-label={isUserPaused ? `${ariaLabel} 자동 재생` : `${ariaLabel} 자동 재생 일시 정지`}
                             aria-pressed={isUserPaused}
+                            disabled={!canNavigate}
                             onClick={toggleUserPaused}
                         >
                             {isUserPaused ? <Play className="size-4" aria-hidden="true" /> : <Pause className="size-4" aria-hidden="true" />}
@@ -93,15 +86,15 @@ function HomeEditorialCarousel({
                 </header>
 
                 <div className="overflow-hidden rounded-[26px]">
-                    <div
-                        className="flex transition-transform duration-700 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none"
-                        style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-                    >
+                    <div className="relative min-h-105" data-carousel-direction={direction}>
                         {slides.map((slide, index) => (
                             <article
-                                className={`relative min-h-105 min-w-full overflow-hidden ${slide.background}`}
+                                className={`${getCarouselSlideMotionClass({ index, activeIndex, previousIndex, direction, isReducedMotion })} min-h-105 w-full overflow-hidden ${slide.background}`}
                                 aria-hidden={activeIndex !== index}
+                                aria-label={`${index + 1} / ${slides.length}`}
+                                aria-roledescription="slide"
                                 key={slide.eyebrow}
+                                onAnimationEnd={index === activeIndex ? finishTransition : undefined}
                             >
                                 <div className="relative z-10 grid min-h-105 min-[801px]:grid-cols-[.9fr_1.1fr]">
                                     <div className="flex flex-col justify-center p-8 min-[601px]:p-12">
@@ -130,7 +123,8 @@ function HomeEditorialCarousel({
                             aria-label={`${ariaLabel} ${index + 1}번 보기`}
                             aria-current={activeIndex === index ? 'true' : undefined}
                             key={slide.eyebrow}
-                            onClick={() => setActiveIndex(index)}
+                            disabled={!canNavigate}
+                            onClick={() => showSlide(index)}
                         />
                     ))}
                     <span className="ml-2 text-[10px] font-extrabold tracking-[.12em] opacity-55">

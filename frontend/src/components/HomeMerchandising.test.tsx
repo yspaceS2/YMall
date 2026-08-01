@@ -55,6 +55,18 @@ describe('메인 상품 큐레이션', () => {
         expect(screen.getAllByRole('button', { name: /번 추천 상품 보기/ })).toHaveLength(3)
     })
 
+    it('추천 상품이 하나뿐이면 이동과 자동 재생 조작을 비활성화한다', () => {
+        render(
+            <MemoryRouter>
+                <TodayRecommendationCarousel products={products.slice(0, 1)} />
+            </MemoryRouter>,
+        )
+
+        expect(screen.getByRole('button', { name: '이전 추천 상품' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: '다음 추천 상품' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: '추천 상품 자동 재생 일시 정지' })).toBeDisabled()
+    })
+
     it('장보기와 패션 큐레이션을 각각 전환한다', async () => {
         const user = userEvent.setup()
 

@@ -1,7 +1,6 @@
 import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useCarouselPause } from '../hooks/useCarouselPause'
+import { getCarouselSlideMotionClass, useCarousel } from '../hooks/useCarousel'
 
 const eventSlides = [
     {
@@ -53,43 +52,36 @@ const eventSlides = [
 ]
 
 export function HomeEventCarousel() {
-    const [activeIndex, setActiveIndex] = useState(0)
-    const { isPaused, isUserPaused, toggleUserPaused, interactionProps } = useCarouselPause()
-
-    useEffect(() => {
-        if (isPaused) {
-            return
-        }
-        const intervalId = window.setInterval(() => {
-            setActiveIndex((index) => (index + 1) % eventSlides.length)
-        }, 5_500)
-        return () => window.clearInterval(intervalId)
-    }, [isPaused])
-
-    const showPrevious = () => {
-        setActiveIndex((index) => (index - 1 + eventSlides.length) % eventSlides.length)
-    }
-
-    const showNext = () => {
-        setActiveIndex((index) => (index + 1) % eventSlides.length)
-    }
+    const {
+        activeIndex,
+        previousIndex,
+        direction,
+        canNavigate,
+        isReducedMotion,
+        isUserPaused,
+        showPrevious,
+        showNext,
+        toggleUserPaused,
+        finishTransition,
+        interactionProps,
+    } = useCarousel({ slideCount: eventSlides.length, intervalMs: 5_500 })
 
     return (
         <section
-            className="relative min-h-100 overflow-hidden min-[901px]:min-h-130"
+            className="relative min-h-100 touch-pan-y overflow-hidden min-[901px]:min-h-130"
             aria-roledescription="carousel"
             aria-label="이벤트 프로모션"
             {...interactionProps}
         >
-            <div
-                className="flex transition-transform duration-700 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none"
-                style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-            >
+            <div className="relative min-h-100 min-[901px]:min-h-130" data-carousel-direction={direction}>
                 {eventSlides.map((slide, index) => (
                     <article
-                        className={`relative min-h-100 min-w-full overflow-hidden min-[901px]:min-h-130 ${slide.background}`}
+                        className={`${getCarouselSlideMotionClass({ index, activeIndex, previousIndex, direction, isReducedMotion })} min-h-100 w-full overflow-hidden min-[901px]:min-h-130 ${slide.background}`}
                         aria-hidden={activeIndex !== index}
+                        aria-label={`${index + 1} / ${eventSlides.length}`}
+                        aria-roledescription="slide"
                         key={slide.eyebrow}
+                        onAnimationEnd={index === activeIndex ? finishTransition : undefined}
                     >
                         <div className="relative z-10 grid min-h-100 grid-cols-1 min-[901px]:min-h-130 min-[901px]:grid-cols-[1.05fr_.95fr]">
                             <div className="flex flex-col justify-center px-6 py-16 min-[601px]:px-[clamp(40px,8vw,120px)]">
@@ -112,18 +104,19 @@ export function HomeEventCarousel() {
             </div>
 
             <div className="absolute right-5 bottom-5 z-20 flex items-center gap-2 text-[#171717] min-[601px]:right-10 min-[601px]:bottom-8">
-                <button className="inline-grid size-10 place-items-center rounded-full border border-[#171717]/35 bg-white/25 backdrop-blur-sm" type="button" aria-label="이전 이벤트" onClick={showPrevious}>
+                <button className="inline-grid size-10 place-items-center rounded-full border border-[#171717]/35 bg-white/25 backdrop-blur-sm disabled:opacity-35" type="button" aria-label="이전 이벤트" disabled={!canNavigate} onClick={showPrevious}>
                     <ChevronLeft className="size-4" aria-hidden="true" />
                 </button>
                 <span className="min-w-14 text-center text-xs font-extrabold">{activeIndex + 1} / {eventSlides.length}</span>
-                <button className="inline-grid size-10 place-items-center rounded-full border border-[#171717]/35 bg-white/25 backdrop-blur-sm" type="button" aria-label="다음 이벤트" onClick={showNext}>
+                <button className="inline-grid size-10 place-items-center rounded-full border border-[#171717]/35 bg-white/25 backdrop-blur-sm disabled:opacity-35" type="button" aria-label="다음 이벤트" disabled={!canNavigate} onClick={showNext}>
                     <ChevronRight className="size-4" aria-hidden="true" />
                 </button>
                 <button
-                    className="inline-grid size-10 place-items-center rounded-full border border-[#171717]/35 bg-white/25 backdrop-blur-sm"
+                    className="inline-grid size-10 place-items-center rounded-full border border-[#171717]/35 bg-white/25 backdrop-blur-sm disabled:opacity-35"
                     type="button"
                     aria-label={isUserPaused ? '이벤트 자동 재생' : '이벤트 자동 재생 일시 정지'}
                     aria-pressed={isUserPaused}
+                    disabled={!canNavigate}
                     onClick={toggleUserPaused}
                 >
                     {isUserPaused ? <Play className="size-4" aria-hidden="true" /> : <Pause className="size-4" aria-hidden="true" />}

@@ -7,6 +7,7 @@ function prefersReducedMotion() {
 }
 
 export function useCarouselPause() {
+    const [isReducedMotion, setIsReducedMotion] = useState(prefersReducedMotion)
     const [isUserPaused, setIsUserPaused] = useState(prefersReducedMotion)
     const [isHovered, setIsHovered] = useState(false)
     const [hasFocus, setHasFocus] = useState(false)
@@ -18,6 +19,7 @@ export function useCarouselPause() {
         }
 
         const handleChange = (event: MediaQueryListEvent) => {
+            setIsReducedMotion(event.matches)
             if (event.matches) {
                 setIsUserPaused(true)
             }
@@ -35,6 +37,7 @@ export function useCarouselPause() {
 
     return {
         isPaused: isUserPaused || isHovered || hasFocus,
+        isReducedMotion,
         isUserPaused,
         toggleUserPaused: () => setIsUserPaused((paused) => !paused),
         interactionProps: {
