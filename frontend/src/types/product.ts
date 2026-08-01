@@ -29,6 +29,15 @@ export interface ProductSummary {
   status: ProductStatus
 }
 
+export type ProductSearchMatchType = 'EXACT' | 'PREFIX' | 'CONTAINS' | 'CHOSEONG' | 'FUZZY'
+
+export interface ProductSuggestion {
+  productId: number
+  name: string
+  thumbnailUrl: string | null
+  matchType: ProductSearchMatchType
+}
+
 export interface ProductImage {
   imageId: number
   originalUrl: string

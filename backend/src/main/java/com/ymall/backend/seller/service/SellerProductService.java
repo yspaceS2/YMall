@@ -29,6 +29,7 @@ import com.ymall.backend.product.mapper.ProductMapper;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
 import com.ymall.backend.product.repository.ProductRevisionRepository;
+import com.ymall.backend.product.search.KoreanSearchNormalizer;
 import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.seller.entity.SellerProfile;
 import com.ymall.backend.seller.dto.SellerProductResponse;
@@ -63,7 +64,10 @@ public class SellerProductService {
             Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
             Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        String normalizedKeyword = KoreanSearchNormalizer.normalize(keyword);
+        String choseongKeyword = KoreanSearchNormalizer.isChoseongQuery(normalizedKeyword)
+            ? normalizedKeyword
+            : "";
         boolean filterCategory = categoryId != null;
         Set<Long> categoryIds = filterCategory
             ? getActiveCategoryTreeIds(categoryId)
@@ -83,6 +87,7 @@ public class SellerProductService {
             profile.getId(),
             ProductStatus.DELETED,
             normalizedKeyword,
+            choseongKeyword,
             filterCategory,
             categoryIds,
             minimumStock,

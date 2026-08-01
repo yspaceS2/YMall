@@ -177,7 +177,7 @@ class AdminManagementApiIntegrationTest {
 
         mockMvc.perform(get("/api/admin/products")
                 .param("status", "APPROVED")
-                .param("keyword", "운동화")
+                .param("keyword", "검색대상운동화")
                 .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.totalElements").value(1))

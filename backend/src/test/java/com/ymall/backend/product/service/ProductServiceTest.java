@@ -3,12 +3,14 @@ package com.ymall.backend.product.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
@@ -33,12 +37,18 @@ import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.mapper.ProductMapper;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.repository.ProductSuggestionFinder;
+import com.ymall.backend.product.search.ProductSearchMatch;
+import com.ymall.backend.product.search.ProductSearchMatchType;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private ProductSuggestionFinder productSuggestionFinder;
 
     @Mock
     private CategoryRepository categoryRepository;
@@ -182,6 +192,55 @@ class ProductServiceTest {
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode")
             .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("카테고리 추천 검색은 선택한 카테고리 범위로 제한한다")
+    void getProductSuggestionsWithinCategory() {
+        Category category = new Category("패션", "fashion");
+        given(categoryRepository.findById(2L)).willReturn(Optional.of(category));
+        given(categoryRepository.findByActiveTrue(any())).willReturn(List.of());
+        given(productSuggestionFinder.findMatches(eq("ㄴㅌㅂ"), eq(Set.of(2L)), eq(8)))
+            .willReturn(List.of(new ProductSearchMatch(
+                1L,
+                "노트북 파우치",
+                null,
+                ProductSearchMatchType.CHOSEONG,
+                1.0,
+                0
+            )));
+
+        var suggestions = productService.getProductSuggestions("ㄴㅌㅂ", 2L, 8);
+
+        assertThat(suggestions).hasSize(1);
+        then(productSuggestionFinder).should()
+            .findMatches("ㄴㅌㅂ", Set.of(2L), 8);
+    }
+
+    @Test
+    @DisplayName("퍼지 검색에서 매우 큰 페이지 번호를 안전하게 처리한다")
+    void fuzzySearchWithMaximumPageNumber() {
+        given(productRepository.searchPublicProducts(
+            eq("notebookx"),
+            eq(""),
+            eq(ProductStatus.APPROVED),
+            eq(false),
+            eq(Set.of(-1L)),
+            any(Pageable.class)
+        )).willReturn(Page.empty());
+        given(productSuggestionFinder.findMatches("notebookx", Set.of(), 100))
+            .willReturn(List.of());
+
+        var result = productService.searchProducts(
+            "notebookx",
+            null,
+            Integer.MAX_VALUE,
+            100
+        );
+
+        assertThat(result.content()).isEmpty();
+        assertThat(result.page()).isEqualTo(Integer.MAX_VALUE);
+        assertThat(result.totalElements()).isZero();
     }
 
     private ProductCreateRequest createRequest() {

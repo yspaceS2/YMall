@@ -26,6 +26,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import com.ymall.backend.seller.entity.SellerProfile;
+import com.ymall.backend.product.search.KoreanSearchNormalizer;
 
 @Getter
 @Entity
@@ -47,6 +48,12 @@ public class Product {
 
     @Column(nullable = false, length = 255)
     private String name;
+
+    @Column(nullable = false, length = 255)
+    private String searchNormalizedName;
+
+    @Column(nullable = false, length = 255)
+    private String searchChosung;
 
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -386,10 +393,17 @@ public class Product {
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
+        updateSearchFields();
     }
 
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+        updateSearchFields();
+    }
+
+    private void updateSearchFields() {
+        this.searchNormalizedName = KoreanSearchNormalizer.normalize(name);
+        this.searchChosung = KoreanSearchNormalizer.toChoseong(name);
     }
 }
