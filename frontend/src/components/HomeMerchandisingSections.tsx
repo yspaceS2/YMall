@@ -65,11 +65,11 @@ function MerchandisingProductCard({
 
     return (
         <Link
-            className="group grid min-w-0 overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_18px_45px_rgba(20,20,16,.08)] min-[701px]:grid-cols-[1.05fr_.95fr]"
+            className="group mx-auto grid w-full max-w-260 min-w-0 overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_18px_45px_rgba(20,20,16,.08)] min-[701px]:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]"
             to={`/products/${product.productId}`}
             tabIndex={isActive ? 0 : -1}
         >
-            <div className="aspect-[1.1] min-h-60 overflow-hidden bg-paper min-[701px]:aspect-auto">
+            <div className="h-56 overflow-hidden bg-paper min-[701px]:h-72">
                 <ProductImage product={product} />
             </div>
             <div className="flex min-w-0 flex-col justify-center p-6 min-[901px]:p-9">
@@ -158,10 +158,10 @@ function MerchandisingCarousel({
                 </header>
 
                 <div className="overflow-hidden">
-                    <div className="relative min-h-105" data-carousel-direction={direction}>
+                    <div className="relative min-h-90" data-carousel-direction={direction}>
                         {slides.map((slide, index) => (
                             <article
-                                className={`${getCarouselSlideMotionClass({ index, activeIndex, previousIndex, direction, isReducedMotion })} min-h-105 w-full`}
+                                className={`${getCarouselSlideMotionClass({ index, activeIndex, previousIndex, direction, isReducedMotion })} min-h-90 w-full`}
                                 aria-hidden={activeIndex !== index}
                                 aria-label={`${index + 1} / ${slides.length}`}
                                 aria-roledescription="slide"
