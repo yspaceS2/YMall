@@ -1,13 +1,16 @@
 import type {
     AdminCategory,
     AdminCategoryRequest,
+    AdminMember,
     AdminMemberPage,
+    AdminOrder,
     AdminOrderPage,
     AdminProduct,
     AdminProductPage,
     ProductChangeRequest,
     ProductChangeRequestStatus,
     AdminSellerPage,
+    AdminSeller,
     AdminSettlementRequest,
     AdminSettlementRequestPage,
     SettlementRequestStatus,
@@ -45,6 +48,7 @@ export function deleteAdminCategory(categoryId: number) {
 interface AdminPageOptions {
     page?: number
     signal?: AbortSignal
+    keyword?: string
 }
 
 interface AdminProductPageOptions extends AdminPageOptions {
@@ -126,18 +130,45 @@ export function reviewAdminProductChangeRequest(
 }
 
 export function getAdminMembers(options: AdminPageOptions = {}) {
-    const { page = 1, signal } = options
-    return apiRequest<AdminMemberPage>(`/admin/members?page=${page}&size=${ADMIN_PAGE_SIZE}`, { signal })
+    const { page = 1, signal, keyword = '' } = options
+    const query = new URLSearchParams({
+        page: String(page),
+        size: String(ADMIN_PAGE_SIZE),
+        keyword,
+    })
+    return apiRequest<AdminMemberPage>(`/admin/members?${query.toString()}`, { signal })
+}
+
+export function getAdminMember(memberId: number, signal?: AbortSignal) {
+    return apiRequest<AdminMember>(`/admin/members/${memberId}`, { signal })
 }
 
 export function getAdminSellers(options: AdminPageOptions = {}) {
-    const { page = 1, signal } = options
-    return apiRequest<AdminSellerPage>(`/admin/sellers?page=${page}&size=${ADMIN_PAGE_SIZE}`, { signal })
+    const { page = 1, signal, keyword = '' } = options
+    const query = new URLSearchParams({
+        page: String(page),
+        size: String(ADMIN_PAGE_SIZE),
+        keyword,
+    })
+    return apiRequest<AdminSellerPage>(`/admin/sellers?${query.toString()}`, { signal })
+}
+
+export function getAdminSeller(sellerId: number, signal?: AbortSignal) {
+    return apiRequest<AdminSeller>(`/admin/sellers/${sellerId}`, { signal })
 }
 
 export function getAdminOrders(options: AdminPageOptions = {}) {
-    const { page = 1, signal } = options
-    return apiRequest<AdminOrderPage>(`/admin/orders?page=${page}&size=${ADMIN_PAGE_SIZE}`, { signal })
+    const { page = 1, signal, keyword = '' } = options
+    const query = new URLSearchParams({
+        page: String(page),
+        size: String(ADMIN_PAGE_SIZE),
+        keyword,
+    })
+    return apiRequest<AdminOrderPage>(`/admin/orders?${query.toString()}`, { signal })
+}
+
+export function getAdminOrder(orderId: number, signal?: AbortSignal) {
+    return apiRequest<AdminOrder>(`/admin/orders/${orderId}`, { signal })
 }
 
 export function requestAdminRefund(orderId: number, request: PaymentRefundRequest) {

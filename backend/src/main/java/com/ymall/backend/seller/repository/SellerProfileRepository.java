@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
@@ -20,6 +22,20 @@ public interface SellerProfileRepository extends JpaRepository<SellerProfile, Lo
 
     @EntityGraph(attributePaths = "member")
     Optional<SellerProfile> findByMemberId(Long memberId);
+
+    @EntityGraph(attributePaths = "member")
+    @Query("select profile from SellerProfile profile where profile.id = :sellerProfileId")
+    Optional<SellerProfile> findWithMemberById(@Param("sellerProfileId") Long sellerProfileId);
+
+    @EntityGraph(attributePaths = "member")
+    @Query("""
+        select profile from SellerProfile profile
+        where lower(profile.storeName) like lower(concat('%', :keyword, '%'))
+           or lower(profile.businessNumber) like lower(concat('%', :keyword, '%'))
+           or lower(profile.member.name) like lower(concat('%', :keyword, '%'))
+           or lower(profile.member.email) like lower(concat('%', :keyword, '%'))
+        """)
+    Page<SellerProfile> search(@Param("keyword") String keyword, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<SellerProfile> findForUpdateByMemberId(Long memberId);

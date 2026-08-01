@@ -154,6 +154,41 @@ describe('ManagementLayout', () => {
             .toHaveAttribute('aria-current', 'page')
     })
 
+    it('회원의 분리된 계정 관리 메뉴를 표시한다', () => {
+        renderManagementLayout('member')
+
+        expect(screen.getByRole('link', { name: '회원정보' }))
+            .toHaveAttribute('href', '/mypage/profile')
+        expect(screen.getByRole('link', { name: '이메일 변경' }))
+            .toHaveAttribute('href', '/mypage/email')
+        expect(screen.getByRole('link', { name: '소셜 계정' }))
+            .toHaveAttribute('href', '/mypage/social')
+        expect(screen.getByRole('link', { name: '찜한 상품' }))
+            .toHaveAttribute('href', '/mypage/wishlist')
+        expect(screen.getByRole('link', { name: '배송지 관리' }))
+            .toHaveAttribute('href', '/mypage/addresses')
+    })
+
+    it('판매자의 상품 관리 메뉴를 표시한다', () => {
+        renderManagementLayout('seller')
+
+        expect(screen.getByRole('link', { name: '판매자 정보' }))
+            .toHaveAttribute('href', '/seller/profile')
+        expect(screen.getByRole('link', { name: '상품 관리' }))
+            .toHaveAttribute('href', '/seller/products')
+    })
+
+    it('관리자의 핵심 관리 메뉴를 표시한다', () => {
+        renderManagementLayout('admin')
+
+        expect(screen.getByRole('link', { name: '회원 관리' }))
+            .toHaveAttribute('href', '/admin/members')
+        expect(screen.getByRole('link', { name: '판매자 관리' }))
+            .toHaveAttribute('href', '/admin/sellers')
+        expect(screen.getByRole('link', { name: '주문 관리' }))
+            .toHaveAttribute('href', '/admin/orders')
+    })
+
     it('로그아웃 버튼으로 인증 로그아웃을 요청한다', async () => {
         const user = userEvent.setup()
         const { logout } = renderManagementLayout('admin')

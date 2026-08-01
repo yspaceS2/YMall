@@ -136,7 +136,7 @@ describe('Layout 역할별 메뉴', () => {
 
         expect(screen.getByRole('link', { name: 'YMall 홈' })).toBeInTheDocument()
         expect(screen.getByRole('search', { name: '통합 상품 검색' })).toBeInTheDocument()
-        expect(screen.getByRole('link', { name: '찜한 상품' })).toHaveAttribute('href', '/mypage#wishlist')
+        expect(screen.getByRole('link', { name: '찜한 상품' })).toHaveAttribute('href', '/mypage/wishlist')
         expect(screen.getByRole('link', { name: '장바구니' })).toHaveAttribute('href', '/cart')
         expect(await screen.findByLabelText('장바구니 상품 3개')).toHaveTextContent('3')
         screen.getAllByRole('link', { name: '내 정보' }).forEach((link) => {

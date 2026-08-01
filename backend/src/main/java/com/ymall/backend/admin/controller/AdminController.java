@@ -99,25 +99,43 @@ public class AdminController {
     @GetMapping("/members")
     public ApiResponse<PageResponse<AdminMemberResponse>> getMembers(
         @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int size
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "") String keyword
     ) {
-        return ApiResponse.success(adminService.getMembers(page, size));
+        return ApiResponse.success(adminService.getMembers(page, size, keyword));
+    }
+
+    @GetMapping("/members/{memberId}")
+    public ApiResponse<AdminMemberResponse> getMember(@PathVariable Long memberId) {
+        return ApiResponse.success(adminService.getMember(memberId));
     }
 
     @GetMapping("/sellers")
     public ApiResponse<PageResponse<AdminSellerResponse>> getSellers(
         @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int size
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "") String keyword
     ) {
-        return ApiResponse.success(adminService.getSellers(page, size));
+        return ApiResponse.success(adminService.getSellers(page, size, keyword));
+    }
+
+    @GetMapping("/sellers/{sellerId}")
+    public ApiResponse<AdminSellerResponse> getSeller(@PathVariable Long sellerId) {
+        return ApiResponse.success(adminService.getSeller(sellerId));
     }
 
     @GetMapping("/orders")
     public ApiResponse<PageResponse<AdminOrderResponse>> getOrders(
         @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int size
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "") String keyword
     ) {
-        return ApiResponse.success(adminService.getOrders(page, size));
+        return ApiResponse.success(adminService.getOrders(page, size, keyword));
+    }
+
+    @GetMapping("/orders/{orderId}")
+    public ApiResponse<AdminOrderResponse> getOrder(@PathVariable Long orderId) {
+        return ApiResponse.success(adminService.getOrder(orderId));
     }
 
     @PostMapping("/orders/{orderId}/refunds")

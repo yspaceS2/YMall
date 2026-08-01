@@ -4,11 +4,16 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,12 +82,15 @@ public class SettlementRequestService {
     ) {
         SellerProfile seller = sellerProfileService.getProfileEntity(memberId);
         return PageResponse.from(requestRepository
-            .findSellerRequests(
-                seller.getId(),
-                status,
-                requestId,
-                startOfDay(requestedFrom),
-                startOfNextDay(requestedTo),
+            .findAll(
+                requestSpecification(
+                    seller.getId(),
+                    status,
+                    requestId,
+                    null,
+                    startOfDay(requestedFrom),
+                    startOfNextDay(requestedTo)
+                ),
                 pageRequest(page, size)
             )
             .map(this::toResponse));
@@ -135,12 +143,15 @@ public class SettlementRequestService {
         int size
     ) {
         return PageResponse.from(requestRepository
-            .findAdminRequests(
-                status,
-                requestId,
-                normalize(sellerKeyword),
-                startOfDay(requestedFrom),
-                startOfNextDay(requestedTo),
+            .findAll(
+                requestSpecification(
+                    null,
+                    status,
+                    requestId,
+                    normalize(sellerKeyword),
+                    startOfDay(requestedFrom),
+                    startOfNextDay(requestedTo)
+                ),
                 pageRequest(page, size)
             )
             .map(this::toResponse));
@@ -267,8 +278,53 @@ public class SettlementRequestService {
     private PageRequest pageRequest(int page, int size) {
         return PageRequest.of(
             Math.max(page - 1, 0),
-            Math.min(Math.max(size, 1), MAX_PAGE_SIZE)
+            Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
+            Sort.by(Sort.Direction.DESC, "createdAt", "id")
         );
+    }
+
+    private Specification<SettlementRequest> requestSpecification(
+        Long sellerProfileId,
+        SettlementRequestStatus status,
+        Long requestId,
+        String sellerKeyword,
+        Instant requestedFrom,
+        Instant requestedToExclusive
+    ) {
+        return (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (sellerProfileId != null) {
+                predicates.add(criteriaBuilder.equal(
+                    root.get("sellerProfile").get("id"),
+                    sellerProfileId
+                ));
+            }
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+            if (requestId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("id"), requestId));
+            }
+            if (sellerKeyword != null) {
+                predicates.add(criteriaBuilder.like(
+                    criteriaBuilder.lower(root.get("sellerProfile").get("storeName")),
+                    "%" + sellerKeyword.toLowerCase(Locale.ROOT) + "%"
+                ));
+            }
+            if (requestedFrom != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(
+                    root.get("createdAt"),
+                    requestedFrom
+                ));
+            }
+            if (requestedToExclusive != null) {
+                predicates.add(criteriaBuilder.lessThan(
+                    root.get("createdAt"),
+                    requestedToExclusive
+                ));
+            }
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private Instant startOfDay(LocalDate date) {

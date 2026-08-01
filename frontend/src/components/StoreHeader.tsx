@@ -128,7 +128,7 @@ export function StoreHeader({
 
                     <Link
                         className="group inline-flex min-w-10 flex-col items-center justify-center gap-1 p-1 text-[10px] font-bold"
-                        to="/mypage#wishlist"
+                        to="/mypage/wishlist"
                         aria-label="찜한 상품"
                         onClick={closeMenus}
                     >
