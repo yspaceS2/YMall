@@ -25,6 +25,18 @@ test('user login does not restore a seller path', async ({ page }) => {
     await expect(page).toHaveURL('/')
 })
 
+test('seller login does not restore an admin path', async ({ page }) => {
+    await installMockApi(page)
+    await page.goto('/admin/settlement')
+
+    await expect(page).toHaveURL(/\/login$/)
+    await page.locator('#login-email').fill('seller@example.test')
+    await page.locator('#login-password').fill('Test1234!')
+    await page.locator('form:has(#login-email) button[type="submit"]').click()
+
+    await expect(page).toHaveURL('/')
+})
+
 test('explicit logout clears the previous seller path before account switching', async ({ page }) => {
     await installMockApi(page)
     await loginThroughUi(page, 'seller@example.test')
