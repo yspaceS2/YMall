@@ -33,10 +33,14 @@ class FlywayPostgresMigrationIntegrationTest {
             .load();
         MigrateResult result = flyway.migrate();
 
-        assertThat(result.migrationsExecuted).isEqualTo(1);
+        assertThat(result.migrationsExecuted).isEqualTo(2);
         flyway.validate();
 
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
+            assertThat(queryForInt(
+                connection,
+                "SELECT COUNT(*) FROM flyway_schema_history WHERE success = TRUE"
+            )).isEqualTo(2);
             assertThat(queryForString(
                 connection,
                 "SELECT version || ':' || type || ':' || success "
@@ -63,6 +67,13 @@ class FlywayPostgresMigrationIntegrationTest {
                     + "AND table_name = 'order_items' "
                     + "AND column_name = 'fulfillment_status'"
             )).isEqualTo("NO");
+            assertThat(queryForInt(
+                connection,
+                "SELECT COUNT(*) FROM information_schema.columns "
+                    + "WHERE table_schema = 'public' "
+                    + "AND table_name = 'products' "
+                    + "AND column_name = 'approved_at'"
+            )).isEqualTo(1);
         }
     }
 

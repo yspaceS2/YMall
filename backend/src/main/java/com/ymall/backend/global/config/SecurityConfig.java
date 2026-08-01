@@ -96,7 +96,13 @@ public class SecurityConfig {
                 .requestMatchers(GET, "/api/members/email-availability").permitAll()
                 .requestMatchers(POST, "/api/payments/webhooks/toss").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
-                .requestMatchers(GET, "/api/products/**", "/api/categories/**", "/images/**").permitAll()
+                .requestMatchers(
+                    GET,
+                    "/api/products/**",
+                    "/api/categories/**",
+                    "/api/home/**",
+                    "/images/**"
+                ).permitAll()
                 .requestMatchers(POST, "/api/products/*/questions").authenticated()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/seller/**").hasAnyRole("SELLER", "ADMIN")
