@@ -135,7 +135,12 @@ describe('Layout 역할별 메뉴', () => {
         renderLayout('ROLE_USER')
 
         expect(screen.getByRole('link', { name: 'YMall 홈' })).toBeInTheDocument()
+        expect(screen.queryByRole('search', { name: '통합 상품 검색' })).not.toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: '검색 열기' }))
         expect(screen.getByRole('search', { name: '통합 상품 검색' })).toBeInTheDocument()
+        expect(screen.getByRole('textbox', { name: '상품 검색' })).toHaveFocus()
+        await user.click(document.body)
+        expect(screen.queryByRole('search', { name: '통합 상품 검색' })).not.toBeInTheDocument()
         expect(screen.getByRole('link', { name: '찜한 상품' })).toHaveAttribute('href', '/mypage/wishlist')
         expect(screen.getByRole('link', { name: '장바구니' })).toHaveAttribute('href', '/cart')
         expect(await screen.findByLabelText('장바구니 상품 3개')).toHaveTextContent('3')

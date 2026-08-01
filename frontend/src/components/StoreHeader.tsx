@@ -11,8 +11,9 @@ import {
     ShoppingCart,
     Store,
     UserRound,
+    X,
 } from 'lucide-react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getCategories } from '../api/products'
 import ymallSymbolDark from '../assets/brand/ymall-symbol-dark.svg'
@@ -42,9 +43,34 @@ export function StoreHeader({
 }: StoreHeaderProps) {
     const navigate = useNavigate()
     const { resolvedTheme } = useTheme()
+    const searchButtonRef = useRef<HTMLButtonElement>(null)
+    const searchInputRef = useRef<HTMLInputElement>(null)
+    const searchPanelRef = useRef<HTMLDivElement>(null)
     const [searchKeyword, setSearchKeyword] = useState('')
     const [categories, setCategories] = useState<Category[]>([])
     const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false)
+    const [isSearchOpen, setIsSearchOpen] = useState(false)
+
+    useEffect(() => {
+        if (isSearchOpen) {
+            searchInputRef.current?.focus()
+        }
+    }, [isSearchOpen])
+
+    useEffect(() => {
+        if (!isSearchOpen) return
+
+        const closeOnOutsidePointer = (event: PointerEvent) => {
+            const target = event.target
+            if (!(target instanceof Node)) return
+            if (searchButtonRef.current?.contains(target)) return
+            if (searchPanelRef.current?.contains(target)) return
+            setIsSearchOpen(false)
+        }
+
+        document.addEventListener('pointerdown', closeOnOutsidePointer)
+        return () => document.removeEventListener('pointerdown', closeOnOutsidePointer)
+    }, [isSearchOpen])
 
     useEffect(() => {
         if (!isCategoryMenuOpen || categories.length > 0) {
@@ -66,10 +92,12 @@ export function StoreHeader({
         const keyword = searchKeyword.trim()
         navigate(keyword ? `/?keyword=${encodeURIComponent(keyword)}` : '/')
         setIsCategoryMenuOpen(false)
+        setIsSearchOpen(false)
     }
 
     const closeMenus = () => {
         setIsCategoryMenuOpen(false)
+        setIsSearchOpen(false)
     }
 
     const handleLogout = async () => {
@@ -87,6 +115,7 @@ export function StoreHeader({
                     aria-expanded={isCategoryMenuOpen}
                     aria-controls="store-category-menu"
                     onClick={() => {
+                        setIsSearchOpen(false)
                         setIsCategoryMenuOpen((open) => !open)
                     }}
                 >
@@ -105,26 +134,24 @@ export function StoreHeader({
                     </span>
                 </Link>
 
-                <form
-                    className="mx-auto hidden h-12 min-w-0 max-w-160 flex-1 items-center border-2 border-ink bg-surface px-4 min-[601px]:flex"
-                    role="search"
-                    aria-label="통합 상품 검색"
-                    onSubmit={submitSearch}
-                >
-                    <input
-                        className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted"
-                        value={searchKeyword}
-                        onChange={(event) => setSearchKeyword(event.target.value)}
-                        placeholder="찾고 싶은 상품을 검색해 보세요"
-                        aria-label="상품 검색"
-                    />
-                    <button className="inline-grid size-8 place-items-center border-0 bg-transparent" type="submit" aria-label="검색">
-                        <Search className="size-5" aria-hidden="true" />
-                    </button>
-                </form>
-
                 <nav className="ml-auto flex shrink-0 items-center gap-1 min-[601px]:gap-2" aria-label="사용자 메뉴">
                     <ThemeSelector />
+
+                    <button
+                        ref={searchButtonRef}
+                        className="group inline-flex min-w-12 flex-col items-center justify-center gap-1 p-1 text-[10px] font-bold"
+                        type="button"
+                        aria-label={isSearchOpen ? '검색 닫기' : '검색 열기'}
+                        aria-expanded={isSearchOpen}
+                        aria-controls="store-search-panel"
+                        onClick={() => {
+                            setIsCategoryMenuOpen(false)
+                            setIsSearchOpen((open) => !open)
+                        }}
+                    >
+                        <Search className="size-5 transition-transform group-hover:scale-110" aria-hidden="true" />
+                        <span className="hidden min-[901px]:inline">검색</span>
+                    </button>
 
                     <Link
                         className="group inline-flex min-w-10 flex-col items-center justify-center gap-1 p-1 text-[10px] font-bold"
@@ -231,23 +258,41 @@ export function StoreHeader({
                 </nav>
             </div>
 
-            <form
-                className="mx-4 mb-3 flex h-11 items-center border-2 border-ink bg-surface px-3 min-[601px]:hidden"
-                role="search"
-                aria-label="모바일 통합 상품 검색"
-                onSubmit={submitSearch}
-            >
-                <input
-                    className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted"
-                    value={searchKeyword}
-                    onChange={(event) => setSearchKeyword(event.target.value)}
-                    placeholder="상품을 검색해 보세요"
-                    aria-label="모바일 상품 검색"
-                />
-                <button className="inline-grid size-8 place-items-center border-0 bg-transparent" type="submit" aria-label="모바일 검색">
-                    <Search className="size-5" aria-hidden="true" />
-                </button>
-            </form>
+            {isSearchOpen && (
+                <div
+                    ref={searchPanelRef}
+                    className="absolute top-[calc(100%+8px)] right-4 z-50 w-[min(420px,calc(100vw-32px))] rounded-2xl border border-line bg-surface p-3 shadow-[0_18px_50px_rgba(20,20,16,.18)] min-[601px]:right-[clamp(24px,5vw,72px)]"
+                    id="store-search-panel"
+                >
+                    <form
+                        className="flex items-center gap-2"
+                        role="search"
+                        aria-label="통합 상품 검색"
+                        onSubmit={submitSearch}
+                    >
+                        <div className="flex h-11 min-w-0 flex-1 items-center rounded-xl border border-ink bg-paper px-3">
+                            <Search className="mr-2 size-4.5 shrink-0 text-muted" aria-hidden="true" />
+                            <input
+                                ref={searchInputRef}
+                                className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted"
+                                value={searchKeyword}
+                                onChange={(event) => setSearchKeyword(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Escape') setIsSearchOpen(false)
+                                }}
+                                placeholder="찾고 싶은 상품을 검색해 보세요"
+                                aria-label="상품 검색"
+                            />
+                            <button className="shrink-0 rounded-lg bg-ink px-3.5 py-2 text-xs font-extrabold text-paper" type="submit" aria-label="상품 검색 실행">
+                                검색
+                            </button>
+                        </div>
+                        <button className="inline-grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-paper hover:text-ink" type="button" aria-label="검색 닫기" onClick={() => setIsSearchOpen(false)}>
+                            <X className="size-4" aria-hidden="true" />
+                        </button>
+                    </form>
+                </div>
+            )}
 
             {isCategoryMenuOpen && (
                 <CategoryDrawer categories={categories} isAuthenticated={isAuthenticated} onClose={closeMenus} />
