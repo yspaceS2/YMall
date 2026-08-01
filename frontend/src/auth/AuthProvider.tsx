@@ -18,6 +18,7 @@ import {
 export function AuthProvider({ children }: { children: ReactNode }) {
     const initialToken = getAccessToken()
     const [isAuthenticated, setIsAuthenticated] = useState(() => initialToken !== null)
+    const [isLoggingOut, setIsLoggingOut] = useState(false)
     const [role, setRole] = useState(() => getTokenRole(initialToken))
     const location = useLocation()
     const navigate = useNavigate()
@@ -102,32 +103,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const login = useCallback(async (request: LoginRequest) => {
         const response = await loginMember(request)
+        const authenticatedRole = getTokenRole(response.accessToken)
         setAccessToken(response.accessToken)
         setIsAuthenticated(true)
-        setRole(getTokenRole(response.accessToken))
+        setRole(authenticatedRole)
+        return authenticatedRole
     }, [])
 
     const completeOAuthLogin = useCallback((accessToken: string) => {
+        const authenticatedRole = getTokenRole(accessToken)
         setAccessToken(accessToken)
         setIsAuthenticated(true)
-        setRole(getTokenRole(accessToken))
+        setRole(authenticatedRole)
+        return authenticatedRole
     }, [])
 
     const logout = useCallback(async () => {
+        setIsLoggingOut(true)
         try {
             await logoutMember()
         } finally {
             clearAccessToken()
             setIsAuthenticated(false)
             setRole(null)
-            navigate('/', { replace: true })
+            navigate('/', { replace: true, state: null })
             window.dispatchEvent(new Event(AUTH_LOGOUT_COMPLETED_EVENT))
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => setIsLoggingOut(false))
+            })
         }
     }, [navigate])
 
     const value = useMemo(
-        () => ({ isAuthenticated, role, login, completeOAuthLogin, logout }),
-        [isAuthenticated, role, login, completeOAuthLogin, logout],
+        () => ({ isAuthenticated, isLoggingOut, role, login, completeOAuthLogin, logout }),
+        [isAuthenticated, isLoggingOut, role, login, completeOAuthLogin, logout],
     )
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

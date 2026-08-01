@@ -3,10 +3,13 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './useAuth'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-    const { isAuthenticated } = useAuth()
+    const { isAuthenticated, isLoggingOut } = useAuth()
     const location = useLocation()
 
     if (!isAuthenticated) {
+        if (isLoggingOut) {
+            return <Navigate to="/" replace />
+        }
         return (
             <Navigate
                 to="/login"

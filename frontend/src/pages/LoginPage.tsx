@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { clearAccessToken } from '../auth/tokenStorage'
+import { resolveLoginDestination } from '../auth/loginDestination'
 import { getOAuthAuthorizationUrl } from '../api/auth'
 import { AuthField } from '../components/auth/AuthField'
 import { cancelGoogleOneTap } from '../api/googleIdentity'
@@ -45,7 +46,7 @@ function NaverLogo() {
 }
 
 export function LoginPage() {
-    const { isAuthenticated, login, completeOAuthLogin } = useAuth()
+    const { isAuthenticated, role, login, completeOAuthLogin } = useAuth()
     const { showToast } = useToast()
     const location = useLocation()
     const navigate = useNavigate()
@@ -53,10 +54,10 @@ export function LoginPage() {
     const [password, setPassword] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const state = location.state as LoginLocationState | null
-    const destination = state?.from?.startsWith('/') ? state.from : '/'
+    const requestedDestination = state?.from
 
     if (isAuthenticated) {
-        return <Navigate to={destination} replace />
+        return <Navigate to={resolveLoginDestination(requestedDestination, role)} replace />
     }
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -64,9 +65,11 @@ export function LoginPage() {
         setIsSubmitting(true)
 
         try {
-            await login({ email, password })
+            const authenticatedRole = await login({ email, password })
             showToast('로그인되었습니다.', 'success')
-            navigate(destination, { replace: true })
+            navigate(resolveLoginDestination(requestedDestination, authenticatedRole), {
+                replace: true,
+            })
         } catch (error) {
             showToast(
                 error instanceof ApiError ? error.message : '로그인 중 오류가 발생했습니다.',
@@ -88,9 +91,12 @@ export function LoginPage() {
         >
             <GoogleOneTapPrompt
                     onAuthenticated={(token) => {
-                        completeOAuthLogin(token.accessToken)
+                        const authenticatedRole = completeOAuthLogin(token.accessToken)
                         showToast('로그인되었습니다.', 'success')
-                        navigate(destination, { replace: true })
+                        navigate(
+                            resolveLoginDestination(requestedDestination, authenticatedRole),
+                            { replace: true },
+                        )
                     }}
                     onSignupRequired={() => {
                         navigate('/oauth2/signup', {

@@ -4,10 +4,13 @@ import type { MemberRole } from '../types/auth'
 import { useAuth } from './useAuth'
 
 export function RequireRole({ children, roles }: { children: ReactNode; roles: MemberRole[] }) {
-    const { isAuthenticated, role } = useAuth()
+    const { isAuthenticated, isLoggingOut, role } = useAuth()
     const location = useLocation()
 
     if (!isAuthenticated) {
+        if (isLoggingOut) {
+            return <Navigate to="/" replace />
+        }
         return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
     }
     if (!role || !roles.includes(role)) {
