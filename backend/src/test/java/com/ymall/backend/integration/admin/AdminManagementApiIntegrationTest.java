@@ -211,22 +211,44 @@ class AdminManagementApiIntegrationTest {
         orderRepository.save(order);
 
         mockMvc.perform(get("/api/admin/members")
+                .param("keyword", "buyer@example.com")
                 .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.totalElements").value(3));
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].memberId").value(buyer.getId()));
+
+        mockMvc.perform(get("/api/admin/members/{memberId}", buyer.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.email").value("buyer@example.com"));
 
         mockMvc.perform(get("/api/admin/sellers")
+                .param("keyword", "테스트 상점")
                 .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.content[0].storeName").value("테스트 상점"))
             .andExpect(jsonPath("$.data.content[0].email").value("seller@example.com"));
 
+        mockMvc.perform(get(
+                "/api/admin/sellers/{sellerId}",
+                sellerProfile.getId()
+            ).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.storeName").value("테스트 상점"));
+
         mockMvc.perform(get("/api/admin/orders")
+                .param("keyword", order.getId().toString())
                 .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.content[0].orderId").value(order.getId()))
             .andExpect(jsonPath("$.data.content[0].memberEmail").value("buyer@example.com"))
             .andExpect(jsonPath("$.data.content[0].items[0].productName").value("주문 상품"));
+
+        mockMvc.perform(get("/api/admin/orders/{orderId}", order.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.orderId").value(order.getId()))
+            .andExpect(jsonPath("$.data.items[0].productName").value("주문 상품"));
     }
 
     @Test

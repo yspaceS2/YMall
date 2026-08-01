@@ -292,6 +292,16 @@ class SettlementRequestIntegrationTest {
             .getStoreName();
 
         mockMvc.perform(get("/api/seller/settlement-requests")
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1));
+
+        mockMvc.perform(get("/api/admin/settlement-requests")
+                .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1));
+
+        mockMvc.perform(get("/api/seller/settlement-requests")
                 .header(HttpHeaders.AUTHORIZATION, bearer(seller))
                 .param("status", "REQUESTED")
                 .param("requestId", requestId.toString())

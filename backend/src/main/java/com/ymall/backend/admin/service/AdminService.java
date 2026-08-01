@@ -100,22 +100,56 @@ public class AdminService {
         return adminMapper.toProductResponse(product);
     }
 
-    public PageResponse<AdminMemberResponse> getMembers(int page, int size) {
-        return PageResponse.from(
-            memberRepository.findAll(createPageable(page, size))
-                .map(adminMapper::toMemberResponse)
-        );
+    public PageResponse<AdminMemberResponse> getMembers(int page, int size, String keyword) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+        return PageResponse.from((normalizedKeyword.isEmpty()
+            ? memberRepository.findAll(createPageable(page, size))
+            : memberRepository.search(normalizedKeyword, createPageable(page, size)))
+            .map(adminMapper::toMemberResponse));
     }
 
-    public PageResponse<AdminSellerResponse> getSellers(int page, int size) {
-        return PageResponse.from(
-            sellerProfileRepository.findAll(createPageable(page, size))
-                .map(adminMapper::toSellerResponse)
-        );
+    public AdminMemberResponse getMember(Long memberId) {
+        return memberRepository.findById(memberId)
+            .map(adminMapper::toMemberResponse)
+            .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
     }
 
-    public PageResponse<AdminOrderResponse> getOrders(int page, int size) {
-        Page<Order> orders = orderRepository.findAll(createPageable(page, size));
+    public PageResponse<AdminSellerResponse> getSellers(int page, int size, String keyword) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+        return PageResponse.from((normalizedKeyword.isEmpty()
+            ? sellerProfileRepository.findAll(createPageable(page, size))
+            : sellerProfileRepository.search(normalizedKeyword, createPageable(page, size)))
+            .map(adminMapper::toSellerResponse));
+    }
+
+    public AdminSellerResponse getSeller(Long sellerId) {
+        return sellerProfileRepository.findWithMemberById(sellerId)
+            .map(adminMapper::toSellerResponse)
+            .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_PROFILE_NOT_FOUND));
+    }
+
+    public PageResponse<AdminOrderResponse> getOrders(int page, int size, String keyword) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+        Long orderId = parseOrderId(normalizedKeyword);
+        Page<Order> orders = normalizedKeyword.isEmpty()
+            ? orderRepository.findAll(createPageable(page, size))
+            : orderRepository.searchAdminOrders(
+                orderId == null ? normalizedKeyword : "",
+                orderId,
+                createPageable(page, size)
+            );
+        return toOrderPage(orders);
+    }
+
+    public AdminOrderResponse getOrder(Long orderId) {
+        Order order = orderRepository.findAdminOrderById(orderId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+        boolean refundSupported = paymentRepository
+            .existsByOrderIdAndResultAndPaymentKeyIsNotNull(orderId, PaymentResult.SUCCESS);
+        return adminMapper.toOrderResponse(order, refundSupported);
+    }
+
+    private PageResponse<AdminOrderResponse> toOrderPage(Page<Order> orders) {
         List<Long> orderIds = orders.stream().map(Order::getId).toList();
         Set<Long> refundSupportedOrderIds = orderIds.isEmpty()
             ? Set.of()
@@ -127,6 +161,18 @@ public class AdminService {
             order,
             refundSupportedOrderIds.contains(order.getId())
         )));
+    }
+
+    private String normalizeKeyword(String keyword) {
+        return keyword == null ? "" : keyword.trim();
+    }
+
+    private Long parseOrderId(String keyword) {
+        try {
+            return keyword.isBlank() ? null : Long.valueOf(keyword);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private Pageable createPageable(int page, int size) {

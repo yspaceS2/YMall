@@ -37,21 +37,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        MemberPrincipal principal;
         try {
-            MemberPrincipal principal = jwtTokenProvider.parseAccessToken(
+            principal = jwtTokenProvider.parseAccessToken(
                 authorization.substring(BEARER_PREFIX.length())
             );
-            UsernamePasswordAuthenticationToken authentication =
-                UsernamePasswordAuthenticationToken.authenticated(
-                    principal,
-                    null,
-                    List.of(new SimpleGrantedAuthority(principal.role().name()))
-                );
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            filterChain.doFilter(request, response);
         } catch (BusinessException exception) {
             SecurityContextHolder.clearContext();
             responseWriter.write(response, exception.getErrorCode());
+            return;
         }
+
+        UsernamePasswordAuthenticationToken authentication =
+            UsernamePasswordAuthenticationToken.authenticated(
+                principal,
+                null,
+                List.of(new SimpleGrantedAuthority(principal.role().name()))
+            );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        filterChain.doFilter(request, response);
     }
 }

@@ -211,6 +211,26 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Param("statuses") Collection<OrderStatus> statuses
     );
 
+    @EntityGraph(attributePaths = {"member", "items", "items.product"})
+    @Query("""
+        select distinct orders from Order orders
+        where (:keyword = ''
+            or lower(orders.member.name) like lower(concat('%', :keyword, '%'))
+            or lower(orders.member.email) like lower(concat('%', :keyword, '%'))
+            or exists (
+                select item.id from OrderItem item
+                where item.order = orders
+                  and lower(item.productName) like lower(concat('%', :keyword, '%'))
+            )
+        )
+          and (:orderId is null or orders.id = :orderId)
+        """)
+    Page<Order> searchAdminOrders(
+        @Param("keyword") String keyword,
+        @Param("orderId") Long orderId,
+        Pageable pageable
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"items", "items.product", "items.product.sellerProfile"})
     @Query("""
@@ -241,4 +261,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Param("orderId") Long orderId,
         @Param("sellerProfileId") Long sellerProfileId
     );
+
+    @EntityGraph(attributePaths = {"member", "items", "items.product"})
+    @Query("select orders from Order orders where orders.id = :orderId")
+    Optional<Order> findAdminOrderById(@Param("orderId") Long orderId);
 }
