@@ -21,6 +21,7 @@ import com.ymall.backend.seller.dto.SellerOrderDetailResponse;
 import com.ymall.backend.seller.dto.SellerOrderItemFulfillmentUpdateRequest;
 import com.ymall.backend.seller.dto.SellerOrderResponse;
 import com.ymall.backend.seller.dto.SellerOrderStatusUpdateRequest;
+import com.ymall.backend.seller.dto.SellerOrderWorkType;
 import com.ymall.backend.seller.dto.SellerPendingOrderCountResponse;
 import com.ymall.backend.seller.service.SellerOrderService;
 import com.ymall.backend.payment.refund.dto.PaymentRefundRequest;
@@ -50,7 +51,8 @@ public class SellerOrderController {
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "") String keyword,
-        @RequestParam(required = false) OrderItemFulfillmentStatus fulfillmentStatus
+        @RequestParam(required = false) OrderItemFulfillmentStatus fulfillmentStatus,
+        @RequestParam(required = false) SellerOrderWorkType workType
     ) {
         return ResponseEntity.ok(ApiResponse.success(
             sellerOrderService.getOrders(
@@ -58,7 +60,8 @@ public class SellerOrderController {
                 page,
                 size,
                 keyword,
-                fulfillmentStatus
+                fulfillmentStatus,
+                workType
             )
         ));
     }

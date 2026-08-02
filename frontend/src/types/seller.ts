@@ -42,6 +42,7 @@ export interface SellerSettlementAccountUpsertRequest {
 }
 
 export type SettlementRequestStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'PAID'
+export type SettlementRequestWorkType = 'PROCESSING' | 'ACTION_REQUIRED'
 
 export interface SettlementAvailability {
     entryCount: number

@@ -1,5 +1,6 @@
 import { Banknote, CalendarRange, WalletCards } from 'lucide-react'
-import { useState, type ComponentType } from 'react'
+import { type ComponentType } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { SettlementAccountPanel } from './SettlementAccountPanel'
 import { SettlementRequestPanel } from './SettlementRequestPanel'
@@ -17,7 +18,19 @@ const tabs: Array<{
 ]
 
 export function SettlementManagementPanel() {
-    const [activeTab, setActiveTab] = useState<SettlementTab>('account')
+    const [searchParams, setSearchParams] = useSearchParams()
+    const requestedTab = searchParams.get('tab')
+    const activeTab = tabs.some((tab) => tab.id === requestedTab)
+        ? requestedTab as SettlementTab
+        : 'account'
+
+    function changeTab(tab: SettlementTab) {
+        const next = new URLSearchParams(searchParams)
+        next.set('tab', tab)
+        if (tab !== 'history') next.delete('status')
+        next.delete('page')
+        setSearchParams(next)
+    }
 
     return (
         <section aria-label="정산 관리">
@@ -42,7 +55,7 @@ export function SettlementManagementPanel() {
                             role="tab"
                             aria-controls={`settlement-panel-${tab.id}`}
                             aria-selected={isActive}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => changeTab(tab.id)}
                         >
                             <Icon className="size-4 shrink-0" aria-hidden={true} />
                             <span>{tab.label}</span>

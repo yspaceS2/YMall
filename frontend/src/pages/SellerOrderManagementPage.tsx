@@ -14,6 +14,7 @@ import {
     getSellerRefunds,
     requestSellerRefund,
     updateSellerOrderItemFulfillment,
+    type SellerOrderWorkType,
 } from '../api/seller'
 import { RefundDialog } from '../components/RefundDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
@@ -38,8 +39,11 @@ const statusLabels: Record<FulfillmentStatus, string> = {
     DELIVERED: '배송 완료',
 }
 
-const statusOptions: Array<{ value: FulfillmentStatus | ''; label: string }> = [
+type OrderFilter = FulfillmentStatus | SellerOrderWorkType | ''
+
+const statusOptions: Array<{ value: OrderFilter; label: string }> = [
     { value: '', label: '전체 상태' },
+    { value: 'ACTION_REQUIRED', label: '처리 필요' },
     { value: 'PENDING', label: statusLabels.PENDING },
     { value: 'PREPARING', label: statusLabels.PREPARING },
     { value: 'SHIPPED', label: statusLabels.SHIPPED },
@@ -56,8 +60,10 @@ export function SellerOrderListPage() {
     const [errorMessage, setErrorMessage] = useState('')
     const page = positivePage(searchParams.get('page'))
     const keyword = searchParams.get('keyword') ?? ''
-    const status = parseFulfillmentStatus(searchParams.get('fulfillmentStatus'))
-    const queryKey = `${page}:${keyword}:${status}`
+    const workType = parseWorkType(searchParams.get('workType'))
+    const status = workType ? '' : parseFulfillmentStatus(searchParams.get('fulfillmentStatus'))
+    const selectedFilter: OrderFilter = workType ?? status
+    const queryKey = `${page}:${keyword}:${selectedFilter}`
     const isLoading = loadedQueryKey !== queryKey
 
     useEffect(() => {
@@ -66,6 +72,7 @@ export function SellerOrderListPage() {
             page,
             keyword,
             fulfillmentStatus: status,
+            workType,
             signal: controller.signal,
         }).then((response) => {
             setOrders(response.content)
@@ -81,7 +88,7 @@ export function SellerOrderListPage() {
             if (!controller.signal.aborted) setLoadedQueryKey(queryKey)
         })
         return () => controller.abort()
-    }, [keyword, page, queryKey, status])
+    }, [keyword, page, queryKey, status, workType])
 
     return (
         <ManagementPage
@@ -94,13 +101,15 @@ export function SellerOrderListPage() {
                     배송 상태
                     <select
                         className="h-11 min-w-44 border border-line bg-surface px-3 text-sm"
-                        value={status}
+                        value={selectedFilter}
                         onChange={(event) => {
                             const next = new URLSearchParams(searchParams)
-                            if (event.target.value) {
+                            next.delete('fulfillmentStatus')
+                            next.delete('workType')
+                            if (event.target.value === 'ACTION_REQUIRED') {
+                                next.set('workType', event.target.value)
+                            } else if (event.target.value) {
                                 next.set('fulfillmentStatus', event.target.value)
-                            } else {
-                                next.delete('fulfillmentStatus')
                             }
                             next.set('page', '1')
                             setSearchParams(next)
@@ -226,6 +235,10 @@ function parseFulfillmentStatus(value: string | null): FulfillmentStatus | '' {
         || value === 'DELIVERED'
         ? value
         : ''
+}
+
+function parseWorkType(value: string | null): SellerOrderWorkType | undefined {
+    return value === 'ACTION_REQUIRED' ? value : undefined
 }
 
 export function SellerOrderDetailPage() {

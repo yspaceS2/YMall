@@ -233,10 +233,16 @@ class SellerManagementApiIntegrationTest {
             .andExpect(jsonPath("$.data.totalElements").value(1))
             .andExpect(jsonPath("$.data.content[0].orderId").value(pendingOrder.getId()));
 
+        mockMvc.perform(get("/api/seller/orders")
+                .param("workType", "ACTION_REQUIRED")
+                .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(2));
+
         mockMvc.perform(get("/api/seller/orders/pending-count")
                 .header(HttpHeaders.AUTHORIZATION, bearer(firstSellerToken)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.count").value(1));
+            .andExpect(jsonPath("$.data.count").value(2));
     }
 
     @Test

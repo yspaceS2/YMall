@@ -265,7 +265,7 @@ export function ManagementLayout({
                                         ? unreadNotificationCount
                                         : 0
                             const href = isOrderMenu && pendingOrderCount > 0
-                                ? '/seller/orders?fulfillmentStatus=PENDING&page=1'
+                                ? '/seller/orders?workType=ACTION_REQUIRED&page=1'
                                 : isQuestionMenu && pendingQuestionCount > 0
                                     ? '/seller/questions?status=WAITING&page=1'
                                     : item.href
@@ -288,7 +288,7 @@ export function ManagementLayout({
                                                         : 'bg-lime text-[#171717]',
                                                 ].join(' ')}
                                                 aria-label={isOrderMenu
-                                                    ? `처리 대기 주문 ${badgeCount}건`
+                                                    ? `처리 필요 주문 ${badgeCount}건`
                                                     : isQuestionMenu
                                                         ? `답변 대기 문의 ${badgeCount}건`
                                                         : `읽지 않은 알림 ${badgeCount}건`}

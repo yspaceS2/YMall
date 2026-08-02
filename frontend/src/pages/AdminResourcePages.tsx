@@ -8,6 +8,7 @@ import {
     getAdminOrders,
     getAdminSeller,
     getAdminSellers,
+    type AdminOrderWorkType,
 } from '../api/admin'
 import { ApiError } from '../api/client'
 import {
@@ -65,17 +66,20 @@ const resourceMeta = {
 
 export function AdminResourceListPage({ resource }: { resource: AdminResource }) {
     const navigate = useNavigate()
-    const [searchParams] = useSearchParams()
+    const [searchParams, setSearchParams] = useSearchParams()
     const [pageData, setPageData] = useState<AdminResourcePage | null>(null)
     const [errorMessage, setErrorMessage] = useState('')
     const [isLoading, setIsLoading] = useState(true)
     const page = positiveNumber(searchParams.get('page'), 1)
     const keyword = searchParams.get('keyword')?.trim() ?? ''
+    const workType = resource === 'orders'
+        ? parseOrderWorkType(searchParams.get('workType'))
+        : undefined
     const meta = resourceMeta[resource]
 
     useEffect(() => {
         const controller = new AbortController()
-        loadList(resource, page, keyword, controller.signal)
+        loadList(resource, page, keyword, workType, controller.signal)
             .then(setPageData)
             .catch((error: unknown) => {
                 if (error instanceof Error && error.name === 'AbortError') return
@@ -89,7 +93,7 @@ export function AdminResourceListPage({ resource }: { resource: AdminResource })
                 if (!controller.signal.aborted) setIsLoading(false)
             })
         return () => controller.abort()
-    }, [keyword, page, resource])
+    }, [keyword, page, resource, workType])
 
     const items = pageData?.content ?? []
 
@@ -100,6 +104,27 @@ export function AdminResourceListPage({ resource }: { resource: AdminResource })
                 title={meta.title}
                 description={meta.description}
             />
+            {resource === 'orders' && (
+                <label className="mb-4 grid max-w-60 gap-1.5 text-xs font-bold">
+                    처리 업무
+                    <select
+                        className="h-11 border border-line bg-surface px-3 text-sm font-normal text-ink"
+                        value={workType ?? ''}
+                        onChange={(event) => {
+                            const next = new URLSearchParams(searchParams)
+                            const nextWorkType = parseOrderWorkType(event.target.value)
+                            if (nextWorkType) next.set('workType', nextWorkType)
+                            else next.delete('workType')
+                            next.set('page', '1')
+                            setSearchParams(next)
+                        }}
+                    >
+                        <option value="">전체 주문</option>
+                        <option value="PENDING_REFUND">환불 처리 대기</option>
+                        <option value="PENDING_RETURN">반품 처리 대기</option>
+                    </select>
+                </label>
+            )}
             <ManagementListSearch placeholder={meta.searchPlaceholder} />
             {errorMessage && <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>}
             {isLoading ? (
@@ -302,11 +327,16 @@ function loadList(
     resource: AdminResource,
     page: number,
     keyword: string,
+    workType: AdminOrderWorkType | undefined,
     signal: AbortSignal,
 ): Promise<AdminResourcePage> {
     if (resource === 'members') return getAdminMembers({ page, keyword, signal })
     if (resource === 'sellers') return getAdminSellers({ page, keyword, signal })
-    return getAdminOrders({ page, keyword, signal })
+    return getAdminOrders({ page, keyword, workType, signal })
+}
+
+function parseOrderWorkType(value: string | null): AdminOrderWorkType | undefined {
+    return value === 'PENDING_REFUND' || value === 'PENDING_RETURN' ? value : undefined
 }
 
 function loadDetail(

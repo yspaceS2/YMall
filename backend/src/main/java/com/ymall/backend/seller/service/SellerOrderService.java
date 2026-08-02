@@ -31,6 +31,7 @@ import com.ymall.backend.seller.dto.SellerOrderItemFulfillmentUpdateRequest;
 import com.ymall.backend.seller.dto.SellerOrderItemResponse;
 import com.ymall.backend.seller.dto.SellerOrderResponse;
 import com.ymall.backend.seller.dto.SellerOrderStatusUpdateRequest;
+import com.ymall.backend.seller.dto.SellerOrderWorkType;
 import com.ymall.backend.seller.dto.SellerPendingOrderCountResponse;
 import com.ymall.backend.seller.entity.SellerProfile;
 
@@ -61,7 +62,8 @@ public class SellerOrderService {
         int page,
         int size,
         String keyword,
-        OrderItemFulfillmentStatus fulfillmentStatus
+        OrderItemFulfillmentStatus fulfillmentStatus,
+        SellerOrderWorkType workType
     ) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         Pageable pageable = PageRequest.of(
@@ -70,13 +72,25 @@ public class SellerOrderService {
         );
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         Long orderId = parseOrderId(normalizedKeyword);
+        boolean actionRequired = workType == SellerOrderWorkType.ACTION_REQUIRED;
+        var fulfillmentStatuses = actionRequired
+            ? EnumSet.of(
+                OrderItemFulfillmentStatus.PENDING,
+                OrderItemFulfillmentStatus.PREPARING
+            )
+            : EnumSet.of(
+                fulfillmentStatus == null
+                    ? OrderItemFulfillmentStatus.PENDING
+                    : fulfillmentStatus
+            );
         Page<Order> orders = orderRepository.searchSellerOrders(
             profile.getId(),
             SELLER_VISIBLE_STATUSES,
             normalizedKeyword,
             orderId,
-            fulfillmentStatus != null,
-            fulfillmentStatus == null ? OrderItemFulfillmentStatus.PENDING : fulfillmentStatus,
+            actionRequired || fulfillmentStatus != null,
+            fulfillmentStatuses,
+            actionRequired || fulfillmentStatus == OrderItemFulfillmentStatus.PENDING,
             pageable
         );
         List<Long> orderIds = orders.stream().map(Order::getId).toList();
@@ -96,7 +110,7 @@ public class SellerOrderService {
     public SellerPendingOrderCountResponse getPendingOrderCount(Long memberId) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         return new SellerPendingOrderCountResponse(
-            orderRepository.countSellerPendingFulfillmentOrders(
+            orderRepository.countSellerActionRequiredOrders(
                 profile.getId(),
                 SELLER_VISIBLE_STATUSES
             )

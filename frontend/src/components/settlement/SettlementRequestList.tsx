@@ -5,7 +5,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getAdminSettlementRequests } from '../../api/admin'
 import { ApiError } from '../../api/client'
 import { getSettlementRequests } from '../../api/seller'
-import type { SettlementRequest, SettlementRequestStatus } from '../../types/seller'
+import type {
+    SettlementRequest,
+    SettlementRequestStatus,
+    SettlementRequestWorkType,
+} from '../../types/seller'
 import {
     ManagementEmpty,
     ManagementPagination,
@@ -28,8 +32,9 @@ function SettlementRequestList({ role }: { role: 'seller' | 'admin' }) {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const page = Math.max(Number(searchParams.get('page')) || 1, 1)
+    const workType = parseWorkType(role, searchParams.get('workType'))
     const statusParam = searchParams.get('status')
-    const status = settlementStatuses.includes(statusParam as SettlementRequestStatus)
+    const status = !workType && settlementStatuses.includes(statusParam as SettlementRequestStatus)
         ? statusParam as SettlementRequestStatus
         : undefined
     const requestIdParam = searchParams.get('requestId')
@@ -54,11 +59,12 @@ function SettlementRequestList({ role }: { role: 'seller' | 'admin' }) {
         page,
         size: 20,
         status,
+        workType,
         requestId,
         sellerKeyword,
         requestedFrom,
         requestedTo,
-    }), [page, requestId, requestedFrom, requestedTo, sellerKeyword, status])
+    }), [page, requestId, requestedFrom, requestedTo, sellerKeyword, status, workType])
 
     useEffect(() => {
         const controller = new AbortController()
@@ -175,7 +181,9 @@ function SettlementRequestList({ role }: { role: 'seller' | 'admin' }) {
 function SettlementListFilters({ role }: { role: 'seller' | 'admin' }) {
     const [searchParams, setSearchParams] = useSearchParams()
     const [requestId, setRequestId] = useState(searchParams.get('requestId') ?? '')
-    const [status, setStatus] = useState(searchParams.get('status') ?? '')
+    const [status, setStatus] = useState(
+        searchParams.get('workType') ?? searchParams.get('status') ?? '',
+    )
     const [sellerKeyword, setSellerKeyword] = useState(
         searchParams.get('sellerKeyword') ?? '',
     )
@@ -202,8 +210,13 @@ function SettlementListFilters({ role }: { role: 'seller' | 'admin' }) {
         else next.delete('requestedFrom')
         if (requestedTo) next.set('requestedTo', requestedTo)
         else next.delete('requestedTo')
-        if (status) next.set('status', status)
-        else next.delete('status')
+        next.delete('status')
+        next.delete('workType')
+        if (status === 'PROCESSING' || status === 'ACTION_REQUIRED') {
+            next.set('workType', status)
+        } else if (status) {
+            next.set('status', status)
+        }
         next.set('page', '1')
         setSearchParams(next)
     }
@@ -255,6 +268,9 @@ function SettlementListFilters({ role }: { role: 'seller' | 'admin' }) {
                     onChange={(event) => setStatus(event.target.value)}
                 >
                     <option value="">전체 상태</option>
+                    <option value={role === 'admin' ? 'ACTION_REQUIRED' : 'PROCESSING'}>
+                        {role === 'admin' ? '처리 필요' : '처리 중'}
+                    </option>
                     {settlementStatuses.map((settlementStatus) => (
                         <option key={settlementStatus} value={settlementStatus}>
                             {settlementStatusLabel[settlementStatus]}
@@ -278,6 +294,15 @@ function SettlementListFilters({ role }: { role: 'seller' | 'admin' }) {
             </button>
         </form>
     )
+}
+
+function parseWorkType(
+    role: 'seller' | 'admin',
+    value: string | null,
+): SettlementRequestWorkType | undefined {
+    if (role === 'seller' && value === 'PROCESSING') return value
+    if (role === 'admin' && value === 'ACTION_REQUIRED') return value
+    return undefined
 }
 
 function SettlementRequestedDateFilter({

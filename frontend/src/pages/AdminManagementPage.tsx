@@ -14,6 +14,7 @@ import { ApiError } from '../api/client'
 import { RefundDialog } from '../components/RefundDialog'
 import { AdminSettlementPanel } from '../components/admin/AdminSettlementPanel'
 import { AdminSellerApplicationPanel } from '../components/admin/AdminSellerApplicationPanel'
+import { AdminDashboard } from '../components/dashboard/AdminDashboard'
 import type { AdminMember, AdminOrder, AdminProduct, AdminSeller } from '../types/admin'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 import { formatKoreanDateTime } from '../utils/dateTime'
@@ -44,7 +45,6 @@ export function AdminManagementPage({ section }: { section?: AdminView } = {}) {
     const [members, setMembers] = useState<AdminMember[]>([])
     const [sellers, setSellers] = useState<AdminSeller[]>([])
     const [orders, setOrders] = useState<AdminOrder[]>([])
-    const [totals, setTotals] = useState({ products: 0, members: 0, sellers: 0, orders: 0 })
     const [nextPages, setNextPages] = useState({ products: 2, members: 2, sellers: 2, orders: 2 })
     const [hasMore, setHasMore] = useState({ products: false, members: false, sellers: false, orders: false })
     const [isLoading, setIsLoading] = useState(true)
@@ -69,12 +69,6 @@ export function AdminManagementPage({ section }: { section?: AdminView } = {}) {
             setMembers(memberPage.content)
             setSellers(sellerPage.content)
             setOrders(orderPage.content)
-            setTotals({
-                products: productPage.totalElements,
-                members: memberPage.totalElements,
-                sellers: sellerPage.totalElements,
-                orders: orderPage.totalElements,
-            })
             setHasMore({
                 products: productPage.hasNext,
                 members: memberPage.hasNext,
@@ -101,7 +95,6 @@ export function AdminManagementPage({ section }: { section?: AdminView } = {}) {
             await updateAdminProductStatus(product.productId, status)
             const productPage = await getAdminProducts({ status: 'PENDING' })
             setProducts(productPage.content)
-            setTotals((current) => ({ ...current, products: productPage.totalElements }))
             setHasMore((current) => ({ ...current, products: productPage.hasNext }))
             setNextPages((current) => ({ ...current, products: 2 }))
             showToast(
@@ -200,32 +193,20 @@ export function AdminManagementPage({ section }: { section?: AdminView } = {}) {
 
     return (
         <section
-            className="mx-auto max-w-350 px-4 py-10 min-[601px]:px-8 min-[601px]:py-14"
+            className={`mx-auto max-w-350 px-4 min-[601px]:px-8 ${
+                activeSection === 'dashboard' ? 'py-3' : 'py-10 min-[601px]:py-14'
+            }`}
             id="management-overview"
         >
-            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">ADMIN CENTER</p>
-            <h1 className="mb-8 font-serif text-[clamp(40px,6vw,64px)] leading-none tracking-tighter">관리자 운영</h1>
+            {activeSection !== 'dashboard' && <>
+                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">ADMIN CENTER</p>
+                <h1 className="mb-8 font-serif text-[clamp(40px,6vw,64px)] leading-none tracking-tighter">관리자 운영</h1>
+            </>}
             {errorMessage && <p className="mb-5 border border-[#e2b9b4] bg-[#fff5f3] p-3 text-sm text-[#a22e24] dark:border-[#7d4039] dark:bg-[#351915] dark:text-[#ffb7ae]" role="alert">{errorMessage}</p>}
 
             <div className="grid gap-10">
                 {activeSection === 'dashboard' && (
-                    <>
-                        <div className="grid gap-3 min-[601px]:grid-cols-2 min-[901px]:grid-cols-4">
-                            <Summary label="승인 대기" value={totals.products} />
-                            <Summary label="회원" value={totals.members} />
-                            <Summary label="판매자" value={totals.sellers} />
-                            <Summary label="주문" value={totals.orders} />
-                        </div>
-                        <section className="grid min-h-72 place-content-center border border-dashed border-line bg-surface px-6 text-center">
-                            <p className="text-xs font-extrabold tracking-[.16em] text-muted">
-                                DASHBOARD VISUALIZATION
-                            </p>
-                            <h2 className="mt-3 text-xl font-bold">운영 지표를 보여줄 영역</h2>
-                            <p className="mt-2 text-sm text-muted">
-                                매출, 주문, 회원 추이의 집계 기준을 정한 뒤 그래프를 연결합니다.
-                            </p>
-                        </section>
-                    </>
+                    <AdminDashboard />
                 )}
 
                 {activeSection === 'settlement' && (
@@ -350,10 +331,6 @@ export function AdminManagementPage({ section }: { section?: AdminView } = {}) {
             />
         </section>
     )
-}
-
-function Summary({ label, value }: { label: string; value: number }) {
-    return <div className="border border-line p-4"><p className="text-xs text-muted">{label}</p><strong className="mt-2 block text-3xl">{value}</strong></div>
 }
 
 function Panel({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {

@@ -9,6 +9,7 @@ import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { RefundDialog } from '../components/RefundDialog'
 import { ProductImageUploadField } from '../components/seller/ProductImageUploadField'
 import { SettlementManagementPanel } from '../components/seller/SettlementManagementPanel'
+import { SellerDashboard } from '../components/dashboard/SellerDashboard'
 import {
     ProductCategorySelector,
 } from '../components/seller/ProductCategorySelector'
@@ -418,34 +419,22 @@ export function SellerManagementPage({
 
     return (
         <section
-            className="mx-auto max-w-350 px-4 py-10 min-[601px]:px-8 min-[601px]:py-14"
+            className={`mx-auto max-w-350 px-4 min-[601px]:px-8 ${
+                activeSection === 'dashboard' ? 'py-3' : 'py-10 min-[601px]:py-14'
+            }`}
             id="management-overview"
         >
-            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">SELLER CENTER</p>
-            <h1 className="mb-8 font-serif text-[clamp(40px,6vw,64px)] leading-none tracking-tighter">판매자 관리</h1>
+            {activeSection !== 'dashboard' && <>
+                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">SELLER CENTER</p>
+                <h1 className="mb-8 font-serif text-[clamp(40px,6vw,64px)] leading-none tracking-tighter">판매자 관리</h1>
+            </>}
             {errorMessage && <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>}
 
             <div className="grid gap-8">
                 {activeSection === 'dashboard' && (
-                    <>
-                        <div className="grid gap-3 min-[601px]:grid-cols-3">
-                            <SellerSummary
-                                label="판매자 등록"
-                                value={profile ? '운영 중' : '등록 필요'}
-                            />
-                            <SellerSummary label="불러온 상품" value={`${products.length}개`} />
-                            <SellerSummary label="불러온 주문" value={`${orders.length}건`} />
-                        </div>
-                        <section className="grid min-h-72 place-content-center border border-dashed border-line bg-surface px-6 text-center">
-                            <p className="text-xs font-extrabold tracking-[.16em] text-muted">
-                                DASHBOARD VISUALIZATION
-                            </p>
-                            <h2 className="mt-3 text-xl font-bold">매출과 주문 흐름을 보여줄 영역</h2>
-                            <p className="mt-2 text-sm text-muted">
-                                그래프에 사용할 집계 기준을 정한 뒤 데이터 시각화를 연결합니다.
-                            </p>
-                        </section>
-                    </>
+                    profile
+                        ? <SellerDashboard />
+                        : <FeedbackMessage tone="error">판매자 정보를 등록하면 통계를 확인할 수 있습니다.</FeedbackMessage>
                 )}
 
                 {activeSection === 'profile' && (
@@ -702,15 +691,6 @@ export function SellerManagementPage({
                 onSubmit={submitRefund}
             />
         </section>
-    )
-}
-
-function SellerSummary({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="border border-line bg-surface p-5">
-            <p className="text-xs text-muted">{label}</p>
-            <strong className="mt-2 block text-2xl">{value}</strong>
-        </div>
     )
 }
 

@@ -29,6 +29,7 @@ import com.ymall.backend.seller.service.SellerProfileService;
 import com.ymall.backend.settlement.dto.SettlementAvailabilityResponse;
 import com.ymall.backend.settlement.dto.SettlementRequestHistoryResponse;
 import com.ymall.backend.settlement.dto.SettlementRequestResponse;
+import com.ymall.backend.settlement.dto.SettlementRequestWorkType;
 import com.ymall.backend.settlement.entity.SettlementLedgerEntry;
 import com.ymall.backend.settlement.entity.SettlementRequest;
 import com.ymall.backend.settlement.entity.SettlementRequestHistory;
@@ -74,6 +75,7 @@ public class SettlementRequestService {
     public PageResponse<SettlementRequestResponse> getSellerRequests(
         Long memberId,
         SettlementRequestStatus status,
+        SettlementRequestWorkType workType,
         Long requestId,
         LocalDate requestedFrom,
         LocalDate requestedTo,
@@ -85,7 +87,7 @@ public class SettlementRequestService {
             .findAll(
                 requestSpecification(
                     seller.getId(),
-                    status,
+                    filterStatuses(status, workType),
                     requestId,
                     null,
                     startOfDay(requestedFrom),
@@ -135,6 +137,7 @@ public class SettlementRequestService {
 
     public PageResponse<SettlementRequestResponse> getAdminRequests(
         SettlementRequestStatus status,
+        SettlementRequestWorkType workType,
         Long requestId,
         String sellerKeyword,
         LocalDate requestedFrom,
@@ -146,7 +149,7 @@ public class SettlementRequestService {
             .findAll(
                 requestSpecification(
                     null,
-                    status,
+                    filterStatuses(status, workType),
                     requestId,
                     normalize(sellerKeyword),
                     startOfDay(requestedFrom),
@@ -285,7 +288,7 @@ public class SettlementRequestService {
 
     private Specification<SettlementRequest> requestSpecification(
         Long sellerProfileId,
-        SettlementRequestStatus status,
+        List<SettlementRequestStatus> statuses,
         Long requestId,
         String sellerKeyword,
         Instant requestedFrom,
@@ -299,8 +302,8 @@ public class SettlementRequestService {
                     sellerProfileId
                 ));
             }
-            if (status != null) {
-                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            if (!statuses.isEmpty()) {
+                predicates.add(root.get("status").in(statuses));
             }
             if (requestId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("id"), requestId));
@@ -325,6 +328,19 @@ public class SettlementRequestService {
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };
+    }
+
+    private List<SettlementRequestStatus> filterStatuses(
+        SettlementRequestStatus status,
+        SettlementRequestWorkType workType
+    ) {
+        if (workType != null) {
+            return List.of(
+                SettlementRequestStatus.REQUESTED,
+                SettlementRequestStatus.APPROVED
+            );
+        }
+        return status == null ? List.of() : List.of(status);
     }
 
     private Instant startOfDay(LocalDate date) {

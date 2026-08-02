@@ -133,6 +133,22 @@ describe('SellerOrderManagementPage', () => {
         })
     })
 
+    it('처리 필요 필터로 처리 대기와 상품 준비 중 주문을 함께 요청한다', async () => {
+        render(
+            <MemoryRouter initialEntries={['/seller/orders?workType=ACTION_REQUIRED']}>
+                <SellerOrderListPage />
+            </MemoryRouter>,
+        )
+
+        expect(await screen.findByLabelText('배송 상태')).toHaveValue('ACTION_REQUIRED')
+        expect(mocks.getSellerOrders).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                fulfillmentStatus: '',
+                workType: 'ACTION_REQUIRED',
+            }),
+        )
+    })
+
     it('주문번호 또는 상품명 검색어를 주문 목록 요청에 반영한다', async () => {
         const user = userEvent.setup()
         render(
