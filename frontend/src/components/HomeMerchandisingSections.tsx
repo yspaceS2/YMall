@@ -275,7 +275,7 @@ export function HomeMerchandisingSections() {
         }
         return {
             categoryBest: pairedGroupSlides(state.data.categoryBest),
-            grocery: pairedGroupSlides(state.data.grocery),
+            grocery: groupSlides(state.data.grocery),
             fashion: groupSlides(state.data.fashion),
             newArrivals: pairedProductSlides(state.data.newArrivals, 'new'),
         }

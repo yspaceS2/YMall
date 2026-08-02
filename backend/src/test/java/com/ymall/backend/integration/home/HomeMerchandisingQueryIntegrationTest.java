@@ -51,13 +51,22 @@ class HomeMerchandisingQueryIntegrationTest {
         Category women = categoryRepository.save(
             new Category("여성패션", "women-fashion", fashion, 2, 1, true)
         );
+        Category food = categoryRepository.save(
+            new Category("식품", "food", null, 1, 2, true)
+        );
+        Category freshFood = categoryRepository.save(
+            new Category("신선식품", "fresh-food", food, 2, 1, true)
+        );
         Category living = categoryRepository.save(
-            new Category("홈 조회 생활", "home-query-living", null, 1, 2, true)
+            new Category("홈 조회 생활", "home-query-living", null, 1, 3, true)
         );
         Product mostlyRefunded = productRepository.save(product(women, "부분 환불 상품"));
         Product netBest = productRepository.save(product(women, "실판매 베스트"));
         Product fullyRefunded = productRepository.save(product(women, "전액 환불 상품"));
         Product canceled = productRepository.save(product(women, "결제 전 취소 상품"));
+        Product groceryBest = productRepository.save(product(freshFood, "장보기 베스트"));
+        Product grocerySecond = productRepository.save(product(freshFood, "장보기 차순위"));
+        Product groceryFallback = productRepository.save(product(freshFood, "장보기 미선정 상품"));
         Product fallback = productRepository.save(product(living, "판매 이력 없는 신상품"));
         Member member = memberRepository.save(new Member(
             "home-query@ymall.local",
@@ -70,6 +79,8 @@ class HomeMerchandisingQueryIntegrationTest {
         createPaidOrder(member, netBest, 2, 0, "home-order-2", 2);
         createPaidOrder(member, fullyRefunded, 3, 3, "home-order-3", 3);
         createCanceledOrder(member, canceled, "home-order-4");
+        createPaidOrder(member, groceryBest, 4, 0, "home-order-5", 1);
+        createPaidOrder(member, grocerySecond, 2, 0, "home-order-6", 2);
 
         List<HomeMerchandisingRow> rows = queryRepository.findMerchandising(
             OffsetDateTime.now(ZoneOffset.UTC).minusDays(30)
@@ -95,6 +106,15 @@ class HomeMerchandisingQueryIntegrationTest {
             .doesNotContain(fullyRefunded.getId(), canceled.getId());
         assertThat(fashionRows).extracting(HomeMerchandisingRow::salesQuantity)
             .containsExactly(2L, 1L);
+
+        List<HomeMerchandisingRow> groceryRows = rows.stream()
+            .filter(row -> row.section() == HomeMerchandisingSection.GROCERY)
+            .toList();
+        assertThat(groceryRows).extracting(HomeMerchandisingRow::productId)
+            .containsExactly(groceryBest.getId(), grocerySecond.getId())
+            .doesNotContain(groceryFallback.getId());
+        assertThat(groceryRows).extracting(HomeMerchandisingRow::salesQuantity)
+            .containsExactly(4L, 2L);
     }
 
     @Test

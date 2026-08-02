@@ -33,6 +33,13 @@ const merchandisingProduct = {
     salesQuantity: 25,
 }
 
+const groceryCategories = [
+    { categoryId: 31, categoryName: '신선식품', categorySlug: 'fresh-food' },
+    { categoryId: 32, categoryName: '가공식품', categorySlug: 'processed-food' },
+    { categoryId: 33, categoryName: '음료', categorySlug: 'beverage' },
+    { categoryId: 34, categoryName: '간편식', categorySlug: 'meal-kit' },
+]
+
 const homeMerchandising = {
     categoryBest: [
         {
@@ -78,12 +85,25 @@ const homeMerchandising = {
             }],
         },
     ],
-    grocery: [{
-        categoryId: 3,
-        categoryName: '신선식품',
-        categorySlug: 'fresh-food',
-        products: [{ ...merchandisingProduct, productId: 3, name: '테스트 토마토' }],
-    }],
+    grocery: groceryCategories.map((category, index) => ({
+        ...category,
+        products: [
+            {
+                ...merchandisingProduct,
+                productId: 31 + index * 2,
+                categoryId: category.categoryId,
+                categoryName: category.categoryName,
+                name: `테스트 ${category.categoryName} 베스트`,
+            },
+            {
+                ...merchandisingProduct,
+                productId: 32 + index * 2,
+                categoryId: category.categoryId,
+                categoryName: category.categoryName,
+                name: `테스트 ${category.categoryName} 추천`,
+            },
+        ],
+    })),
     fashion: [{
         categoryId: 4,
         categoryName: '여성의류',
