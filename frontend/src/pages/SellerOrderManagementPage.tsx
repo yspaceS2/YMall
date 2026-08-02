@@ -569,7 +569,7 @@ function ManagementPage({
 }) {
     return (
         <section className="mx-auto max-w-350 px-4 py-10 min-[601px]:px-8 min-[601px]:py-14">
-            <p className="text-[10px] font-extrabold tracking-[.18em] text-[#71801e]">{eyebrow}</p>
+            <p className="text-[10px] font-extrabold tracking-[.18em] text-accent">{eyebrow}</p>
             <div className="mb-8 mt-2">
                 <h1 className="font-serif text-[clamp(34px,5vw,54px)] leading-none tracking-tighter">{title}</h1>
                 {description && <p className="mt-3 text-sm text-muted">{description}</p>}
@@ -596,11 +596,11 @@ function ProductThumbnail({ item, large = false }: { item?: SellerOrderItem; lar
 
 function StatusBadge({ status }: { status: FulfillmentStatus }) {
     const colors = status === 'DELIVERED'
-        ? 'bg-[#eaf3e4] text-[#3d6d2a]'
+        ? 'bg-success-soft text-success'
         : status === 'SHIPPED'
-            ? 'bg-[#e7eff8] text-[#315f8b]'
+            ? 'bg-info-soft text-info'
             : status === 'PREPARING'
-                ? 'bg-[#f6f0df] text-[#7a6221]'
+                ? 'bg-warning-soft text-warning'
                 : 'bg-paper text-muted'
     return (
         <span className={`inline-flex px-2.5 py-1 text-[10px] font-extrabold ${colors}`}>
@@ -634,7 +634,7 @@ function ActionButton({
             className={[
                 'h-10 border px-4 text-xs font-bold disabled:opacity-40',
                 danger
-                    ? 'border-[#bd4c42] text-[#a22e24]'
+                    ? 'border-danger text-danger'
                     : 'border-ink text-ink',
             ].join(' ')}
             type="button"

@@ -66,7 +66,7 @@ export function AdminProductReviewListPage() {
     return (
         <section className="mx-auto max-w-350 px-4 py-10 min-[601px]:px-8 min-[601px]:py-14">
             <div className="mb-8">
-                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">
+                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">
                     PRODUCT REVIEW
                 </p>
                 <div className="flex flex-wrap items-end justify-between gap-4">
@@ -258,7 +258,7 @@ export function AdminProductReviewDetailPage() {
             </button>
             <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">PRODUCT REVIEW</p>
+                    <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">PRODUCT REVIEW</p>
                     <h1 className="font-serif text-[clamp(34px,5vw,52px)] leading-tight tracking-tighter">{product.name}</h1>
                 </div>
                 <StatusBadge status={product.status as ReviewStatus} />
@@ -333,7 +333,7 @@ export function AdminProductReviewDetailPage() {
                                 <button className="flex h-11 items-center justify-center gap-2 bg-ink text-xs font-bold text-paper disabled:opacity-50" disabled={isProcessing} type="button" onClick={() => void review('APPROVED')}>
                                     <Check className="size-4" />승인
                                 </button>
-                                <button className="flex h-11 items-center justify-center gap-2 border border-[#a22e24] text-xs font-bold text-[#a22e24] disabled:opacity-50" disabled={isProcessing} type="button" onClick={() => void review('REJECTED')}>
+                                <button className="flex h-11 items-center justify-center gap-2 border border-danger text-xs font-bold text-danger disabled:opacity-50" disabled={isProcessing} type="button" onClick={() => void review('REJECTED')}>
                                     <X className="size-4" />반려
                                 </button>
                             </div>
@@ -354,9 +354,9 @@ function ProductThumbnail({ product }: { product: AdminProduct }) {
 
 function StatusBadge({ status }: { status: ReviewStatus }) {
     const className = status === 'APPROVED'
-        ? 'bg-[#e8f4e8] text-[#27642b]'
+        ? 'bg-success-soft text-success'
         : status === 'REJECTED'
-            ? 'bg-[#fff0ed] text-[#a22e24]'
-            : 'bg-[#f3f4df] text-[#66751c]'
+            ? 'bg-danger-soft text-danger'
+            : 'bg-warning-soft text-warning'
     return <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold ${className}`}>{statusLabel[status]}</span>
 }

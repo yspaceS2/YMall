@@ -13,12 +13,12 @@ const PAGE_SIZE = 8
 
 function availability(product: WishlistProduct) {
     if (product.stock === 0 || product.status === 'SOLD_OUT') {
-        return { label: '품절', className: 'text-[#a22e24] dark:text-[#ffb7ae]' }
+        return { label: '품절', className: 'text-danger' }
     }
     if (product.status !== 'APPROVED') {
         return { label: '판매 중지', className: 'text-muted' }
     }
-    return { label: '판매 중', className: 'text-[#657617] dark:text-[#cddd78]' }
+    return { label: '판매 중', className: 'text-success' }
 }
 
 export function WishlistPanel() {

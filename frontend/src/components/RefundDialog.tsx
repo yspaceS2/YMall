@@ -118,14 +118,14 @@ export function RefundDialog({
             }}
         >
             <section
-                className="max-h-[90vh] w-full max-w-170 overflow-y-auto bg-[#fafaf7] p-5 shadow-2xl min-[601px]:p-8"
+                className="max-h-[90vh] w-full max-w-170 overflow-y-auto bg-surface p-5 shadow-2xl min-[601px]:p-8"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="refund-dialog-title"
             >
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <p className="text-[10px] font-extrabold tracking-[.18em] text-[#71801e]">
+                        <p className="text-[10px] font-extrabold tracking-[.18em] text-accent">
                             ORDER #{orderId}
                         </p>
                         <h2 id="refund-dialog-title" className="mt-2 text-2xl font-bold">
@@ -226,7 +226,7 @@ export function RefundDialog({
                         </button>
                     </div>
                     {errorMessage && (
-                        <p className="mt-4 border border-[#e2b9b4] bg-[#fff5f3] p-3 text-sm text-[#a22e24]">
+                        <p className="mt-4 border border-danger/35 bg-danger-soft p-3 text-sm text-danger">
                             {errorMessage}
                         </p>
                     )}
@@ -259,7 +259,7 @@ export function RefundDialog({
                                             .join(', ')}
                                     </p>
                                     {refund.failureMessage && (
-                                        <p className="mt-3 text-xs text-[#a22e24]">
+                                        <p className="mt-3 text-xs text-danger">
                                             {refund.failureMessage}
                                         </p>
                                     )}
@@ -281,10 +281,10 @@ function RefundStatusBadge({ status }: { status: PaymentRefund['status'] }) {
         UNKNOWN: '결과 확인 중',
     }
     const colors = status === 'SUCCEEDED'
-        ? 'bg-[#eef0df] text-[#66751c]'
+        ? 'bg-success-soft text-success'
         : status === 'FAILED'
-            ? 'bg-[#fff0ed] text-[#a22e24]'
-            : 'bg-[#f2efe6] text-[#6b6044]'
+            ? 'bg-danger-soft text-danger'
+            : 'bg-warning-soft text-warning'
     return (
         <span className={`px-2.5 py-1 text-[10px] font-extrabold ${colors}`}>
             {labels[status]}

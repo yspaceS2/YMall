@@ -112,7 +112,7 @@ export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin'
             )}
 
             {hasInvalidRequestId ? (
-                <p className="border border-[#e2b9b4] bg-[#fff5f3] p-4 text-sm text-[#a22e24] dark:border-[#7d4039] dark:bg-[#351915] dark:text-[#ffb7ae]" role="alert">
+                <p className="border border-danger/35 bg-danger-soft p-4 text-sm text-danger" role="alert">
                     올바르지 않은 정산번호입니다.
                 </p>
             ) : isLoading ? (
@@ -120,13 +120,13 @@ export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin'
                     <LoaderCircle className="size-6 animate-spin" aria-label="정산 상세 로딩 중" />
                 </div>
             ) : errorMessage && !request ? (
-                <p className="border border-[#e2b9b4] bg-[#fff5f3] p-4 text-sm text-[#a22e24] dark:border-[#7d4039] dark:bg-[#351915] dark:text-[#ffb7ae]" role="alert">
+                <p className="border border-danger/35 bg-danger-soft p-4 text-sm text-danger" role="alert">
                     {errorMessage}
                 </p>
             ) : request && (
                 <>
                     <header className="mb-8 border-b-2 border-ink pb-6">
-                        <p className="text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">
+                        <p className="text-[11px] font-extrabold tracking-[.18em] text-accent">
                             SETTLEMENT DETAIL
                         </p>
                         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
@@ -160,7 +160,7 @@ export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin'
                     </section>
 
                     {request.status === 'PAID' && (
-                        <p className="mt-5 border border-[#cad39b] bg-[#f4f6e8] p-4 text-sm text-[#46510f] dark:border-[#59652a] dark:bg-[#283010] dark:text-[#dce9a6]">
+                        <p className="mt-5 border border-success/35 bg-success-soft p-4 text-sm text-success">
                             포트폴리오용 모의 지급이며 실제 계좌 이체는 발생하지 않았습니다.
                         </p>
                     )}
@@ -193,7 +193,7 @@ export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin'
                                                 {history.actorName}
                                             </span>
                                             {history.reason && (
-                                                <p className="text-sm text-[#a22e24] min-[701px]:col-span-3 dark:text-[#ffb7ae]">
+                                                <p className="text-sm text-danger min-[701px]:col-span-3">
                                                     사유: {history.reason}
                                                 </p>
                                             )}
@@ -229,7 +229,7 @@ export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin'
                                     <Check className="size-4" /> 승인
                                 </button>
                                 <button
-                                    className="flex h-11 items-center gap-2 border border-[#a22e24] px-5 text-xs font-bold text-[#a22e24] dark:border-[#ff8e84] dark:text-[#ffb7ae] disabled:opacity-50"
+                                    className="flex h-11 items-center gap-2 border border-danger px-5 text-xs font-bold text-danger disabled:opacity-50"
                                     type="button"
                                     disabled={isProcessing}
                                     onClick={() => {
@@ -258,7 +258,7 @@ export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin'
 
                     {role === 'admin' && request.status === 'APPROVED' && (
                         <button
-                            className="mt-8 h-11 bg-[#71801e] px-5 text-xs font-bold text-white disabled:opacity-50"
+                            className="mt-8 h-11 bg-accent px-5 text-xs font-bold text-paper disabled:opacity-50"
                             type="button"
                             disabled={isProcessing}
                             onClick={() => void process(
@@ -291,7 +291,7 @@ function DetailRow({
             <span className="text-xs font-bold text-muted">{label}</span>
             <span className={[
                 strong ? 'text-lg font-extrabold' : 'text-sm',
-                danger ? 'text-[#a22e24] dark:text-[#ffb7ae]' : '',
+                danger ? 'text-danger' : '',
             ].join(' ')}>
                 {value}
             </span>

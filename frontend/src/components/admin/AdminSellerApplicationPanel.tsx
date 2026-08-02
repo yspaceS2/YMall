@@ -99,7 +99,7 @@ export function AdminSellerApplicationPanel() {
                             <div>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <strong className="text-lg">{application.storeName}</strong>
-                                    <span className="bg-[#eef0df] px-2.5 py-1 text-[11px] font-bold text-[#66751c] dark:bg-[#29301f] dark:text-[#d3e78a]">
+                                    <span className="bg-success-soft px-2.5 py-1 text-[11px] font-bold text-success">
                                         심사 대기
                                     </span>
                                 </div>
@@ -146,7 +146,7 @@ export function AdminSellerApplicationPanel() {
                                     />
                                 </label>
                                 <button
-                                    className="flex h-11 items-center justify-center gap-2 border border-[#a22e24] px-4 text-xs font-bold text-[#a22e24] dark:border-[#ff8e84] dark:text-[#ffb7ae] disabled:opacity-50"
+                                    className="flex h-11 items-center justify-center gap-2 border border-danger px-4 text-xs font-bold text-danger disabled:opacity-50"
                                     type="button"
                                     disabled={processingId !== null}
                                     onClick={() => void review(application, 'REJECTED')}

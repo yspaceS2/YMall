@@ -16,7 +16,7 @@ export function ManagementPageHeader({
     return (
         <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
             <div>
-                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">
+                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">
                     {eyebrow}
                 </p>
                 <h1 className="font-serif text-[clamp(36px,5vw,56px)] leading-none tracking-tighter">

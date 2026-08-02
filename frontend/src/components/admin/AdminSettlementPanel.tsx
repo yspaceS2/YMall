@@ -83,8 +83,8 @@ export function AdminSettlementPanel() {
             <p className="mb-6 text-sm text-muted">
                 지급 완료는 포트폴리오용 모의 처리이며 실제 계좌 이체를 실행하지 않습니다.
             </p>
-            {message && <p className="mb-4 border border-[#cad39b] bg-[#f4f6e8] p-3 text-sm text-[#46510f] dark:border-[#59652a] dark:bg-[#283010] dark:text-[#dce9a6]">{message}</p>}
-            {errorMessage && <p className="mb-4 border border-[#e2b9b4] bg-[#fff5f3] p-3 text-sm text-[#a22e24] dark:border-[#7d4039] dark:bg-[#351915] dark:text-[#ffb7ae]" role="alert">{errorMessage}</p>}
+            {message && <p className="mb-4 border border-success/35 bg-success-soft p-3 text-sm text-success">{message}</p>}
+            {errorMessage && <p className="mb-4 border border-danger/35 bg-danger-soft p-3 text-sm text-danger" role="alert">{errorMessage}</p>}
             {isLoading ? (
                 <div className="grid min-h-28 place-content-center">
                     <LoaderCircle className="size-5 animate-spin" />
@@ -112,7 +112,7 @@ export function AdminSettlementPanel() {
                                 <p>지급 예정 <b>{formatPrice(request.settlementAmount)}</b></p>
                             </div>
                             {request.rejectionReason && (
-                                <p className="mt-3 text-sm text-[#a22e24] dark:text-[#ffb7ae]">
+                                <p className="mt-3 text-sm text-danger">
                                     반려 사유: {request.rejectionReason}
                                 </p>
                             )}
@@ -141,7 +141,7 @@ export function AdminSettlementPanel() {
                                             <Check className="size-4" /> 승인
                                         </button>
                                         <button
-                                            className="flex h-10 items-center gap-1.5 border border-[#a22e24] px-4 text-xs font-bold text-[#a22e24] disabled:opacity-50 dark:border-[#ff8e84] dark:text-[#ffb7ae]"
+                                            className="flex h-10 items-center gap-1.5 border border-danger px-4 text-xs font-bold text-danger disabled:opacity-50"
                                             type="button"
                                             disabled={processingId !== null}
                                             onClick={() => {
@@ -172,7 +172,7 @@ export function AdminSettlementPanel() {
                             )}
                             {request.status === 'APPROVED' && (
                                 <button
-                                    className="mt-4 h-10 bg-[#71801e] px-4 text-xs font-bold text-white disabled:opacity-50"
+                                    className="mt-4 h-10 bg-accent px-4 text-xs font-bold text-paper disabled:opacity-50"
                                     type="button"
                                     disabled={processingId !== null}
                                     onClick={() => void process(

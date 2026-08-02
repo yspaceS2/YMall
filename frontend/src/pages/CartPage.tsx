@@ -133,7 +133,7 @@ export function CartPage() {
         <section className="mx-auto max-w-360 px-4 pt-12 pb-20 min-[601px]:px-[clamp(20px,5vw,72px)] min-[601px]:pt-18 min-[601px]:pb-27.5">
             <div className="mb-10.5 flex flex-col items-start gap-3.5 border-b border-ink pb-6 min-[601px]:flex-row min-[601px]:items-end min-[601px]:justify-between">
                 <div>
-                    <p className="mb-2.5 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">YOUR SHOPPING BAG</p>
+                    <p className="mb-2.5 text-[11px] font-extrabold tracking-[.18em] text-accent">YOUR SHOPPING BAG</p>
                     <h1 className="m-0 font-serif text-[clamp(42px,5vw,66px)] leading-none font-medium tracking-[-.05em]">장바구니</h1>
                 </div>
                 <span className="text-[13px] text-muted">{totalQuantity}개 상품</span>
@@ -156,7 +156,7 @@ export function CartPage() {
 
                             return (
                                 <article className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-b border-line py-6 min-[601px]:grid-cols-[130px_minmax(0,1fr)_auto] min-[601px]:gap-6" key={item.cartItemId}>
-                                    <Link className="aspect-[.82] overflow-hidden bg-[#e9e9e3]" to={`/products/${item.productId}`}>
+                                    <Link className="aspect-[.82] overflow-hidden bg-subtle" to={`/products/${item.productId}`}>
                                         {item.thumbnailUrl ? (
                                             <img
                                                 className="size-full object-cover"
@@ -164,15 +164,15 @@ export function CartPage() {
                                                 alt={item.productName}
                                             />
                                         ) : (
-                                            <span className="grid size-full place-items-center font-serif text-[13px] font-bold tracking-[.14em] text-[#99998f]">YMALL</span>
+                                            <span className="grid size-full place-items-center font-serif text-[13px] font-bold tracking-[.14em] text-muted">YMALL</span>
                                         )}
                                     </Link>
                                     <div className="flex min-w-0 flex-col justify-between">
                                         <div className="flex flex-col items-start gap-1.5">
-                                            {!isAvailable && <span className="bg-[#f5e6e3] px-1.5 py-0.5 text-[10px] font-extrabold text-[#a33]">구매 불가</span>}
+                                            {!isAvailable && <span className="bg-danger-soft px-1.5 py-0.5 text-[10px] font-extrabold text-danger">구매 불가</span>}
                                             <Link className="text-[15px] font-bold" to={`/products/${item.productId}`}>{item.productName}</Link>
                                             {item.discountPercentage > 0 && (
-                                                <del className="text-[11px] text-[#aaa]">{formatPrice(item.price)}</del>
+                                                <del className="text-[11px] text-muted">{formatPrice(item.price)}</del>
                                             )}
                                             <strong className="text-[13px]">{formatPrice(discountedPrice)}</strong>
                                         </div>
@@ -218,7 +218,7 @@ export function CartPage() {
                     </div>
 
                     <aside className="top-25 border border-line bg-white p-5.5 min-[1050px]:sticky min-[1050px]:p-7">
-                        <p className="mb-2.5 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">ORDER SUMMARY</p>
+                        <p className="mb-2.5 text-[11px] font-extrabold tracking-[.18em] text-accent">ORDER SUMMARY</p>
                         <dl className="my-6">
                             <div className="flex justify-between py-2 text-xs text-muted"><dt>상품 수량</dt><dd className="m-0 text-ink">{totalQuantity}개</dd></div>
                             <div className="flex justify-between py-2 text-xs text-muted"><dt>상품 금액</dt><dd className="m-0 text-ink">{formatPrice(totalPrice)}</dd></div>
@@ -230,10 +230,10 @@ export function CartPage() {
                         </dl>
                         {hasUnavailableItems ? (
                             <>
-                                <span className="grid h-13 cursor-not-allowed place-items-center bg-[#ddd] text-[13px] font-extrabold text-[#888]" aria-disabled="true">
+                                <span className="grid h-13 cursor-not-allowed place-items-center bg-disabled text-[13px] font-extrabold text-muted" aria-disabled="true">
                                     주문서 작성
                                 </span>
-                                <p className="mt-2.5 text-[11px] leading-4 text-[#b23b2f]">
+                                <p className="mt-2.5 text-[11px] leading-4 text-danger">
                                     구매 불가 상품을 삭제하거나 수량을 조정해 주세요.
                                 </p>
                             </>

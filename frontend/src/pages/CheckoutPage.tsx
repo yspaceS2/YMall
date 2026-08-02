@@ -71,10 +71,10 @@ export function CheckoutPage() {
 
     return (
         <section className="mx-auto max-w-300 px-4 py-14 min-[601px]:px-8 min-[601px]:py-20">
-            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">CHECKOUT</p>
+            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">CHECKOUT</p>
             <h1 className="mb-10 font-serif text-[clamp(42px,6vw,68px)] leading-none tracking-tighter">주문서</h1>
 
-            {errorMessage && <p className="mb-5 text-sm text-[#b23b2f]" role="alert">{errorMessage}</p>}
+            {errorMessage && <p className="mb-5 text-sm text-danger" role="alert">{errorMessage}</p>}
 
             {items.length === 0 ? (
                 <div className="border-y border-line py-16 text-center">
@@ -121,7 +121,7 @@ export function CheckoutPage() {
                     </div>
 
                     <aside className="border border-line p-6">
-                        <p className="text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">ORDER SUMMARY</p>
+                        <p className="text-[11px] font-extrabold tracking-[.18em] text-accent">ORDER SUMMARY</p>
                         <div className="my-6 flex items-baseline justify-between border-b border-ink pb-5">
                             <span className="text-xs font-bold">결제 예정 금액</span>
                             <strong className="text-xl">{formatPrice(totalAmount)}</strong>
@@ -131,7 +131,7 @@ export function CheckoutPage() {
                             <div className="flex justify-between"><dt>배송비</dt><dd className="text-ink">{shippingFee === 0 ? '무료' : formatPrice(shippingFee)}</dd></div>
                         </dl>
                         <button
-                            className="grid h-13 w-full place-items-center border-0 bg-ink text-sm font-extrabold text-white disabled:bg-[#aaa]"
+                            className="grid h-13 w-full place-items-center border-0 bg-ink text-sm font-extrabold text-white disabled:bg-disabled disabled:text-muted"
                             type="button"
                             disabled={isSubmitting || selectedAddressId === null}
                             onClick={submitOrder}

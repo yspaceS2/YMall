@@ -369,7 +369,7 @@ function QuestionStatusBadge({ status }: { status: ProductQuestionStatus }) {
         <span className={`inline-flex px-2.5 py-1 text-[11px] font-bold ${
             status === 'ANSWERED'
                 ? 'bg-lime text-[#171717]'
-                : 'bg-[#fff2cc] text-[#6f4e00] dark:bg-[#594714] dark:text-[#ffe39a]'
+                : 'bg-warning-soft text-warning'
         }`}>
             {status === 'ANSWERED' ? '답변 완료' : '답변 대기'}
         </span>

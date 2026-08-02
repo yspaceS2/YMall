@@ -148,7 +148,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
         <section className="mx-auto max-w-350 px-4 py-10 min-[601px]:px-8 min-[601px]:py-14">
             <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
                 <div>
-                    <p className="text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">
+                    <p className="text-[11px] font-extrabold tracking-[.18em] text-accent">
                         ADMIN CATEGORIES
                     </p>
                     <h1 className="mt-2 font-serif text-4xl font-semibold">카테고리 관리</h1>
@@ -221,7 +221,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                     D{category.depth}
                                 </span>
                                 {!category.active && (
-                                    <span className="text-[10px] font-bold text-[#a22e24]">
+                                    <span className="text-[10px] font-bold text-danger">
                                         숨김
                                     </span>
                                 )}
@@ -352,7 +352,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                 </button>
                                 {selected && (
                                     <button
-                                        className="flex h-11 items-center gap-2 border border-[#a22e24] px-5 text-xs font-bold text-[#a22e24] disabled:opacity-40"
+                                        className="flex h-11 items-center gap-2 border border-danger px-5 text-xs font-bold text-danger disabled:opacity-40"
                                         type="button"
                                         disabled={selected.hasChildren || selected.hasProducts}
                                         onClick={() => setConfirmDelete(true)}

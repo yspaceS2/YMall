@@ -27,7 +27,7 @@ export function PageState({ variant, title, description, action, compact = false
             aria-live={variant === 'loading' ? 'polite' : undefined}
         >
             <Icon
-                className={`mb-4 size-8 ${variant === 'error' ? 'text-[#b23b2f]' : 'text-muted'} ${variant === 'loading' ? 'animate-spin' : ''}`}
+                className={`mb-4 size-8 ${variant === 'error' ? 'text-danger' : 'text-muted'} ${variant === 'loading' ? 'animate-spin' : ''}`}
                 aria-hidden="true"
             />
             <strong className="text-ink">{title}</strong>

@@ -187,7 +187,7 @@ export function StoreHeader({
                         <span className="hidden min-[901px]:inline">장바구니</span>
                         {cartItemCount > 0 && (
                             <span
-                                className="absolute top-0 right-0 grid min-w-4.5 place-items-center rounded-full bg-[#849b21] px-1 text-[9px] leading-4.5 font-extrabold text-white"
+                                className="absolute top-0 right-0 grid min-w-4.5 place-items-center rounded-full bg-accent px-1 text-[9px] leading-4.5 font-extrabold text-paper"
                                 aria-label={`장바구니 상품 ${cartItemCount}개`}
                             >
                                 {cartItemCount > 99 ? '99+' : cartItemCount}
@@ -224,7 +224,7 @@ export function StoreHeader({
                                         <Bell className="size-4.5" aria-hidden="true" />
                                         <span className="flex-1">알림</span>
                                         {unreadCount > 0 && (
-                                            <span className="rounded-full bg-[#849b21] px-2 py-0.5 text-[10px] font-bold text-white">
+                                            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-paper">
                                                 {unreadCount > 99 ? '99+' : unreadCount}
                                             </span>
                                         )}

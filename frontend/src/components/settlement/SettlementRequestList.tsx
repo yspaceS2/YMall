@@ -109,7 +109,7 @@ function SettlementRequestList({ role }: { role: 'seller' | 'admin' }) {
             <SettlementListFilters role={role} />
 
             {errorMessage && (
-                <p className="mb-4 border border-[#e2b9b4] bg-[#fff5f3] p-3 text-sm text-[#a22e24] dark:border-[#7d4039] dark:bg-[#351915] dark:text-[#ffb7ae]" role="alert">
+                <p className="mb-4 border border-danger/35 bg-danger-soft p-3 text-sm text-danger" role="alert">
                     {errorMessage}
                 </p>
             )}

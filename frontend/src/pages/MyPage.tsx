@@ -170,7 +170,7 @@ export function MyPage() {
 
     return (
         <section className="mx-auto w-[calc(100%-40px)] max-w-240 py-14 min-[601px]:w-[calc(100%-48px)] min-[601px]:py-20">
-            <p className="mb-4 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">MY YMALL</p>
+            <p className="mb-4 text-[11px] font-extrabold tracking-[.18em] text-accent">MY YMALL</p>
             <h1 className="font-serif text-[clamp(38px,5vw,62px)] leading-none font-medium tracking-[-.05em]">내 정보 관리</h1>
             <p className="mt-5 text-sm leading-7 text-muted">회원 정보부터 배송지, 주문과 알림까지 한곳에서 관리하세요.</p>
 
@@ -179,7 +179,7 @@ export function MyPage() {
                 {quickLinks.map(({ label, description, href, icon: Icon }) => {
                     const className = 'group flex min-h-28 flex-col justify-between border border-line bg-surface p-4 text-left transition-colors hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
                     const content = <>
-                        <Icon className="size-5 text-[#71801e] dark:text-[#c9db72]" aria-hidden="true" />
+                        <Icon className="size-5 text-accent" aria-hidden="true" />
                         <span>
                             <strong className="block text-sm">{label}</strong>
                             <span className="mt-1 block text-[11px] leading-4 text-muted">{description}</span>
@@ -232,7 +232,7 @@ export function MyPage() {
                     <label className="grid gap-2 text-xs font-bold text-muted">
                         <span>새 비밀번호 확인</span>
                         <input className="border-0 border-b border-line bg-transparent px-0.5 py-3.5 text-ink outline-0 focus:border-ink" type="password" value={newPasswordConfirmation} onChange={(event) => setNewPasswordConfirmation(event.target.value)} autoComplete="new-password" minLength={8} maxLength={64} required />
-                        {passwordConfirmationVisible && <span className={isPasswordMatched ? 'text-[#657617] dark:text-[#cddd78]' : 'text-[#b23b2f] dark:text-[#ffb7ae]'}>{isPasswordMatched ? '새 비밀번호가 일치합니다.' : '새 비밀번호가 일치하지 않습니다.'}</span>}
+                        {passwordConfirmationVisible && <span className={isPasswordMatched ? 'text-success' : 'text-danger'}>{isPasswordMatched ? '새 비밀번호가 일치합니다.' : '새 비밀번호가 일치하지 않습니다.'}</span>}
                     </label>
                     <button className="mt-2 h-12 border border-ink bg-ink font-extrabold text-white disabled:opacity-60" type="submit" disabled={isChangingPassword || !isPasswordMatched || currentPassword.length === 0}>
                         {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
@@ -274,7 +274,7 @@ export function MyPage() {
                                 onClick={() => handleOAuthLink(provider)}
                             >
                                 <span>{provider === 'GOOGLE' ? 'Google' : provider === 'KAKAO' ? '카카오' : '네이버'}</span>
-                                <span className={isLinked ? 'text-[#657617] dark:text-[#cddd78]' : 'text-ink'}>
+                                <span className={isLinked ? 'text-success' : 'text-ink'}>
                                     {isLinked ? '연결됨' : linkingProvider === provider ? '연결 중...' : '연결하기'}
                                 </span>
                             </button>

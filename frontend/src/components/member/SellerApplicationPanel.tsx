@@ -188,7 +188,7 @@ export function SellerApplicationPanel() {
             </section>
 
             <aside className="border border-line bg-paper p-6 min-[601px]:p-8">
-                <Store className="size-7 text-[#71801e]" aria-hidden="true" />
+                <Store className="size-7 text-accent" aria-hidden="true" />
                 <h3 className="mt-4 text-lg font-bold">신청 처리 안내</h3>
                 <ol className="mt-5 grid gap-4 text-sm leading-6 text-muted">
                     <li><b className="text-ink">1. 신청</b><br />상점명과 사업자 정보를 제출합니다.</li>

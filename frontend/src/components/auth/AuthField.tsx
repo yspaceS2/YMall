@@ -8,7 +8,7 @@ interface AuthFieldProps extends InputHTMLAttributes<HTMLInputElement> {
     action?: ReactNode
 }
 
-export const authInputClassName = 'w-full min-w-0 border-0 border-b border-line bg-transparent px-0.5 py-3.5 text-sm text-ink outline-0 transition-colors placeholder:text-[#aaa99f] focus:border-ink focus-visible:ring-2 focus-visible:ring-[#71801e]/35 disabled:text-muted aria-[invalid=true]:border-[#b23b2f]'
+export const authInputClassName = 'w-full min-w-0 border-0 border-b border-line bg-transparent px-0.5 py-3.5 text-sm text-ink outline-0 transition-colors placeholder:text-muted focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/35 disabled:text-muted aria-[invalid=true]:border-danger'
 
 export function AuthField({ id, label, message, messageId, action, ...inputProps }: AuthFieldProps) {
     return (

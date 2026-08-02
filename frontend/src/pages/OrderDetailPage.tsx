@@ -245,8 +245,8 @@ export function OrderDetailPage() {
 
             <header className="border-b border-ink pb-8">
                 <div className="flex flex-wrap items-center gap-3">
-                    <p className="text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">ORDER DETAIL</p>
-                    <span className="bg-[#eef0df] px-2.5 py-1 text-[10px] font-extrabold text-[#66751c] dark:bg-[#29301f] dark:text-[#d3e78a]">
+                    <p className="text-[11px] font-extrabold tracking-[.18em] text-accent">ORDER DETAIL</p>
+                    <span className="bg-success-soft px-2.5 py-1 text-[10px] font-extrabold text-success">
                         {getOrderStatusLabel(order.status)}
                     </span>
                 </div>
@@ -279,7 +279,7 @@ export function OrderDetailPage() {
                                 <article className="py-5" key={item.orderItemId}>
                                     <div className="grid grid-cols-[76px_minmax(0,1fr)] items-center gap-4 min-[701px]:grid-cols-[76px_minmax(0,1fr)_auto]">
                                         <Link
-                                            className="grid size-19 place-items-center overflow-hidden bg-[#e9e9e3] dark:bg-[#30322d]"
+                                            className="grid size-19 place-items-center overflow-hidden bg-subtle"
                                             to={`/products/${item.productId}`}
                                             aria-label={`${item.productName} 상품 보기`}
                                         >
@@ -313,7 +313,7 @@ export function OrderDetailPage() {
                                                 </button>
                                                 {review && (
                                                     <button
-                                                        className="grid size-8.5 place-items-center border border-line bg-surface text-[#b23b2f] dark:text-[#ffb7ae] disabled:opacity-50"
+                                                        className="grid size-8.5 place-items-center border border-line bg-surface text-danger disabled:opacity-50"
                                                         type="button"
                                                         disabled={isSavingReview}
                                                         onClick={() => setReviewToDelete(review)}
@@ -354,11 +354,11 @@ export function OrderDetailPage() {
                                         </div>
                                     )}
                                     {review && !isEditing && (
-                                        <div className="mt-4 rounded-sm bg-[#f4f4ed] p-4 dark:bg-[#2c2e29] min-[701px]:ml-23">
-                                            <p className="text-xs tracking-wider text-[#849b21]">
+                                        <div className="mt-4 rounded-sm bg-paper p-4 min-[701px]:ml-23">
+                                            <p className="text-xs tracking-wider text-accent">
                                                 {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
                                             </p>
-                                            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#55554f] dark:text-[#d2d1c9]">
+                                            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted">
                                                 {review.content}
                                             </p>
                                         </div>
@@ -380,7 +380,7 @@ export function OrderDetailPage() {
                                                         onClick={() => setEditor((current) => current ? { ...current, rating } : current)}
                                                         aria-label={`${rating}점`}
                                                     >
-                                                        <Star className={`size-5 ${rating <= editor.rating ? 'text-[#849b21]' : 'text-[#d8d8d0]'}`} fill="currentColor" />
+                                                        <Star className={`size-5 ${rating <= editor.rating ? 'text-accent' : 'text-line'}`} fill="currentColor" />
                                                     </button>
                                                 ))}
                                             </div>

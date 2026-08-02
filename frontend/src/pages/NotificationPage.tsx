@@ -175,7 +175,7 @@ export function NotificationPage() {
         <section className="mx-auto max-w-220 px-4 py-14 min-[601px]:px-8 min-[601px]:py-20">
             <div className="mb-10 flex flex-wrap items-end justify-between gap-5">
                 <div>
-                    <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">NOTIFICATIONS</p>
+                    <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">NOTIFICATIONS</p>
                     <h1 className="font-serif text-[clamp(42px,6vw,68px)] leading-none tracking-tighter">알림</h1>
                 </div>
                 {notifications.length > 0 && (
@@ -191,7 +191,7 @@ export function NotificationPage() {
                         </button>
                         {isMemberNotificationPage && (
                             <button
-                                className="inline-flex items-center gap-2 border border-[#9d3026] bg-surface px-4 py-2.5 text-xs font-bold text-[#9d3026] transition-colors hover:bg-[#9d3026]/10"
+                                className="inline-flex items-center gap-2 border border-danger bg-surface px-4 py-2.5 text-xs font-bold text-danger transition-colors hover:bg-danger-soft"
                                 type="button"
                                 onClick={() => setIsDeleteAllDialogOpen(true)}
                             >
@@ -220,10 +220,10 @@ export function NotificationPage() {
                 <div className="border-t border-ink">
                     {notifications.map((notification) => (
                         <article
-                            className={`grid grid-cols-[8px_minmax(0,1fr)_auto] gap-4 border-b border-line px-1 py-6 transition-colors hover:bg-paper ${notification.readAt === null ? 'bg-[#f3f5e8] dark:bg-[#303427]' : 'bg-surface'}`}
+                            className={`grid grid-cols-[8px_minmax(0,1fr)_auto] gap-4 border-b border-line px-1 py-6 transition-colors hover:bg-paper ${notification.readAt === null ? 'bg-success-soft' : 'bg-surface'}`}
                             key={notification.notificationId}
                         >
-                            <span className={`mt-1.5 size-2 rounded-full ${notification.readAt === null ? 'bg-[#849b21] dark:bg-lime' : 'bg-transparent'}`} />
+                            <span className={`mt-1.5 size-2 rounded-full ${notification.readAt === null ? 'bg-accent' : 'bg-transparent'}`} />
                             <button
                                 className="min-w-0 text-left"
                                 type="button"
@@ -238,7 +238,7 @@ export function NotificationPage() {
                             </button>
                             {isMemberNotificationPage && (
                                 <button
-                                    className="grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-[#9d3026]/10 hover:text-[#9d3026]"
+                                    className="grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-danger-soft hover:text-danger"
                                     type="button"
                                     aria-label={`${notification.title} 알림 삭제`}
                                     onClick={() => setNotificationToDelete(notification)}

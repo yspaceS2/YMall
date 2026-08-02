@@ -109,7 +109,7 @@ export function PaymentPage() {
 
     return (
         <section className="mx-auto max-w-180 px-4 py-16 min-[601px]:py-24">
-            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">TOSS PAYMENTS</p>
+            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">TOSS PAYMENTS</p>
             <h1 className="font-serif text-[clamp(42px,7vw,68px)] leading-none tracking-tighter">결제하기</h1>
             <div className="my-10 border-y border-ink py-6">
                 <div className="flex justify-between text-sm"><span>주문 번호</span><b>#{order.orderId}</b></div>
@@ -117,7 +117,7 @@ export function PaymentPage() {
                 <div className="mt-5 flex items-baseline justify-between border-t border-line pt-5"><span className="text-sm font-bold">결제 금액</span><strong className="text-2xl">{formatPrice(order.totalAmount)}</strong></div>
             </div>
 
-            {errorMessage && <p className="mb-5 text-sm text-[#b23b2f]" role="alert">{errorMessage}</p>}
+            {errorMessage && <p className="mb-5 text-sm text-danger" role="alert">{errorMessage}</p>}
 
             {canPay ? (
                 <div className="grid gap-3">

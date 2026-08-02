@@ -104,8 +104,8 @@ export function TossPaymentSuccessPage() {
 
     return (
         <section className="mx-auto grid min-h-130 max-w-180 place-content-center justify-items-center px-4 py-16 text-center">
-            <LoaderCircle className="mb-6 size-12 animate-spin text-[#71801e]" />
-            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">PAYMENT APPROVAL</p>
+            <LoaderCircle className="mb-6 size-12 animate-spin text-accent" />
+            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">PAYMENT APPROVAL</p>
             <h1 className="font-serif text-[clamp(38px,7vw,64px)] leading-none tracking-tighter">결제를 승인하고 있습니다</h1>
             <p className="mt-6 text-sm leading-6 text-muted">창을 닫거나 새로고침하지 말고 잠시만 기다려 주세요.</p>
         </section>
@@ -121,10 +121,10 @@ interface PaymentApprovalErrorProps {
 function PaymentApprovalError({ message, orderId, onRetry }: PaymentApprovalErrorProps) {
     return (
         <section className="mx-auto grid min-h-130 max-w-180 place-content-center justify-items-center px-4 py-16 text-center">
-            <CircleAlert className="mb-6 size-12 text-[#b23b2f]" />
-            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#b23b2f]">APPROVAL FAILED</p>
+            <CircleAlert className="mb-6 size-12 text-danger" />
+            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-danger">APPROVAL FAILED</p>
             <h1 className="font-serif text-[clamp(38px,7vw,64px)] leading-none tracking-tighter">결제 승인에 실패했습니다</h1>
-            <p className="mt-6 max-w-130 text-sm leading-6 text-[#b23b2f]" role="alert">{message}</p>
+            <p className="mt-6 max-w-130 text-sm leading-6 text-danger" role="alert">{message}</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
                 {onRetry && (
                     <button className="border-0 bg-ink px-6 py-3 text-xs font-bold text-white" type="button" onClick={onRetry}>

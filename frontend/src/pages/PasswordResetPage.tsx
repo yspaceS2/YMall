@@ -199,7 +199,7 @@ export function PasswordResetPage() {
                         messageId="password-reset-confirmation-message"
                         message={hasPasswordConfirmation ? (
                             <span
-                                className={`font-medium ${isPasswordMatched ? 'text-[#657617]' : 'text-[#b23b2f]'}`}
+                                className={`font-medium ${isPasswordMatched ? 'text-success' : 'text-danger'}`}
                                 role={isPasswordMatched ? 'status' : 'alert'}
                             >
                                 {isPasswordMatched ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.'}

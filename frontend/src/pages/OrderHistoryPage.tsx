@@ -87,7 +87,7 @@ export function OrderHistoryPage() {
 
     return (
         <section className="mx-auto max-w-260 px-4 py-14 min-[601px]:px-8 min-[601px]:py-20">
-            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">MY ORDERS</p>
+            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">MY ORDERS</p>
             <h1 className="mb-10 font-serif text-[clamp(42px,6vw,68px)] leading-none tracking-tighter">주문 내역</h1>
 
             {errorMessage && <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>}
@@ -112,7 +112,7 @@ export function OrderHistoryPage() {
                             <article className="border-b border-line py-7" key={order.orderId}>
                                 <div className="grid items-center gap-4 min-[701px]:grid-cols-[76px_minmax(0,1fr)_auto]">
                                     <Link
-                                        className="grid size-19 place-items-center overflow-hidden bg-[#e9e9e3] dark:bg-[#30322d]"
+                                        className="grid size-19 place-items-center overflow-hidden bg-subtle"
                                         to={detailUrl}
                                         aria-label={`${orderTitle} 주문 상세 보기`}
                                     >
@@ -131,7 +131,7 @@ export function OrderHistoryPage() {
                                             <Link className="truncate font-bold hover:underline" to={detailUrl}>
                                                 {orderTitle}
                                             </Link>
-                                            <span className="shrink-0 bg-[#eef0df] px-2 py-1 text-[10px] font-extrabold text-[#66751c] dark:bg-[#29301f] dark:text-[#d3e78a]">
+                                            <span className="shrink-0 bg-success-soft px-2 py-1 text-[10px] font-extrabold text-success">
                                                 {getOrderStatusLabel(order.status)}
                                             </span>
                                         </div>

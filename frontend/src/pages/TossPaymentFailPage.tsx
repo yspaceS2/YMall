@@ -19,8 +19,8 @@ export function TossPaymentFailPage() {
 
     return (
         <section className="mx-auto grid min-h-130 max-w-180 place-content-center justify-items-center px-4 py-16 text-center">
-            <Icon className={`mb-6 size-12 ${isCanceled ? 'text-muted' : 'text-[#b23b2f]'}`} />
-            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#b23b2f]">
+            <Icon className={`mb-6 size-12 ${isCanceled ? 'text-muted' : 'text-danger'}`} />
+            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-danger">
                 {isCanceled ? 'PAYMENT CANCELED' : 'PAYMENT FAILED'}
             </p>
             <h1 className="font-serif text-[clamp(38px,7vw,64px)] leading-none tracking-tighter">{title}</h1>

@@ -199,10 +199,10 @@ export function AdminManagementPage({ section }: { section?: AdminView } = {}) {
             id="management-overview"
         >
             {activeSection !== 'dashboard' && <>
-                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">ADMIN CENTER</p>
+                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">ADMIN CENTER</p>
                 <h1 className="mb-8 font-serif text-[clamp(40px,6vw,64px)] leading-none tracking-tighter">관리자 운영</h1>
             </>}
-            {errorMessage && <p className="mb-5 border border-[#e2b9b4] bg-[#fff5f3] p-3 text-sm text-[#a22e24] dark:border-[#7d4039] dark:bg-[#351915] dark:text-[#ffb7ae]" role="alert">{errorMessage}</p>}
+            {errorMessage && <p className="mb-5 border border-danger/35 bg-danger-soft p-3 text-sm text-danger" role="alert">{errorMessage}</p>}
 
             <div className="grid gap-10">
                 {activeSection === 'dashboard' && (
@@ -233,7 +233,7 @@ export function AdminManagementPage({ section }: { section?: AdminView } = {}) {
                                         <button className="flex h-10 items-center gap-1.5 bg-ink px-4 text-xs font-bold text-white disabled:opacity-50" type="button" disabled={processingProductId === product.productId} onClick={() => changeProductStatus(product, 'APPROVED')}>
                                             <Check className="size-4" />승인
                                         </button>
-                                        <button className="flex h-10 items-center gap-1.5 border border-[#a22e24] px-4 text-xs font-bold text-[#a22e24] dark:border-[#ff8e84] dark:text-[#ffb7ae] disabled:opacity-50" type="button" disabled={processingProductId === product.productId} onClick={() => changeProductStatus(product, 'REJECTED')}>
+                                        <button className="flex h-10 items-center gap-1.5 border border-danger px-4 text-xs font-bold text-danger disabled:opacity-50" type="button" disabled={processingProductId === product.productId} onClick={() => changeProductStatus(product, 'REJECTED')}>
                                             <X className="size-4" />반려
                                         </button>
                                     </div>
@@ -277,7 +277,7 @@ export function AdminManagementPage({ section }: { section?: AdminView } = {}) {
                                 <article className="border border-line p-4" key={order.orderId}>
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <strong>주문 #{order.orderId}</strong>
-                                        <span className="bg-[#eef0df] px-3 py-1 text-xs font-bold text-[#66751c] dark:bg-[#29301f] dark:text-[#d3e78a]">
+                                        <span className="bg-success-soft px-3 py-1 text-xs font-bold text-success">
                                             {order.status}
                                         </span>
                                     </div>

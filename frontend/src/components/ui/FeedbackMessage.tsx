@@ -10,9 +10,9 @@ interface FeedbackMessageProps {
 }
 
 const toneStyles = {
-    error: 'border-[#d9aaa4] bg-[#f9ecea] text-[#9d3026]',
-    success: 'border-[#bdc998] bg-[#f2f5e7] text-[#59691c]',
-    info: 'border-[#c8c8bf] bg-[#f4f4ef] text-[#55554f]',
+    error: 'border-danger/35 bg-danger-soft text-danger',
+    success: 'border-success/35 bg-success-soft text-success',
+    info: 'border-line bg-subtle text-muted',
 }
 
 const toneIcons = {
