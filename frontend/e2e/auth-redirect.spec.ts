@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { installMockApi, loginThroughUi } from './fixtures/mockApi'
 
-test('seller reauthentication restores an authorized seller path', async ({ page }) => {
+test('판매자 재인증은 허용된 판매자 경로로 복귀한다', async ({ page }) => {
     await installMockApi(page)
     await page.goto('/seller/orders')
 
@@ -13,7 +13,7 @@ test('seller reauthentication restores an authorized seller path', async ({ page
     await expect(page).toHaveURL(/\/seller\/orders$/)
 })
 
-test('user login does not restore a seller path', async ({ page }) => {
+test('일반 회원 로그인은 판매자 경로로 복귀하지 않는다', async ({ page }) => {
     await installMockApi(page)
     await page.goto('/seller/orders')
 
@@ -25,7 +25,7 @@ test('user login does not restore a seller path', async ({ page }) => {
     await expect(page).toHaveURL('/')
 })
 
-test('seller login does not restore an admin path', async ({ page }) => {
+test('판매자 로그인은 관리자 경로로 복귀하지 않는다', async ({ page }) => {
     await installMockApi(page)
     await page.goto('/admin/settlement')
 
@@ -37,14 +37,41 @@ test('seller login does not restore an admin path', async ({ page }) => {
     await expect(page).toHaveURL('/')
 })
 
-test('explicit logout clears the previous seller path before account switching', async ({ page }) => {
+test('판매자 로그아웃 후 일반 회원으로 전환하면 이전 경로를 제거한다', async ({ page }) => {
     await installMockApi(page)
     await loginThroughUi(page, 'seller@example.test')
     await page.goto('/seller')
 
-    await page.locator('aside button').last().click()
+    await page.getByRole('button', { name: '로그아웃' }).click()
     await expect(page).toHaveURL('/')
 
     await loginThroughUi(page, 'member@example.test')
     await expect(page).toHaveURL('/')
+})
+
+test('관리자 로그아웃 후 판매자로 전환하면 이전 관리자 경로를 제거한다', async ({ page }) => {
+    await installMockApi(page)
+    await loginThroughUi(page, 'admin@example.test')
+    await page.goto('/admin/settlement')
+
+    await page.getByRole('button', { name: '로그아웃' }).click()
+    await expect(page).toHaveURL('/')
+
+    await loginThroughUi(page, 'seller@example.test')
+    await expect(page).toHaveURL('/')
+
+    await page.goto('/seller')
+    await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible()
+})
+
+test('일반 회원은 마이페이지를 이용하고 역할별 관리 화면 접근은 차단된다', async ({ page }) => {
+    await installMockApi(page)
+    await loginThroughUi(page)
+
+    await page.goto('/mypage')
+    await expect(page.getByRole('heading', { name: '내 정보 관리' })).toBeVisible()
+
+    await page.goto('/seller')
+    await expect(page).toHaveURL('/forbidden')
+    await expect(page.getByRole('heading', { name: '접근 권한이 없습니다' })).toBeVisible()
 })

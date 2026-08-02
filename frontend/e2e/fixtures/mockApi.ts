@@ -1,9 +1,12 @@
 import type { Page, Route } from '@playwright/test'
 
 type Role = 'ROLE_USER' | 'ROLE_SELLER' | 'ROLE_ADMIN'
+type DashboardMode = 'normal' | 'empty' | 'error'
 
 interface MockApiOptions {
     role?: Role
+    sellerDashboardMode?: DashboardMode
+    adminDashboardMode?: DashboardMode
 }
 
 const product = {
@@ -84,6 +87,23 @@ const homeMerchandising = {
                 name: '테스트 수분 크림',
             }],
         },
+        ...[
+            { categoryId: 5, categoryName: '식품', productId: 8, name: '테스트 신선 식품' },
+            { categoryId: 6, categoryName: '가구·인테리어', productId: 9, name: '테스트 인테리어 소품' },
+            { categoryId: 7, categoryName: '자동차·공구', productId: 10, name: '테스트 차량 용품' },
+            { categoryId: 8, categoryName: '도서·취미', productId: 11, name: '테스트 취미 상품' },
+        ].map((category) => ({
+            categoryId: category.categoryId,
+            categoryName: category.categoryName,
+            categorySlug: `category-${category.categoryId}`,
+            products: [{
+                ...merchandisingProduct,
+                productId: category.productId,
+                categoryId: category.categoryId,
+                categoryName: category.categoryName,
+                name: category.name,
+            }],
+        })),
     ],
     grocery: groceryCategories.map((category, index) => ({
         ...category,
@@ -104,13 +124,30 @@ const homeMerchandising = {
             },
         ],
     })),
-    fashion: [{
-        categoryId: 4,
-        categoryName: '여성의류',
-        categorySlug: 'women',
-        products: [{ ...merchandisingProduct, productId: 4, name: '테스트 재킷' }],
-    }],
-    newArrivals: [{ ...merchandisingProduct, productId: 5, name: '테스트 신상품' }],
+    fashion: [
+        { categoryId: 41, categoryName: '여성패션', categorySlug: 'women', productId: 41, name: '테스트 여성 재킷' },
+        { categoryId: 42, categoryName: '남성패션', categorySlug: 'men', productId: 42, name: '테스트 남성 셔츠' },
+        { categoryId: 43, categoryName: '유아동패션', categorySlug: 'kids', productId: 43, name: '테스트 키즈 셋업' },
+        { categoryId: 44, categoryName: '스포츠패션', categorySlug: 'sports', productId: 44, name: '테스트 러닝 재킷' },
+    ].map((category) => ({
+        categoryId: category.categoryId,
+        categoryName: category.categoryName,
+        categorySlug: category.categorySlug,
+        products: [{
+            ...merchandisingProduct,
+            productId: category.productId,
+            categoryId: category.categoryId,
+            categoryName: category.categoryName,
+            name: category.name,
+        }],
+    })),
+    newArrivals: Array.from({ length: 8 }, (_, index) => ({
+        ...merchandisingProduct,
+        productId: 51 + index,
+        categoryId: 51 + index,
+        categoryName: `신상품 카테고리 ${index + 1}`,
+        name: `테스트 신상품 ${index + 1}`,
+    })),
 }
 
 const cartItem = {
@@ -254,6 +291,12 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
         cartItems: [] as typeof cartItem[],
         notifications: initialNotifications.map((notification) => ({ ...notification })),
         order: { ...baseOrder },
+        currentEmail: 'member@example.test',
+        currentRole: defaultRole,
+        dashboardPeriods: {
+            seller: [] as string[],
+            admin: [] as string[],
+        },
     }
 
     await page.route('**/api/**', async (route) => {
@@ -271,6 +314,8 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
         if (path === '/members/login' && method === 'POST') {
             const body = request.postDataJSON() as { email: string }
             const role = roleForEmail(body.email, defaultRole)
+            state.currentEmail = body.email
+            state.currentRole = role
             return ok(route, {
                 accessToken: createJwt(role),
                 tokenType: 'Bearer',
@@ -279,6 +324,20 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
         }
         if (path === '/members/logout' && method === 'POST') {
             return noContent(route)
+        }
+        if (path === '/members/me' && method === 'GET') {
+            return ok(route, {
+                memberId: 101,
+                email: state.currentEmail,
+                name: '테스트 회원',
+                phone: '01000000000',
+                hasPassword: true,
+                role: state.currentRole,
+                createdAt: '2026-07-26T12:00:00+09:00',
+            })
+        }
+        if (path === '/members/me/oauth-accounts' && method === 'GET') {
+            return ok(route, [])
         }
         if (path === '/members/email-availability' && method === 'GET') {
             return ok(route, { available: true })
@@ -332,9 +391,27 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
             return ok(route, pageResponse([]))
         }
         if (path === '/seller/dashboard/statistics' && method === 'GET') {
+            const period = url.searchParams.get('period') ?? '30d'
+            state.dashboardPeriods.seller.push(period)
+            if (options.sellerDashboardMode === 'error') {
+                return error(route, 503, 'DASHBOARD_LOAD_FAILED', '판매자 대시보드 통계를 불러오지 못했습니다.')
+            }
+            const statistics = options.sellerDashboardMode === 'empty'
+                ? {
+                    ...sellerDashboardStatistics,
+                    netSalesAmount: 0,
+                    orderCount: 0,
+                    salesQuantity: 0,
+                    trend: [],
+                    orderStatusCounts: [],
+                    topProducts: [],
+                    settlement: { availableAmount: 0, processingAmount: 0, completedAmount: 0 },
+                    pendingTasks: { orders: 0, returns: 0, questions: 0 },
+                }
+                : sellerDashboardStatistics
             return ok(route, {
-                ...sellerDashboardStatistics,
-                period: { ...sellerDashboardStatistics.period, period: url.searchParams.get('period') ?? '30d' },
+                ...statistics,
+                period: { ...statistics.period, period },
             })
         }
         if (path === '/admin/products' && method === 'GET') {
@@ -353,9 +430,27 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
             return ok(route, pageResponse([]))
         }
         if (path === '/admin/dashboard/statistics' && method === 'GET') {
+            const period = url.searchParams.get('period') ?? '30d'
+            state.dashboardPeriods.admin.push(period)
+            if (options.adminDashboardMode === 'error') {
+                return error(route, 503, 'DASHBOARD_LOAD_FAILED', '관리자 대시보드 통계를 불러오지 못했습니다.')
+            }
+            const statistics = options.adminDashboardMode === 'empty'
+                ? {
+                    ...adminDashboardStatistics,
+                    netTransactionAmount: 0,
+                    orderCount: 0,
+                    salesQuantity: 0,
+                    transactionTrend: [],
+                    registrationTrend: [],
+                    categorySales: [],
+                    topProducts: [],
+                    pendingTasks: { products: 0, sellers: 0, refunds: 0, returns: 0, settlements: 0 },
+                }
+                : adminDashboardStatistics
             return ok(route, {
-                ...adminDashboardStatistics,
-                period: { ...adminDashboardStatistics.period, period: url.searchParams.get('period') ?? '30d' },
+                ...statistics,
+                period: { ...statistics.period, period },
             })
         }
         if (path === '/notifications/unread-count' && method === 'GET') {
