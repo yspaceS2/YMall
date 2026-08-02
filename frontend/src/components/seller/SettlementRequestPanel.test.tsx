@@ -97,4 +97,18 @@ describe('SettlementRequestPanel', () => {
         expect(getSettlementAvailability).toHaveBeenCalledWith(expect.any(AbortSignal))
         expect(await screen.findByText('정산을 신청했습니다.')).toBeInTheDocument()
     })
+
+    it('처리 중 필터로 요청과 승인 상태를 함께 조회한다', async () => {
+        render(
+            <MemoryRouter initialEntries={['/seller/settlement?tab=history&workType=PROCESSING']}>
+                <SettlementRequestPanel view="history" />
+            </MemoryRouter>,
+        )
+
+        expect(await screen.findByLabelText('처리 상태')).toHaveValue('PROCESSING')
+        expect(getSettlementRequests).toHaveBeenCalledWith(expect.objectContaining({
+            status: undefined,
+            workType: 'PROCESSING',
+        }))
+    })
 })

@@ -21,6 +21,7 @@ import com.ymall.backend.global.security.MemberPrincipal;
 import com.ymall.backend.settlement.dto.SettlementAvailabilityResponse;
 import com.ymall.backend.settlement.dto.SettlementRequestCreateRequest;
 import com.ymall.backend.settlement.dto.SettlementRequestResponse;
+import com.ymall.backend.settlement.dto.SettlementRequestWorkType;
 import com.ymall.backend.settlement.entity.SettlementRequestStatus;
 import com.ymall.backend.settlement.service.SettlementRequestService;
 
@@ -44,6 +45,7 @@ public class SellerSettlementRequestController {
     public ApiResponse<PageResponse<SettlementRequestResponse>> getRequests(
         @AuthenticationPrincipal MemberPrincipal principal,
         @RequestParam(required = false) SettlementRequestStatus status,
+        @RequestParam(required = false) SettlementRequestWorkType workType,
         @RequestParam(required = false) Long requestId,
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -58,6 +60,7 @@ public class SellerSettlementRequestController {
             settlementRequestService.getSellerRequests(
                 principal.memberId(),
                 status,
+                workType,
                 requestId,
                 requestedFrom,
                 requestedTo,

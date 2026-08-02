@@ -28,6 +28,7 @@ import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
+import com.ymall.backend.order.entity.OrderItemFulfillmentStatus;
 import com.ymall.backend.order.repository.OrderRepository;
 import com.ymall.backend.payment.entity.Payment;
 import com.ymall.backend.payment.repository.PaymentRepository;
@@ -78,10 +79,20 @@ class DashboardStatisticsApiIntegrationTest {
         Category category = categoryRepository.save(
             new Category("패션", "dashboard-fashion", null, 1, 1, true)
         );
+        categoryRepository.save(
+            new Category("식품", "dashboard-food", null, 1, 2, true)
+        );
         sellerProduct = productRepository.save(product(category, seller, "판매자 상품"));
         otherSellerProduct = productRepository.save(product(category, otherSeller, "다른 판매자 상품"));
 
         Order kstBoundaryOrder = createPaidOrder(sellerProduct, 5, 2, "dashboard-order-1");
+        kstBoundaryOrder.getItems().get(0).updateFulfillmentStatus(
+            OrderItemFulfillmentStatus.PREPARING,
+            null,
+            null
+        );
+        kstBoundaryOrder.refreshFulfillmentStatus();
+        orderRepository.saveAndFlush(kstBoundaryOrder);
         moveToKstTodayAtHalfPastMidnight(kstBoundaryOrder);
         createPaidOrder(otherSellerProduct, 2, 0, "dashboard-order-2");
         createPaidOrder(sellerProduct, 4, 4, "dashboard-order-3");
@@ -120,7 +131,11 @@ class DashboardStatisticsApiIntegrationTest {
             .andExpect(jsonPath("$.data.registrationTrend[5].members").value(4))
             .andExpect(jsonPath("$.data.registrationTrend[5].sellers").value(2))
             .andExpect(jsonPath("$.data.topProducts.length()").value(2))
-            .andExpect(jsonPath("$.data.categorySales[0].netSalesAmount").value(50000));
+            .andExpect(jsonPath("$.data.categorySales.length()").value(2))
+            .andExpect(jsonPath("$.data.categorySales[0].netSalesAmount").value(50000))
+            .andExpect(jsonPath("$.data.categorySales[1].categoryName").value("식품"))
+            .andExpect(jsonPath("$.data.categorySales[1].netSalesAmount").value(0))
+            .andExpect(jsonPath("$.data.categorySales[1].salesQuantity").value(0));
     }
 
     @Test

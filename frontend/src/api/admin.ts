@@ -18,7 +18,7 @@ import type {
 import { apiRequest } from './client'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 import type { ProductStatus } from '../types/product'
-import type { SettlementRequestHistory } from '../types/seller'
+import type { SettlementRequestHistory, SettlementRequestWorkType } from '../types/seller'
 
 const ADMIN_PAGE_SIZE = 20
 
@@ -49,6 +49,12 @@ interface AdminPageOptions {
     page?: number
     signal?: AbortSignal
     keyword?: string
+}
+
+export type AdminOrderWorkType = 'PENDING_REFUND' | 'PENDING_RETURN'
+
+interface AdminOrderPageOptions extends AdminPageOptions {
+    workType?: AdminOrderWorkType
 }
 
 interface AdminProductPageOptions extends AdminPageOptions {
@@ -157,13 +163,14 @@ export function getAdminSeller(sellerId: number, signal?: AbortSignal) {
     return apiRequest<AdminSeller>(`/admin/sellers/${sellerId}`, { signal })
 }
 
-export function getAdminOrders(options: AdminPageOptions = {}) {
-    const { page = 1, signal, keyword = '' } = options
+export function getAdminOrders(options: AdminOrderPageOptions = {}) {
+    const { page = 1, signal, keyword = '', workType } = options
     const query = new URLSearchParams({
         page: String(page),
         size: String(ADMIN_PAGE_SIZE),
         keyword,
     })
+    if (workType) query.set('workType', workType)
     return apiRequest<AdminOrderPage>(`/admin/orders?${query.toString()}`, { signal })
 }
 
@@ -187,6 +194,7 @@ export function getAdminSettlementRequests(
         page = 1,
         size = 20,
         status,
+        workType,
         requestId,
         sellerKeyword,
         requestedFrom,
@@ -196,6 +204,7 @@ export function getAdminSettlementRequests(
         page?: number
         size?: number
         status?: SettlementRequestStatus
+        workType?: SettlementRequestWorkType
         requestId?: number
         sellerKeyword?: string
         requestedFrom?: string
@@ -208,6 +217,7 @@ export function getAdminSettlementRequests(
         size: String(size),
     })
     if (status) query.set('status', status)
+    if (workType) query.set('workType', workType)
     if (requestId !== undefined) query.set('requestId', String(requestId))
     if (sellerKeyword?.trim()) query.set('sellerKeyword', sellerKeyword.trim())
     if (requestedFrom) query.set('requestedFrom', requestedFrom)

@@ -15,6 +15,7 @@ import type {
     SettlementAvailability,
     SettlementRequest,
     SettlementRequestPage,
+    SettlementRequestWorkType,
     FulfillmentStatus,
     SellerPendingOrderCount,
 } from '../types/seller'
@@ -63,6 +64,7 @@ export function getSettlementRequests({
     page = 1,
     size = 20,
     status,
+    workType,
     requestId,
     requestedFrom,
     requestedTo,
@@ -71,6 +73,7 @@ export function getSettlementRequests({
     page?: number
     size?: number
     status?: SettlementRequest['status']
+    workType?: SettlementRequestWorkType
     requestId?: number
     requestedFrom?: string
     requestedTo?: string
@@ -81,6 +84,7 @@ export function getSettlementRequests({
         size: String(size),
     })
     if (status) query.set('status', status)
+    if (workType) query.set('workType', workType)
     if (requestId !== undefined) query.set('requestId', String(requestId))
     if (requestedFrom) query.set('requestedFrom', requestedFrom)
     if (requestedTo) query.set('requestedTo', requestedTo)
@@ -125,7 +129,10 @@ interface SellerProductPageOptions extends SellerPageOptions {
 interface SellerOrderPageOptions extends SellerPageOptions {
     keyword?: string
     fulfillmentStatus?: FulfillmentStatus | ''
+    workType?: SellerOrderWorkType
 }
+
+export type SellerOrderWorkType = 'ACTION_REQUIRED'
 
 export function getSellerProducts(options: SellerProductPageOptions = {}) {
     const {
@@ -177,6 +184,7 @@ export function getSellerOrders(options: SellerOrderPageOptions = {}) {
         keyword = '',
         signal,
         fulfillmentStatus,
+        workType,
     } = options
     const query = new URLSearchParams({
         page: String(page),
@@ -184,6 +192,7 @@ export function getSellerOrders(options: SellerOrderPageOptions = {}) {
         keyword,
     })
     if (fulfillmentStatus) query.set('fulfillmentStatus', fulfillmentStatus)
+    if (workType) query.set('workType', workType)
     return apiRequest<SellerOrderPage>(
         `/seller/orders?${query.toString()}`,
         { signal },

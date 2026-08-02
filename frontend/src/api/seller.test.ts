@@ -74,6 +74,17 @@ describe('seller list filters', () => {
         expect(requestUrl.searchParams.get('fulfillmentStatus')).toBe('PENDING')
     })
 
+    it('처리 필요 주문 유형을 쿼리에 포함한다', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(successResponse(pageResponse()))
+        vi.stubGlobal('fetch', fetchMock)
+
+        await getSellerOrders({ workType: 'ACTION_REQUIRED' })
+
+        const [url] = fetchMock.mock.calls[0] as [string, RequestInit]
+        const requestUrl = new URL(url, 'http://localhost')
+        expect(requestUrl.searchParams.get('workType')).toBe('ACTION_REQUIRED')
+    })
+
     it('처리 대기 주문 수 API를 호출한다', async () => {
         const fetchMock = vi.fn().mockResolvedValue(successResponse({ count: 2 }))
         vi.stubGlobal('fetch', fetchMock)

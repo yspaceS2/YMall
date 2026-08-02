@@ -116,7 +116,7 @@ public class DashboardStatisticsQueryRepository {
                        JOIN products product ON product.id = item.product_id
                        JOIN orders orders ON orders.id = item.order_id
                        WHERE product.seller_profile_id = :sellerProfileId
-                         AND item.fulfillment_status = 'PENDING'
+                         AND item.fulfillment_status IN ('PENDING', 'PREPARING')
                          AND item.refunded_quantity < item.quantity
                          AND orders.status IN ('PAID', 'PARTIALLY_REFUNDED', 'PREPARING')
                    ) AS pending_orders,
@@ -222,19 +222,28 @@ public class DashboardStatisticsQueryRepository {
                 LEFT JOIN categories parent ON parent.id = leaf.parent_id
                 LEFT JOIN categories grandparent ON grandparent.id = parent.parent_id
             )
-            SELECT tree.root_id,
-                   tree.root_name,
-                   COALESCE(SUM(item.unit_price * GREATEST(item.quantity - item.refunded_quantity, 0)), 0) AS net_sales_amount,
-                   COALESCE(SUM(GREATEST(item.quantity - item.refunded_quantity, 0)), 0) AS sales_quantity
-            FROM orders
-            JOIN order_items item ON item.order_id = orders.id
-            JOIN products product ON product.id = item.product_id
-            JOIN category_tree tree ON tree.category_id = product.category_id
-            WHERE orders.created_at >= :from
-              AND orders.created_at < :to
-              AND %s
-            GROUP BY tree.root_id, tree.root_name
-            ORDER BY net_sales_amount DESC, tree.root_id
+            , category_sales AS (
+                SELECT tree.root_id,
+                       COALESCE(SUM(item.unit_price * GREATEST(item.quantity - item.refunded_quantity, 0)), 0) AS net_sales_amount,
+                       COALESCE(SUM(GREATEST(item.quantity - item.refunded_quantity, 0)), 0) AS sales_quantity
+                FROM orders
+                JOIN order_items item ON item.order_id = orders.id
+                JOIN products product ON product.id = item.product_id
+                JOIN category_tree tree ON tree.category_id = product.category_id
+                WHERE orders.created_at >= :from
+                  AND orders.created_at < :to
+                  AND %s
+                GROUP BY tree.root_id
+            )
+            SELECT root.id AS root_id,
+                   root.name AS root_name,
+                   COALESCE(sales.net_sales_amount, 0) AS net_sales_amount,
+                   COALESCE(sales.sales_quantity, 0) AS sales_quantity
+            FROM categories root
+            LEFT JOIN category_sales sales ON sales.root_id = root.id
+            WHERE root.depth = 1
+              AND root.active = TRUE
+            ORDER BY net_sales_amount DESC, root.display_order, root.id
             """.formatted(PAID_ORDER_FILTER);
 
         return jdbcTemplate.query(sql, Map.of("from", from, "to", to),
@@ -256,7 +265,8 @@ public class DashboardStatisticsQueryRepository {
                    (SELECT COUNT(*) FROM seller_applications WHERE status = 'PENDING') AS pending_sellers,
                    (SELECT COUNT(*) FROM payment_refunds WHERE status = 'PENDING') AS pending_refunds,
                    (SELECT COUNT(*) FROM product_return_requests WHERE status = 'REQUESTED') AS pending_returns,
-                   (SELECT COUNT(*) FROM settlement_requests WHERE status = 'REQUESTED') AS pending_settlements
+                   (SELECT COUNT(*) FROM settlement_requests
+                    WHERE status IN ('REQUESTED', 'APPROVED')) AS pending_settlements
             """, Map.of(),
             (resultSet, rowNumber) -> new AdminPendingRow(
                 resultSet.getLong("pending_products"),

@@ -140,16 +140,21 @@ public class AdminService {
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_PROFILE_NOT_FOUND));
     }
 
-    public PageResponse<AdminOrderResponse> getOrders(int page, int size, String keyword) {
+    public PageResponse<AdminOrderResponse> getOrders(
+        int page,
+        int size,
+        String keyword,
+        String workType
+    ) {
         String normalizedKeyword = normalizeKeyword(keyword);
         Long orderId = parseOrderId(normalizedKeyword);
-        Page<Order> orders = normalizedKeyword.isEmpty()
-            ? orderRepository.findAll(createPageable(page, size))
-            : orderRepository.searchAdminOrders(
-                orderId == null ? normalizedKeyword : "",
-                orderId,
-                createPageable(page, size)
-            );
+        Page<Order> orders = orderRepository.searchAdminOrders(
+            orderId == null ? normalizedKeyword : "",
+            orderId,
+            "PENDING_REFUND".equals(workType),
+            "PENDING_RETURN".equals(workType),
+            createPageable(page, size)
+        );
         return toOrderPage(orders);
     }
 

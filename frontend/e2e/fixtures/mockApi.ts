@@ -136,6 +136,71 @@ const address = {
     isDefault: true,
 }
 
+const dashboardTrend = [
+    { date: '2026-07-27', netSalesAmount: 280000, orderCount: 8, salesQuantity: 12 },
+    { date: '2026-07-28', netSalesAmount: 410000, orderCount: 11, salesQuantity: 17 },
+    { date: '2026-07-29', netSalesAmount: 350000, orderCount: 9, salesQuantity: 14 },
+    { date: '2026-07-30', netSalesAmount: 620000, orderCount: 16, salesQuantity: 24 },
+    { date: '2026-07-31', netSalesAmount: 540000, orderCount: 14, salesQuantity: 20 },
+    { date: '2026-08-01', netSalesAmount: 760000, orderCount: 19, salesQuantity: 29 },
+    { date: '2026-08-02', netSalesAmount: 690000, orderCount: 17, salesQuantity: 26 },
+]
+
+const sellerDashboardStatistics = {
+    period: { period: '30d', from: '2026-07-04', to: '2026-08-02', interval: 'DAY' },
+    netSalesAmount: 3650000,
+    orderCount: 94,
+    salesQuantity: 142,
+    trend: dashboardTrend,
+    orderStatusCounts: [
+        { status: 'PAID', count: 18 },
+        { status: 'PREPARING', count: 12 },
+        { status: 'SHIPPED', count: 21 },
+        { status: 'DELIVERED', count: 39 },
+        { status: 'PARTIALLY_REFUNDED', count: 4 },
+    ],
+    topProducts: [
+        { productId: 1, productName: '리브드 코튼 카디건', salesQuantity: 38, netSalesAmount: 1216000 },
+        { productId: 2, productName: '시그니처 와이드 데님', salesQuantity: 31, netSalesAmount: 1085000 },
+        { productId: 3, productName: '데일리 레더 로퍼', salesQuantity: 24, netSalesAmount: 816000 },
+        { productId: 4, productName: '소프트 울 머플러', salesQuantity: 19, netSalesAmount: 418000 },
+    ],
+    settlement: { availableAmount: 2180000, processingAmount: 740000, completedAmount: 12680000 },
+    pendingTasks: { orders: 12, returns: 3, questions: 7 },
+    generatedAt: '2026-08-02T14:00:00+09:00',
+}
+
+const adminDashboardStatistics = {
+    period: { period: '30d', from: '2026-07-04', to: '2026-08-02', interval: 'DAY' },
+    netTransactionAmount: 128450000,
+    orderCount: 2841,
+    salesQuantity: 4268,
+    transactionTrend: dashboardTrend.map((point) => ({
+        ...point,
+        netSalesAmount: point.netSalesAmount * 28,
+        orderCount: point.orderCount * 24,
+        salesQuantity: point.salesQuantity * 22,
+    })),
+    registrationTrend: Array.from({ length: 30 }, (_, index) => ({
+        date: new Date(Date.UTC(2026, 6, 4 + index)).toISOString().slice(0, 10),
+        members: index % 6 === 0 ? 18 + index : index % 4,
+        sellers: index % 9 === 0 ? 2 + Math.floor(index / 9) : 0,
+    })),
+    categorySales: [
+        { categoryId: 1, categoryName: '패션', netSalesAmount: 38400000, salesQuantity: 1028 },
+        { categoryId: 2, categoryName: '가전·디지털', netSalesAmount: 31200000, salesQuantity: 486 },
+        { categoryId: 3, categoryName: '식품', netSalesAmount: 24800000, salesQuantity: 1392 },
+        { categoryId: 4, categoryName: '생활·주방', netSalesAmount: 18600000, salesQuantity: 794 },
+        { categoryId: 5, categoryName: '뷰티', netSalesAmount: 11200000, salesQuantity: 568 },
+        { categoryId: 6, categoryName: '도서·취미', netSalesAmount: 8400000, salesQuantity: 412 },
+        { categoryId: 7, categoryName: '자동차·공구', netSalesAmount: 6200000, salesQuantity: 238 },
+        { categoryId: 8, categoryName: '가구·인테리어', netSalesAmount: 0, salesQuantity: 0 },
+    ],
+    topProducts: sellerDashboardStatistics.topProducts,
+    pendingTasks: { products: 14, sellers: 6, refunds: 9, returns: 11, settlements: 8 },
+    generatedAt: '2026-08-02T14:00:00+09:00',
+}
+
 const baseOrder = {
     orderId: 9001,
     paymentOrderId: 'ymall-test-order-9001',
@@ -248,6 +313,50 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
                 role: 'ROLE_USER',
                 createdAt: '2026-07-26T12:00:00+09:00',
             }, 201)
+        }
+        if (path === '/seller/profile' && method === 'GET') {
+            return ok(route, {
+                sellerProfileId: 10,
+                storeName: '모브 셀렉트',
+                businessNumber: '0000000000',
+                description: '취향을 담은 데일리웨어',
+            })
+        }
+        if (path === '/seller/products' && method === 'GET') {
+            return ok(route, pageResponse([]))
+        }
+        if (path === '/seller/orders' && method === 'GET') {
+            return ok(route, pageResponse([]))
+        }
+        if (path === '/seller/settlement-requests' && method === 'GET') {
+            return ok(route, pageResponse([]))
+        }
+        if (path === '/seller/dashboard/statistics' && method === 'GET') {
+            return ok(route, {
+                ...sellerDashboardStatistics,
+                period: { ...sellerDashboardStatistics.period, period: url.searchParams.get('period') ?? '30d' },
+            })
+        }
+        if (path === '/admin/products' && method === 'GET') {
+            return ok(route, pageResponse([]))
+        }
+        if (path === '/admin/members' && method === 'GET') {
+            return ok(route, pageResponse([]))
+        }
+        if (path === '/admin/sellers' && method === 'GET') {
+            return ok(route, pageResponse([]))
+        }
+        if (path === '/admin/orders' && method === 'GET') {
+            return ok(route, pageResponse([]))
+        }
+        if (path === '/admin/settlement-requests' && method === 'GET') {
+            return ok(route, pageResponse([]))
+        }
+        if (path === '/admin/dashboard/statistics' && method === 'GET') {
+            return ok(route, {
+                ...adminDashboardStatistics,
+                period: { ...adminDashboardStatistics.period, period: url.searchParams.get('period') ?? '30d' },
+            })
         }
         if (path === '/notifications/unread-count' && method === 'GET') {
             return ok(route, {

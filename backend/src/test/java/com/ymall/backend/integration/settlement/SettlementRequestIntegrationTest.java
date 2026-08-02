@@ -172,6 +172,23 @@ class SettlementRequestIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.status").value("APPROVED"));
 
+        mockMvc.perform(get("/api/seller/settlement-requests")
+                .param("workType", "PROCESSING")
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1));
+
+        mockMvc.perform(get("/api/admin/settlement-requests")
+                .param("workType", "ACTION_REQUIRED")
+                .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1));
+
+        mockMvc.perform(get("/api/admin/dashboard/statistics")
+                .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.pendingTasks.settlements").value(1));
+
         mockMvc.perform(patch("/api/admin/settlement-requests/{requestId}/approval", requestId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
             .andExpect(status().isConflict())
@@ -186,6 +203,12 @@ class SettlementRequestIntegrationTest {
             .andExpect(jsonPath("$.data.mockPaymentReference").value(
                 org.hamcrest.Matchers.startsWith("MOCK-")
             ));
+
+        mockMvc.perform(get("/api/admin/settlement-requests")
+                .param("workType", "ACTION_REQUIRED")
+                .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(0));
 
         assertThat(ledgerRepository.findAll()).allSatisfy(entry -> {
             assertThat(entry.getStatus()).isEqualTo(SettlementStatus.PAID);

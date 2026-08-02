@@ -150,7 +150,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                       select filteredItem.id from OrderItem filteredItem
                       where filteredItem.order = orders
                         and filteredItem.product.sellerProfile.id = :sellerProfileId
-                        and filteredItem.fulfillmentStatus = :fulfillmentStatus
+                        and (
+                            filteredItem.fulfillmentStatus in :fulfillmentStatuses
+                            or (:includeLegacyPending = true and filteredItem.fulfillmentStatus is null)
+                        )
                         and filteredItem.refundedQuantity < filteredItem.quantity
                   )
               )
@@ -180,7 +183,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                       select filteredItem.id from OrderItem filteredItem
                       where filteredItem.order = orders
                         and filteredItem.product.sellerProfile.id = :sellerProfileId
-                        and filteredItem.fulfillmentStatus = :fulfillmentStatus
+                        and (
+                            filteredItem.fulfillmentStatus in :fulfillmentStatuses
+                            or (:includeLegacyPending = true and filteredItem.fulfillmentStatus is null)
+                        )
                         and filteredItem.refundedQuantity < filteredItem.quantity
                   )
               )
@@ -192,7 +198,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Param("keyword") String keyword,
         @Param("orderId") Long orderId,
         @Param("filterFulfillmentStatus") boolean filterFulfillmentStatus,
-        @Param("fulfillmentStatus") OrderItemFulfillmentStatus fulfillmentStatus,
+        @Param("fulfillmentStatuses") Collection<OrderItemFulfillmentStatus> fulfillmentStatuses,
+        @Param("includeLegacyPending") boolean includeLegacyPending,
         Pageable pageable
     );
 
@@ -201,12 +208,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         where item.product.sellerProfile.id = :sellerProfileId
           and (
               item.fulfillmentStatus is null
-              or item.fulfillmentStatus = com.ymall.backend.order.entity.OrderItemFulfillmentStatus.PENDING
+              or item.fulfillmentStatus in (
+                  com.ymall.backend.order.entity.OrderItemFulfillmentStatus.PENDING,
+                  com.ymall.backend.order.entity.OrderItemFulfillmentStatus.PREPARING
+              )
           )
           and item.refundedQuantity < item.quantity
           and item.order.status in :statuses
         """)
-    long countSellerPendingFulfillmentOrders(
+    long countSellerActionRequiredOrders(
         @Param("sellerProfileId") Long sellerProfileId,
         @Param("statuses") Collection<OrderStatus> statuses
     );
@@ -224,10 +234,22 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             )
         )
           and (:orderId is null or orders.id = :orderId)
+          and (:filterPendingRefund = false or exists (
+              select refund.id from PaymentRefund refund
+              where refund.order = orders
+                and refund.status = com.ymall.backend.payment.refund.entity.PaymentRefundStatus.PENDING
+          ))
+          and (:filterPendingReturn = false or exists (
+              select returnRequest.id from ProductReturnRequest returnRequest
+              where returnRequest.orderItem.order = orders
+                and returnRequest.status = com.ymall.backend.order.returnrequest.entity.ReturnRequestStatus.REQUESTED
+          ))
         """)
     Page<Order> searchAdminOrders(
         @Param("keyword") String keyword,
         @Param("orderId") Long orderId,
+        @Param("filterPendingRefund") boolean filterPendingRefund,
+        @Param("filterPendingReturn") boolean filterPendingReturn,
         Pageable pageable
     );
 

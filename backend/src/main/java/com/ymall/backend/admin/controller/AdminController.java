@@ -128,9 +128,10 @@ public class AdminController {
     public ApiResponse<PageResponse<AdminOrderResponse>> getOrders(
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
-        @RequestParam(defaultValue = "") String keyword
+        @RequestParam(defaultValue = "") String keyword,
+        @RequestParam(defaultValue = "") String workType
     ) {
-        return ApiResponse.success(adminService.getOrders(page, size, keyword));
+        return ApiResponse.success(adminService.getOrders(page, size, keyword, workType));
     }
 
     @GetMapping("/orders/{orderId}")
