@@ -151,7 +151,7 @@ export function ProductImageUploadField({
                 </label>
 
                 {validationMessage && (
-                    <p className="text-xs font-normal text-[#a22e24]" role="alert">
+                    <p className="text-xs font-normal text-danger" role="alert">
                         {validationMessage}
                     </p>
                 )}
@@ -175,7 +175,7 @@ export function ProductImageUploadField({
                                             <span>등록됨</span>
                                             {onExistingImageRemove && (
                                                 <button
-                                                    className="p-1 text-[#a22e24]"
+                                                    className="p-1 text-danger"
                                                     type="button"
                                                     aria-label={`${label} 현재 이미지 ${index + 1} 삭제`}
                                                     onClick={() => onExistingImageRemove(index)}
@@ -232,7 +232,7 @@ export function ProductImageUploadField({
                                             </>
                                         )}
                                         <button
-                                            className="p-1.5 text-[#a22e24]"
+                                            className="p-1.5 text-danger"
                                             type="button"
                                             aria-label={`${image.file.name} 삭제`}
                                             onClick={() => removeImage(image.id)}

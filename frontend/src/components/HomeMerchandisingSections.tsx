@@ -82,7 +82,7 @@ function MerchandisingProductCard({
                 <span className="mt-3 text-xs text-muted">{product.categoryName}</span>
                 <div className="mt-5 flex flex-wrap items-baseline gap-2">
                     {product.discountPercentage > 0 && (
-                        <strong className="text-lg text-[#849b21]">{product.discountPercentage}%</strong>
+                        <strong className="text-lg text-accent">{product.discountPercentage}%</strong>
                     )}
                     <b className="text-lg">{formatPrice(discountedPrice)}</b>
                     {product.discountPercentage > 0 && (
@@ -131,7 +131,7 @@ function MerchandisingCarousel({
             <div className="mx-auto max-w-360 px-4 min-[601px]:px-[clamp(24px,6vw,88px)]">
                 <header className="mb-9 flex items-end justify-between gap-5">
                     <div>
-                        <span className="text-[11px] font-extrabold tracking-[.18em] text-[#849b21]">
+                        <span className="text-[11px] font-extrabold tracking-[.18em] text-accent">
                             {eyebrow}
                         </span>
                         <h2 className="mt-2 font-serif text-[clamp(36px,5vw,58px)] leading-none">{heading}</h2>

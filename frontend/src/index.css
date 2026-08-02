@@ -7,6 +7,17 @@
     --color-paper: #f8f8f5;
     --color-surface: #ffffff;
     --color-lime: #d9ff43;
+    --color-accent: #71801e;
+    --color-success: #59691c;
+    --color-success-soft: #f2f5e7;
+    --color-danger: #9d3026;
+    --color-danger-soft: #fff5f3;
+    --color-warning: #7a6221;
+    --color-warning-soft: #f6f0df;
+    --color-info: #315f8b;
+    --color-info-soft: #e7eff8;
+    --color-subtle: #ecece6;
+    --color-disabled: #dddddd;
     --font-sans: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
     --font-serif: Georgia, serif;
 }
@@ -26,6 +37,17 @@
         --color-paper: #191a17;
         --color-surface: #242620;
         --color-lime: #c7eb3d;
+        --color-accent: #c9db72;
+        --color-success: #cddd78;
+        --color-success-soft: #29301f;
+        --color-danger: #ffb7ae;
+        --color-danger-soft: #351915;
+        --color-warning: #ffe39a;
+        --color-warning-soft: #594714;
+        --color-info: #a9ccec;
+        --color-info-soft: #223547;
+        --color-subtle: #30322d;
+        --color-disabled: #4b4d47;
     }
 
     body {

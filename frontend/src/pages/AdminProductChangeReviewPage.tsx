@@ -62,7 +62,7 @@ export function AdminProductChangeReviewListPage() {
         <section className="mx-auto max-w-350 px-4 py-10 min-[601px]:px-8">
             <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
                 <div>
-                    <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">CHANGE REVIEW</p>
+                    <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">CHANGE REVIEW</p>
                     <h1 className="font-serif text-5xl tracking-tight">상품 변경 심사</h1>
                     <p className="mt-3 text-sm text-muted">현재 판매 정보는 유지한 채 판매자가 제출한 변경안만 검토합니다.</p>
                 </div>
@@ -194,7 +194,7 @@ export function AdminProductChangeReviewDetailPage() {
             <Link className="mb-7 inline-flex items-center gap-2 text-sm font-bold" to="/admin/product-change-requests">
                 <ArrowLeft className="size-4" /> 변경 심사 목록
             </Link>
-            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">BEFORE / AFTER</p>
+            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">BEFORE / AFTER</p>
             <h1 className="font-serif text-5xl tracking-tight">{request.current.name}</h1>
             <p className="mt-3 text-sm text-muted">노란색 행이 실제로 변경된 항목입니다.</p>
             {message && <FeedbackMessage className="mt-6" tone="success">{message}</FeedbackMessage>}
@@ -204,7 +204,7 @@ export function AdminProductChangeReviewDetailPage() {
                 <table className="w-full min-w-190 border-collapse text-left text-sm">
                     <thead className="bg-surface"><tr><th className="w-36 px-4 py-3">항목</th><th className="px-4 py-3">현재 판매 정보</th><th className="px-4 py-3">변경 요청 정보</th></tr></thead>
                     <tbody>{rows.map((row) => (
-                        <tr className={`border-t border-line ${row.changed ? 'bg-[#fff8cf] dark:bg-[#4a421f]' : ''}`} key={row.label}>
+                        <tr className={`border-t border-line ${row.changed ? 'bg-warning-soft' : ''}`} key={row.label}>
                             <th className="px-4 py-4">{row.label}</th>
                             <td className="whitespace-pre-wrap px-4 py-4 text-muted">{row.before}</td>
                             <td className="whitespace-pre-wrap px-4 py-4 font-medium">{row.after}</td>
@@ -226,7 +226,7 @@ export function AdminProductChangeReviewDetailPage() {
                     </label>
                     <div className="mt-4 flex gap-3">
                         <button className="flex h-11 items-center gap-2 bg-ink px-6 text-xs font-bold text-paper disabled:opacity-50" disabled={isProcessing} type="button" onClick={() => void review('APPROVED')}><Check className="size-4" />승인</button>
-                        <button className="flex h-11 items-center gap-2 border border-[#a22e24] px-6 text-xs font-bold text-[#a22e24] disabled:opacity-50" disabled={isProcessing} type="button" onClick={() => void review('REJECTED')}><X className="size-4" />반려</button>
+                        <button className="flex h-11 items-center gap-2 border border-danger px-6 text-xs font-bold text-danger disabled:opacity-50" disabled={isProcessing} type="button" onClick={() => void review('REJECTED')}><X className="size-4" />반려</button>
                     </div>
                 </section>
             )}

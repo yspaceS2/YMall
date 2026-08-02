@@ -193,7 +193,7 @@ export function ProductQuestionSection({
         <div className="pt-10">
             <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
                 <div>
-                    <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">
+                    <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">
                         PRODUCT Q&amp;A
                     </p>
                     <h2 className="font-serif text-4xl tracking-tight">
@@ -319,7 +319,7 @@ export function ProductQuestionSection({
                                             </button>
                                         )}
                                         <button
-                                            className="grid size-9 place-items-center text-[#a22e24] dark:text-[#ffb7ae]"
+                                            className="grid size-9 place-items-center text-danger"
                                             aria-label="문의 삭제"
                                             type="button"
                                             onClick={() => setQuestionToDelete(question)}

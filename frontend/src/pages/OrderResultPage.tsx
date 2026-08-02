@@ -42,18 +42,18 @@ export function OrderResultPage() {
     return (
         <section className="mx-auto max-w-240 px-4 py-14 min-[601px]:px-8 min-[601px]:py-20">
             <div className="border-b border-line pb-9 text-center">
-                <Icon className={`mx-auto mb-5 size-11 ${isSuccess ? 'text-[#71801e]' : isFailed ? 'text-[#b23b2f]' : 'text-muted'}`} />
-                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">ORDER DETAIL</p>
+                <Icon className={`mx-auto mb-5 size-11 ${isSuccess ? 'text-success' : isFailed ? 'text-danger' : 'text-muted'}`} />
+                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">ORDER DETAIL</p>
                 <h1 className="font-serif text-[clamp(38px,6vw,58px)] leading-none tracking-tighter">{getOrderStatusLabel(order.status)}</h1>
                 <p className="mt-5 text-sm text-muted">주문 #{order.orderId} · {formatOrderDate(order.createdAt)}</p>
-                {isFailed && <p className="mt-3 text-sm text-[#b23b2f]">결제에 실패했습니다. 주문을 유지한 채 다시 시도할 수 있습니다.</p>}
+                {isFailed && <p className="mt-3 text-sm text-danger">결제에 실패했습니다. 주문을 유지한 채 다시 시도할 수 있습니다.</p>}
             </div>
 
             <div className="divide-y divide-line">
                 {order.items.map((item) => (
                     <article className="flex gap-4 py-6 min-[601px]:items-center" key={item.orderItemId}>
                         <Link
-                            className="size-22 shrink-0 overflow-hidden bg-[#ecece6] dark:bg-[#30322d] min-[601px]:size-28"
+                            className="size-22 shrink-0 overflow-hidden bg-subtle min-[601px]:size-28"
                             to={`/products/${item.productId}`}
                             aria-label={`${item.productName} 상품 보기`}
                         >

@@ -217,7 +217,7 @@ export function SignupPage() {
                             </button>}
                         message={hasEmailCheckMessage ? <>
                         {currentEmailCheckStatus === 'available' && (
-                            <span className="font-medium text-[#657617]" role="status">
+                            <span className="font-medium text-success" role="status">
                                 {isEmailVerified
                                     ? '이메일 인증이 완료되었습니다.'
                                     : verificationRequestId
@@ -226,10 +226,10 @@ export function SignupPage() {
                             </span>
                         )}
                         {currentEmailCheckStatus === 'unavailable' && (
-                            <span className="font-medium text-[#b23b2f]" role="alert">이미 사용 중인 이메일입니다.</span>
+                            <span className="font-medium text-danger" role="alert">이미 사용 중인 이메일입니다.</span>
                         )}
                         {currentEmailCheckStatus === 'error' && (
-                            <span className="font-medium text-[#b23b2f]" role="alert">이메일 확인에 실패했습니다. 다시 시도해 주세요.</span>
+                            <span className="font-medium text-danger" role="alert">이메일 확인에 실패했습니다. 다시 시도해 주세요.</span>
                         )}
                         </> : undefined}
                     />
@@ -273,7 +273,7 @@ export function SignupPage() {
                                 messageId={field.key === 'passwordConfirmation' ? 'signup-password-confirmation-message' : undefined}
                                 message={field.key === 'passwordConfirmation' && hasPasswordConfirmation ? (
                                 <span
-                                    className={`font-medium ${isPasswordMatched ? 'text-[#657617]' : 'text-[#b23b2f]'}`}
+                                    className={`font-medium ${isPasswordMatched ? 'text-success' : 'text-danger'}`}
                                     role={isPasswordMatched ? 'status' : 'alert'}
                                 >
                                     {isPasswordMatched ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.'}

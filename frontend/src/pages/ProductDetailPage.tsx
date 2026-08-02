@@ -209,15 +209,15 @@ export function ProductDetailPage() {
             <Link className="mb-7 inline-flex items-center gap-1 text-xs" to="/"><ChevronLeft className="size-4" /> 상품 목록</Link>
             <div className="grid grid-cols-1 gap-10 min-[901px]:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)] min-[901px]:gap-[clamp(40px,7vw,110px)]">
                 <div className="min-w-0">
-                    <div className="aspect-square overflow-hidden bg-[#e9e9e3]">{selectedImage ? <img className="size-full object-cover" src={resolveImageUrl(selectedImage)} alt={product.name} /> : <div className="grid size-full place-items-center bg-linear-to-br from-[#ebeae4] to-[#d8d9cf] font-serif text-lg font-bold tracking-[.2em] text-[#a2a298]">YMALL</div>}</div>
+                    <div className="aspect-square overflow-hidden bg-subtle">{selectedImage ? <img className="size-full object-cover" src={resolveImageUrl(selectedImage)} alt={product.name} /> : <div className="grid size-full place-items-center bg-linear-to-br from-subtle to-line font-serif text-lg font-bold tracking-[.2em] text-muted">YMALL</div>}</div>
                     {product.images.length > 0 && <div className="mt-3 flex gap-2.5 overflow-x-auto" aria-label="상품 이미지 선택">{product.images.map((image, index) => <button className={`size-18.5 shrink-0 border p-0 ${selectedImage === image.imageUrl ? 'border-ink' : 'border-transparent'}`} aria-label={`${index + 1}번 상품 이미지 보기`} aria-current={selectedImage === image.imageUrl ? 'true' : undefined} onClick={() => setSelectedImage(image.imageUrl)} key={image.imageId} type="button"><img className="size-full object-cover" src={resolveImageUrl(image.imageUrl)} alt="" /></button>)}</div>}
                 </div>
                 <div className="pt-3">
                     <div className="inline-block bg-lime px-2.5 py-1 text-[10px] font-extrabold tracking-[.08em]">{product.category.name}</div>
                     <p className="mt-7 mb-1.5 text-[11px] font-extrabold tracking-[.08em] text-muted uppercase">{product.brand}</p>
                     <h1 className="my-2 font-serif text-[clamp(34px,4vw,52px)] leading-[1.05] font-medium tracking-[-.04em]">{product.name}</h1>
-                    <div className="flex items-center gap-1 text-[13px]"><Star className="size-4 text-[#8ca324]" fill="currentColor" /> {product.rating?.toFixed(1) ?? '0.0'} <span className="ml-1 text-muted">상품 평점</span></div>
-                    <div className="my-8 flex items-baseline gap-2.5">{product.discountPercentage > 0 && <><del className="text-[#aaa]">{formatPrice(product.price)}</del><strong className="text-[#849b21]">{product.discountPercentage}%</strong></>}<b className="ml-auto text-2xl">{formatPrice(discountedPrice)}</b></div>
+                    <div className="flex items-center gap-1 text-[13px]"><Star className="size-4 text-accent" fill="currentColor" /> {product.rating?.toFixed(1) ?? '0.0'} <span className="ml-1 text-muted">상품 평점</span></div>
+                    <div className="my-8 flex items-baseline gap-2.5">{product.discountPercentage > 0 && <><del className="text-muted">{formatPrice(product.price)}</del><strong className="text-accent">{product.discountPercentage}%</strong></>}<b className="ml-auto text-2xl">{formatPrice(discountedPrice)}</b></div>
                     <dl className="m-0 border-y border-line py-4.5 text-[13px]"><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">배송</dt><dd className="m-0">{product.freeShipping ? '무료배송' : formatPrice(product.shippingFee)} · 평균 {product.estimatedDeliveryDays}일 소요</dd></div><div className="grid grid-cols-[70px_1fr] py-2"><dt className="text-muted">재고</dt><dd className="m-0">{product.stock > 0 ? `${product.stock}개 남음` : '품절'}</dd></div></dl>
                     <div className="flex items-center justify-between py-6 text-[13px]"><span>수량</span><div className="flex items-center border border-line"><button className="grid h-9 w-9.5 place-items-center border-0 bg-transparent" onClick={() => setQuantity((value) => Math.max(1, value - 1))} type="button"><Minus className="size-3.5" /></button><b className="min-w-8.5 text-center">{quantity}</b><button className="grid h-9 w-9.5 place-items-center border-0 bg-transparent disabled:opacity-35" onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))} disabled={product.stock === 0} type="button"><Plus className="size-3.5" /></button></div></div>
                     <div className="grid grid-cols-1 gap-2 min-[601px]:grid-cols-[120px_1fr]">
@@ -230,7 +230,7 @@ export function ProductDetailPage() {
                                 state: { from: `${location.pathname}${location.search}` },
                             })}
                         />
-                        <button className="h-13.5 border border-ink bg-ink font-extrabold text-white disabled:border-[#ddd] disabled:bg-[#ddd] disabled:text-[#888]" disabled={isAddingToCart || product.stock === 0 || product.status !== 'APPROVED'} onClick={handleAddToCart} type="button">{product.stock === 0 || product.status === 'SOLD_OUT' ? '품절된 상품입니다' : product.status !== 'APPROVED' ? '구매할 수 없는 상품입니다' : isAddingToCart ? '장바구니에 담는 중...' : `${formatPrice(discountedPrice * quantity)} · 장바구니 담기`}</button>
+                        <button className="h-13.5 border border-ink bg-ink font-extrabold text-white disabled:border-disabled disabled:bg-disabled disabled:text-muted" disabled={isAddingToCart || product.stock === 0 || product.status !== 'APPROVED'} onClick={handleAddToCart} type="button">{product.stock === 0 || product.status === 'SOLD_OUT' ? '품절된 상품입니다' : product.status !== 'APPROVED' ? '구매할 수 없는 상품입니다' : isAddingToCart ? '장바구니에 담는 중...' : `${formatPrice(discountedPrice * quantity)} · 장바구니 담기`}</button>
                     </div>
                     <div className="mt-5.5 flex gap-6.5 text-[11px] text-muted"><span className="flex items-center gap-1.5"><Truck className="size-4" /> {product.freeShipping ? '무료 배송' : `배송비 ${formatPrice(product.shippingFee)}`}</span><span className="flex items-center gap-1.5"><ShieldCheck className="size-4" /> 안전 결제</span></div>
                 </div>
@@ -244,7 +244,7 @@ export function ProductDetailPage() {
             {activeTab === 'information' && (
                 <div className="pt-10" id="product-information-panel" role="tabpanel" aria-labelledby="product-information-tab">
                     <div className="mx-auto mb-10 max-w-215 border-b border-line pb-8">
-                        <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">PRODUCT INFORMATION</p>
+                        <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">PRODUCT INFORMATION</p>
                         <h2 className="font-serif text-4xl tracking-tight">상품정보</h2>
                         {product.description && <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-muted">{product.description}</p>}
                     </div>
@@ -269,7 +269,7 @@ export function ProductDetailPage() {
             {activeTab === 'reviews' && <div className="border-t border-ink pt-9" id="product-reviews-panel" role="tabpanel" aria-labelledby="product-reviews-tab">
                 <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
                     <div>
-                        <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">REVIEWS</p>
+                        <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">REVIEWS</p>
                         <h2 className="font-serif text-4xl tracking-tight">상품 리뷰</h2>
                     </div>
                     <p className="text-sm text-muted">총 {reviewCount}개의 리뷰</p>
@@ -296,10 +296,10 @@ export function ProductDetailPage() {
                                     </span>
                                 </div>
                                 <div>
-                                    <div className="mb-3 text-sm tracking-wider text-[#849b21]" aria-label={`평점 ${review.rating}점`}>
-                                        {'★'.repeat(review.rating)}<span className="text-[#d8d8d0]">{'★'.repeat(5 - review.rating)}</span>
+                                    <div className="mb-3 text-sm tracking-wider text-accent" aria-label={`평점 ${review.rating}점`}>
+                                        {'★'.repeat(review.rating)}<span className="text-line">{'★'.repeat(5 - review.rating)}</span>
                                     </div>
-                                    <p className="whitespace-pre-wrap text-sm leading-7 text-[#55554f]">{review.content}</p>
+                                    <p className="whitespace-pre-wrap text-sm leading-7 text-muted">{review.content}</p>
                                 </div>
                             </article>
                         ))}

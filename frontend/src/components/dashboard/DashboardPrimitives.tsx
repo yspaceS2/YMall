@@ -91,7 +91,7 @@ export function DashboardPanel({
         <section className={`flex min-w-0 flex-col border border-line bg-surface p-3 ${className}`}>
             <header className="mb-2 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <p className="text-[10px] font-extrabold tracking-[.16em] text-[#71801e] dark:text-[#c9db72]">
+                    <p className="text-[10px] font-extrabold tracking-[.16em] text-accent">
                         {eyebrow}
                     </p>
                     <h2 className="mt-0.5 text-base font-bold tracking-tight">{title}</h2>
@@ -143,12 +143,12 @@ export function SalesTrendChart({
                     <strong className="mt-0.5 block text-lg">{formatPrice(maxValue === 1 ? 0 : maxValue)}</strong>
                 </div>
                 <div className="flex items-center gap-2 text-[11px] text-muted">
-                    <span className={variant === 'bars' ? 'size-2 bg-[#8ba127]' : 'size-2 rounded-full bg-[#8ba127]'} /> {legend}
+                    <span className={variant === 'bars' ? 'size-2 bg-accent' : 'size-2 rounded-full bg-accent'} /> {legend}
                 </div>
             </div>
             <div className="relative min-h-20 flex-1">
                 <svg
-                    className="h-full w-full overflow-visible text-[#71801e] dark:text-[#c9db72]"
+                    className="h-full w-full overflow-visible text-accent"
                     viewBox={`0 0 ${width} ${height}`}
                     role="img"
                     aria-label="기간별 순매출 추이"
@@ -274,15 +274,15 @@ export function RankedBars({
                 <li className="flex min-h-0 flex-col justify-center border-b border-line last:border-b-0" key={item?.id ?? `empty-${index}`}>
                     <div className={`${compact ? 'mb-px' : 'mb-0.5'} flex items-start justify-between gap-4 text-xs leading-tight`}>
                         <div className="min-w-0">
-                            <span className="mr-2 text-[10px] font-black text-[#8ba127]">{item?.ranked === false ? '—' : String(index + 1).padStart(2, '0')}</span>
+                            <span className="mr-2 text-[10px] font-black text-accent">{item?.ranked === false ? '—' : String(index + 1).padStart(2, '0')}</span>
                             <strong className={item ? '' : 'text-muted'}>{item?.label ?? emptySlotLabel}</strong>
                             {item?.detail && compact && <span className="ml-2 text-[9px] font-normal text-muted">{item.detail}</span>}
                             {item?.detail && !compact && <p className="pl-7 text-[9px] leading-tight text-muted">{item.detail}</p>}
                         </div>
                         <b className={`shrink-0 tabular-nums ${item ? '' : 'text-muted'}`}>{valueFormatter(item?.value ?? 0)}</b>
                     </div>
-                    <div className={`ml-7 ${compact ? 'h-0.5' : 'h-1'} bg-[#e9eadf] dark:bg-white/10`}>
-                        <div className="h-full bg-[#8ba127]" style={{ width: `${(item?.value ?? 0) / max * 100}%` }} />
+                    <div className={`ml-7 ${compact ? 'h-0.5' : 'h-1'} bg-subtle`}>
+                        <div className="h-full bg-accent" style={{ width: `${(item?.value ?? 0) / max * 100}%` }} />
                     </div>
                 </li>
             ))}

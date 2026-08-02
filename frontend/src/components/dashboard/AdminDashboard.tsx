@@ -57,7 +57,7 @@ export function AdminDashboard() {
                 <h1 className="font-serif text-[clamp(30px,3vw,38px)] leading-none tracking-tighter">대시보드</h1>
                 <PeriodSelector value={period} onChange={changePeriod} />
             </div>
-            {errorMessage && <p className="border border-[#e2b9b4] bg-[#fff5f3] p-3 text-sm text-[#a22e24]" role="alert">{errorMessage}</p>}
+            {errorMessage && <p className="border border-danger/35 bg-danger-soft p-3 text-sm text-danger" role="alert">{errorMessage}</p>}
 
             <div className="grid gap-3 min-[601px]:grid-cols-2 min-[1101px]:grid-cols-4">
                 <MetricCard eyebrow="NET TRANSACTION" value={formatPrice(statistics.netTransactionAmount)} detail="환불 완료 금액을 제외한 전체 거래액" accent />
@@ -129,7 +129,7 @@ function RegistrationChart({
     return (
         <div className="flex h-full min-h-0 flex-col">
             <div className="mb-2 flex gap-5 text-[10px] text-muted">
-                <span className="flex items-center gap-2"><i className="size-2 bg-[#8ba127]" />회원</span>
+                <span className="flex items-center gap-2"><i className="size-2 bg-accent" />회원</span>
                 <span className="flex items-center gap-2"><i className="size-2 bg-[#272b1d] dark:bg-[#e7e8df]" />판매자</span>
             </div>
             <div className="relative flex min-h-16 flex-1 items-end gap-1 border-b border-line px-1">
@@ -145,7 +145,7 @@ function RegistrationChart({
                         onPointerLeave={() => setHoveredIndex(null)}
                     >
                             <div
-                                className="w-[32%] min-w-1 bg-[#8ba127]"
+                                className="w-[32%] min-w-1 bg-accent"
                                 style={{ height: `${Math.max(point.members / max * 100, point.members > 0 ? 4 : 0)}%` }}
                                 title={`회원 ${point.members}명`}
                             />
@@ -186,8 +186,8 @@ function PendingQueue({ href, label, value, wide = false }: { href: string; labe
             to={href}
             aria-label={`${label} ${value.toLocaleString('ko-KR')}건 관리 페이지로 이동`}
         >
-            <span className="text-xs text-muted transition-colors group-hover:text-[#71801e] dark:group-hover:text-[#c9db72]">{label}</span>
-            <strong className={value > 0 ? 'text-lg text-[#71801e] dark:text-[#c9db72]' : 'text-lg'}>
+            <span className="text-xs text-muted transition-colors group-hover:text-accent">{label}</span>
+            <strong className={value > 0 ? 'text-lg text-accent' : 'text-lg'}>
                 {value.toLocaleString('ko-KR')}
             </strong>
         </Link>

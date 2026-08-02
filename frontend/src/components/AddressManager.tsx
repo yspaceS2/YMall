@@ -104,7 +104,7 @@ export function AddressManager({ defaultRecipientName, defaultRecipientPhone }: 
         <div className="mt-8 scroll-mt-24 border border-line bg-surface p-6 min-[601px]:p-8" id="addresses">
             <p className="text-[11px] font-extrabold tracking-[.16em] text-muted">DELIVERY ADDRESS</p>
             <h2 className="mt-2 font-serif text-3xl">배송지 관리</h2>
-            {error && <p className="mt-4 text-sm text-[#b23b2f]" role="alert">{error}</p>}
+            {error && <p className="mt-4 text-sm text-danger" role="alert">{error}</p>}
             <div className="mt-6 grid gap-6 min-[901px]:grid-cols-[1fr_1.2fr]">
                 <div className="grid content-start gap-3">
                     {addresses.length === 0 && <p className="text-sm text-muted">등록된 배송지가 없습니다.</p>}
@@ -112,7 +112,7 @@ export function AddressManager({ defaultRecipientName, defaultRecipientPhone }: 
                         <article className="border border-line p-4" key={address.addressId}>
                             <div className="flex items-center justify-between gap-3">
                                 <strong>{address.addressName}</strong>
-                                {address.isDefault && <span className="text-[11px] font-bold text-[#657617]">기본 배송지</span>}
+                                {address.isDefault && <span className="text-[11px] font-bold text-success">기본 배송지</span>}
                             </div>
                             <p className="mt-2 text-sm">{address.recipientName} · {address.recipientPhone}</p>
                             <p className="mt-1 text-xs leading-5 text-muted">[{address.postalCode}] {address.roadAddress} {address.detailAddress}</p>
@@ -137,7 +137,7 @@ export function AddressManager({ defaultRecipientName, defaultRecipientPhone }: 
                     <label className="grid gap-2 text-xs font-bold text-muted"><span>도로명 주소</span><input className="border-0 border-b border-line bg-surface px-0.5 py-3 text-ink" value={form.roadAddress} readOnly required /></label>
                     {field('detailAddress', '상세 주소', { maxLength: 255 })}
                     <label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={form.isDefault} onChange={(event) => setForm({ ...form, isDefault: event.target.checked })} />기본 배송지로 설정</label>
-                    {message && <p className="text-xs text-[#657617]" role="status">{message}</p>}
+                    {message && <p className="text-xs text-success" role="status">{message}</p>}
                     <div className="flex gap-2">
                         <button className="h-11 flex-1 bg-ink text-sm font-extrabold text-white disabled:opacity-60" disabled={isSaving}>{isSaving ? '저장 중...' : editingId === null ? '배송지 추가' : '배송지 수정'}</button>
                         {editingId !== null && <button className="h-11 border border-line px-4 text-xs" type="button" onClick={() => { setEditingId(null); setForm(createEmptyForm(defaultRecipientName, defaultRecipientPhone)) }}>취소</button>}

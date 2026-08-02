@@ -425,7 +425,7 @@ export function SellerManagementPage({
             id="management-overview"
         >
             {activeSection !== 'dashboard' && <>
-                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">SELLER CENTER</p>
+                <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">SELLER CENTER</p>
                 <h1 className="mb-8 font-serif text-[clamp(40px,6vw,64px)] leading-none tracking-tighter">판매자 관리</h1>
             </>}
             {errorMessage && <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>}
@@ -581,7 +581,7 @@ export function SellerManagementPage({
                         </form>
                         {!productFormOnly && (
                             <>
-                                <div className="grid gap-3">{products.length === 0 ? <p className="text-sm text-muted">등록한 상품이 없습니다.</p> : products.map((product) => <div className="flex flex-wrap items-center justify-between gap-3 border border-line p-4" key={product.productId}><div><strong>{product.name}</strong><p className="mt-1 text-xs text-muted">{formatPrice(product.price)} · 재고 {product.stock} · {product.status}</p></div><div className="flex gap-2"><button className="p-2" type="button" aria-label="상품 수정" onClick={() => startEditing(product.productId)}><Pencil className="size-4" /></button><button className="p-2 text-[#a22e24]" type="button" aria-label="상품 삭제" onClick={() => setProductToDelete(product)}><Trash2 className="size-4" /></button></div></div>)}</div>
+                                <div className="grid gap-3">{products.length === 0 ? <p className="text-sm text-muted">등록한 상품이 없습니다.</p> : products.map((product) => <div className="flex flex-wrap items-center justify-between gap-3 border border-line p-4" key={product.productId}><div><strong>{product.name}</strong><p className="mt-1 text-xs text-muted">{formatPrice(product.price)} · 재고 {product.stock} · {product.status}</p></div><div className="flex gap-2"><button className="p-2" type="button" aria-label="상품 수정" onClick={() => startEditing(product.productId)}><Pencil className="size-4" /></button><button className="p-2 text-danger" type="button" aria-label="상품 삭제" onClick={() => setProductToDelete(product)}><Trash2 className="size-4" /></button></div></div>)}</div>
                                 {hasMoreProducts && <button className="mx-auto mt-5 grid h-10 min-w-32 place-items-center border border-ink px-5 text-xs font-bold disabled:opacity-50" type="button" disabled={isLoadingMoreProducts} onClick={loadMoreProducts}>{isLoadingMoreProducts ? <LoaderCircle className="size-4 animate-spin" /> : '상품 더 보기'}</button>}
                             </>
                         )}
@@ -621,7 +621,7 @@ export function SellerManagementPage({
                                                 </p>
                                             </div>
                                             {current && (
-                                                <span className="bg-[#eef0df] px-3 py-1 text-xs font-bold text-[#66751c] dark:bg-[#29301f] dark:text-[#d3e78a]">
+                                                <span className="bg-success-soft px-3 py-1 text-xs font-bold text-success">
                                                     {statusLabel[current]}
                                                 </span>
                                             )}

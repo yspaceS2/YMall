@@ -356,7 +356,7 @@ export function SellerReturnRequestDetailPage() {
                             </label>
                             <div className="flex justify-end gap-2">
                                 <button
-                                    className="h-11 border border-[#9d3026] px-5 text-xs font-bold text-[#9d3026] disabled:opacity-50 dark:text-[#ffb7ae]"
+                                    className="h-11 border border-danger px-5 text-xs font-bold text-danger disabled:opacity-50"
                                     type="button"
                                     disabled={isProcessing}
                                     onClick={() => void processRequest('reject')}
@@ -400,7 +400,7 @@ function ManagementPage({
 }) {
     return (
         <section className="mx-auto max-w-350 px-4 py-10 min-[601px]:px-8 min-[601px]:py-14">
-            <p className="text-[10px] font-extrabold tracking-[.18em] text-[#71801e]">
+            <p className="text-[10px] font-extrabold tracking-[.18em] text-accent">
                 {eyebrow}
             </p>
             <div className="mb-8 mt-2">
@@ -416,9 +416,9 @@ function ManagementPage({
 
 function ReturnStatusBadge({ status }: { status: ReturnRequestStatus }) {
     const tone = {
-        REQUESTED: 'border-[#aa7a16] text-[#8a5b00] dark:text-[#ffd36f]',
-        APPROVED: 'border-[#588553] text-[#3d7038] dark:text-[#9ed397]',
-        REJECTED: 'border-[#9d3026] text-[#9d3026] dark:text-[#ffb7ae]',
+        REQUESTED: 'border-warning text-warning',
+        APPROVED: 'border-success text-success',
+        REJECTED: 'border-danger text-danger',
     }[status]
     return (
         <span className={`inline-flex border px-2.5 py-1 text-[11px] font-bold ${tone}`}>

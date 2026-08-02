@@ -26,7 +26,7 @@ export function AuthPageLayout({
     return (
         <section className="grid min-h-[calc(100vh-76px)] grid-cols-1 min-[901px]:grid-cols-[minmax(0,1fr)_minmax(390px,1fr)]">
             <div className={`mx-auto w-[calc(100%-40px)] py-14 min-[601px]:w-[calc(100%-48px)] min-[601px]:py-20 ${contentClassName}`}>
-                <p className="mb-4.5 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">{eyebrow}</p>
+                <p className="mb-4.5 text-[11px] font-extrabold tracking-[.18em] text-accent">{eyebrow}</p>
                 <h1 className="m-0 font-serif text-[clamp(38px,5vw,62px)] leading-[1.02] font-medium tracking-[-.05em]">{title}</h1>
                 {description && <p className="mt-5 mb-10 text-sm leading-7 text-muted">{description}</p>}
                 {children}

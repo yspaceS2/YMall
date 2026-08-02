@@ -116,7 +116,7 @@ export function CategoryDrawer({ categories, isAuthenticated, onClose }: Categor
                             <button
                                 className={`flex w-full items-center justify-between px-3 py-3 text-left text-xs font-bold transition-colors min-[601px]:px-6 min-[601px]:text-sm ${
                                     activeCategoryId === category.categoryId
-                                        ? 'bg-surface text-[#71801e]'
+                                        ? 'bg-surface text-accent'
                                         : 'hover:bg-surface'
                                 }`}
                                 type="button"

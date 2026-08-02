@@ -6,9 +6,9 @@ interface AuthMessageProps {
 }
 
 const toneClassNames = {
-    error: 'border-[#d9aaa4] bg-[#f9ecea] text-[#9d3026]',
-    success: 'border-[#a7b866] bg-[#eef3d8] text-[#55620f]',
-    info: 'border-line bg-white text-muted',
+    error: 'border-danger/35 bg-danger-soft text-danger',
+    success: 'border-success/35 bg-success-soft text-success',
+    info: 'border-line bg-subtle text-muted',
 }
 
 export function AuthMessage({ children, tone = 'info' }: AuthMessageProps) {

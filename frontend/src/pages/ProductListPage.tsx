@@ -162,7 +162,7 @@ export function ProductListPage() {
                                 ))}
                             </nav>
                         )}
-                        <span className="text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">
+                        <span className="text-[11px] font-extrabold tracking-[.18em] text-accent">
                             SHOP
                         </span>
                         <h2 className="mt-2 mr-3 inline font-serif text-[34px] leading-tight font-semibold">

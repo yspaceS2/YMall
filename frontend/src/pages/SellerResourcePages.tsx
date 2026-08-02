@@ -313,7 +313,7 @@ export function SellerProductListPage() {
                                                 <Pencil className="size-4" />
                                             </Link>
                                             <button
-                                                className="grid size-9 place-items-center text-[#a22e24] dark:text-[#ffb7ae]"
+                                                className="grid size-9 place-items-center text-danger"
                                                 type="button"
                                                 onClick={(event) => {
                                                     event.stopPropagation()

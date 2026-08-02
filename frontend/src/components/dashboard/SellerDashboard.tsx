@@ -70,7 +70,7 @@ export function SellerDashboard() {
                 <h1 className="font-serif text-[clamp(30px,3vw,38px)] leading-none tracking-tighter">대시보드</h1>
                 <PeriodSelector value={period} onChange={changePeriod} />
             </div>
-            {errorMessage && <p className="border border-[#e2b9b4] bg-[#fff5f3] p-3 text-sm text-[#a22e24]" role="alert">{errorMessage}</p>}
+            {errorMessage && <p className="border border-danger/35 bg-danger-soft p-3 text-sm text-danger" role="alert">{errorMessage}</p>}
 
             <div className="grid gap-3 min-[601px]:grid-cols-2 min-[1101px]:grid-cols-4">
                 <MetricCard eyebrow="NET SALES" value={formatPrice(statistics.netSalesAmount)} detail="환불 완료 금액을 제외한 순매출" accent />
@@ -123,11 +123,11 @@ export function SellerDashboard() {
 function SettlementValue({ href, label, value, emphasis = false }: { href: string; label: string; value: number; emphasis?: boolean }) {
     return (
         <Link
-            className={`${emphasis ? 'bg-[#eef0df] dark:bg-[#29301f]' : 'border border-line'} group flex items-center justify-between gap-3 px-3 py-2 transition-shadow hover:ring-1 hover:ring-inset hover:ring-[#8ba127] focus-visible:outline-2 focus-visible:outline-[#8ba127]`}
+            className={`${emphasis ? 'bg-success-soft' : 'border border-line'} group flex items-center justify-between gap-3 px-3 py-2 transition-shadow hover:ring-1 hover:ring-inset hover:ring-accent focus-visible:outline-2 focus-visible:outline-accent`}
             to={href}
             aria-label={`${label} ${formatPrice(value)} 정산 관리 페이지로 이동`}
         >
-            <p className="text-[11px] text-muted transition-colors group-hover:text-[#71801e] dark:group-hover:text-[#c9db72]">{label}</p>
+            <p className="text-[11px] text-muted transition-colors group-hover:text-accent">{label}</p>
             <strong className="text-sm">{formatPrice(value)}</strong>
         </Link>
     )
@@ -141,7 +141,7 @@ function PendingValue({ href, label, value }: { href: string; label: string; val
             aria-label={`${label} ${value.toLocaleString('ko-KR')}건 관리 페이지로 이동`}
         >
             <strong className="block text-2xl">{value}</strong>
-            <span className="mt-1 block text-[11px] text-muted transition-colors group-hover:text-[#71801e] dark:group-hover:text-[#c9db72]">{label}</span>
+            <span className="mt-1 block text-[11px] text-muted transition-colors group-hover:text-accent">{label}</span>
         </Link>
     )
 }
@@ -158,8 +158,8 @@ function OrderStatusGrid({ items }: { items: SellerDashboardStatistics['orderSta
                 <li className="grid min-w-0 grid-cols-[1fr_auto] content-center items-center gap-x-2 border border-line bg-surface px-2 py-1" key={item.status}>
                     <span className="truncate text-[10px] text-muted">{orderStatusLabels[item.status] ?? item.status}</span>
                     <strong className="text-sm tabular-nums">{item.count.toLocaleString('ko-KR')}건</strong>
-                    <div className="col-span-2 mt-1 h-1 bg-[#e9eadf] dark:bg-white/10">
-                        <div className="h-full bg-[#8ba127]" style={{ width: `${item.count / max * 100}%` }} />
+                    <div className="col-span-2 mt-1 h-1 bg-subtle">
+                        <div className="h-full bg-accent" style={{ width: `${item.count / max * 100}%` }} />
                     </div>
                 </li>
             ))}

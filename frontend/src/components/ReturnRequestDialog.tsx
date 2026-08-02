@@ -49,7 +49,7 @@ export function ReturnRequestDialog({
                 aria-modal="true"
                 aria-labelledby="return-request-title"
             >
-                <p className="text-[11px] font-extrabold tracking-[.18em] text-[#71801e] dark:text-[#c9db72]">
+                <p className="text-[11px] font-extrabold tracking-[.18em] text-accent">
                     RETURN REQUEST
                 </p>
                 <h2 className="mt-3 font-serif text-3xl" id="return-request-title">
@@ -89,7 +89,7 @@ export function ReturnRequestDialog({
                         </span>
                     </label>
                     {errorMessage && (
-                        <p className="text-xs font-bold text-[#b23b2f] dark:text-[#ffb7ae]">
+                        <p className="text-xs font-bold text-danger">
                             {errorMessage}
                         </p>
                     )}

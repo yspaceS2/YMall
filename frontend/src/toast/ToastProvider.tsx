@@ -10,8 +10,8 @@ interface ToastItem {
 }
 
 const toneStyles = {
-    error: 'border-[#d9aaa4] bg-[#f9ecea] text-[#83281f] dark:border-[#7c4842] dark:bg-[#3a2725] dark:text-[#f0b7b1]',
-    success: 'border-[#bdc998] bg-[#f2f5e7] text-[#4f5e18] dark:border-[#59643b] dark:bg-[#2c3226] dark:text-[#c8d799]',
+    error: 'border-danger/35 bg-danger-soft text-danger',
+    success: 'border-success/35 bg-success-soft text-success',
     info: 'border-line bg-surface text-ink',
 }
 
