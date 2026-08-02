@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { installMockApi, loginThroughUi } from './fixtures/mockApi'
 
 test('판매자 대시보드 통계를 시각화하고 기간을 전환한다', async ({ page }) => {
-    await installMockApi(page)
+    const mockState = await installMockApi(page)
     await loginThroughUi(page, 'seller@example.test')
     await page.goto('/seller')
 
@@ -14,10 +14,9 @@ test('판매자 대시보드 통계를 시각화하고 기간을 전환한다', 
         scrollHeight: document.documentElement.scrollHeight,
     }))
     expect(sellerViewport.scrollHeight).toBeLessThanOrEqual(sellerViewport.innerHeight)
-    await page.screenshot({ path: 'test-results/dashboard-seller.png', fullPage: true })
-
     await page.getByRole('button', { name: '6개월' }).click()
     await expect(page.getByRole('button', { name: '6개월' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.poll(() => mockState.dashboardPeriods.seller).toContain('6m')
     await page.getByRole('link', { name: '주문 12건 관리 페이지로 이동' }).click()
     await expect(page).toHaveURL(/\/seller\/orders\?workType=ACTION_REQUIRED$/)
     await expect(page.getByLabel('배송 상태')).toHaveValue('ACTION_REQUIRED')
@@ -29,7 +28,7 @@ test('판매자 대시보드 통계를 시각화하고 기간을 전환한다', 
 })
 
 test('관리자 대시보드 거래와 운영 대기 현황을 시각화한다', async ({ page }) => {
-    await installMockApi(page)
+    const mockState = await installMockApi(page)
     await loginThroughUi(page, 'admin@example.test')
     await page.goto('/admin')
 
@@ -46,8 +45,6 @@ test('관리자 대시보드 거래와 운영 대기 현황을 시각화한다',
         scrollHeight: document.documentElement.scrollHeight,
     }))
     expect(adminViewport.scrollHeight).toBeLessThanOrEqual(adminViewport.innerHeight)
-    await page.screenshot({ path: 'test-results/dashboard-admin.png', fullPage: true })
-
     await page.setViewportSize({ width: 1920, height: 910 })
     await page.getByRole('button', { name: /테마 선택:/ }).click()
     await page.getByRole('menuitemradio', { name: '다크 모드' }).click()
@@ -56,8 +53,62 @@ test('관리자 대시보드 거래와 운영 대기 현황을 시각화한다',
         scrollHeight: document.documentElement.scrollHeight,
     }))
     expect(wideViewport.scrollHeight).toBeLessThanOrEqual(wideViewport.innerHeight)
-    await page.screenshot({ path: 'test-results/dashboard-admin-wide.png', fullPage: true })
+    await page.getByRole('button', { name: '1년' }).click()
+    await expect(page.getByRole('button', { name: '1년' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.poll(() => mockState.dashboardPeriods.admin).toContain('1y')
     await page.getByRole('link', { name: '정산 처리 8건 관리 페이지로 이동' }).click()
     await expect(page).toHaveURL(/\/admin\/settlement\?workType=ACTION_REQUIRED$/)
     await expect(page.getByLabel('처리 상태')).toHaveValue('ACTION_REQUIRED')
 })
+
+for (const dashboard of [
+    {
+        role: 'seller',
+        email: 'seller@example.test',
+        path: '/seller',
+        options: { sellerDashboardMode: 'empty' as const },
+        emptyMessage: '기간 내 주문이 없습니다.',
+        errorOptions: { sellerDashboardMode: 'error' as const },
+        errorMessage: '판매자 대시보드 통계를 불러오지 못했습니다.',
+    },
+    {
+        role: 'admin',
+        email: 'admin@example.test',
+        path: '/admin',
+        options: { adminDashboardMode: 'empty' as const },
+        emptyMessage: '기간 내 가입 데이터가 없습니다.',
+        errorOptions: { adminDashboardMode: 'error' as const },
+        errorMessage: '관리자 대시보드 통계를 불러오지 못했습니다.',
+    },
+] as const) {
+    test(`${dashboard.role} 대시보드는 데이터 없음 상태를 표시한다`, async ({ page }) => {
+        await installMockApi(page, dashboard.options)
+        await loginThroughUi(page, dashboard.email)
+        await page.goto(dashboard.path)
+
+        await expect(page.getByText(dashboard.emptyMessage)).toBeVisible()
+        await expect(page.getByText('판매 데이터 없음', { exact: true })).toHaveCount(5)
+    })
+
+    test(`${dashboard.role} 대시보드는 API 오류 상태를 표시한다`, async ({ page }) => {
+        await installMockApi(page, dashboard.errorOptions)
+        await loginThroughUi(page, dashboard.email)
+        await page.goto(dashboard.path)
+
+        await expect(page.getByText(dashboard.errorMessage)).toBeVisible()
+    })
+
+    test(`${dashboard.role} 대시보드는 모바일에서 가로로 넘치지 않는다`, async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        await installMockApi(page)
+        await loginThroughUi(page, dashboard.email)
+        await page.goto(dashboard.path)
+
+        await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible()
+        const viewport = await page.evaluate(() => ({
+            clientWidth: document.documentElement.clientWidth,
+            scrollWidth: document.documentElement.scrollWidth,
+        }))
+        expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.clientWidth)
+    })
+}
