@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getHomeMerchandising } from '../api/home'
-import type { HomeMerchandising } from '../types/home'
+import type { HomeMerchandising, HomeMerchandisingProduct } from '../types/home'
 import { HomeEventCarousel } from './HomeEventCarousel'
 import { HomeMerchandisingSections } from './HomeMerchandisingSections'
 
@@ -12,6 +12,33 @@ vi.mock('../api/home', () => ({
 }))
 
 const mockedGetHomeMerchandising = vi.mocked(getHomeMerchandising)
+
+const groceryCategories = [
+    { categoryId: 21, categoryName: '신선식품', categorySlug: 'fresh-food' },
+    { categoryId: 22, categoryName: '가공식품', categorySlug: 'processed-food' },
+    { categoryId: 23, categoryName: '음료', categorySlug: 'beverage' },
+    { categoryId: 24, categoryName: '간편식', categorySlug: 'meal-kit' },
+]
+
+function groceryProduct(
+    productId: number,
+    categoryId: number,
+    categoryName: string,
+    name: string,
+): HomeMerchandisingProduct {
+    return {
+        productId,
+        categoryId,
+        categoryName,
+        name,
+        brand: 'FRESH',
+        price: 15_000,
+        discountPercentage: 10,
+        rating: 4.9,
+        thumbnailUrl: null,
+        salesQuantity: 18,
+    }
+}
 
 const merchandising: HomeMerchandising = {
     categoryBest: [
@@ -50,23 +77,23 @@ const merchandising: HomeMerchandising = {
             }],
         },
     ],
-    grocery: [{
-        categoryId: 21,
-        categoryName: '신선식품',
-        categorySlug: 'fresh-food',
-        products: [{
-            productId: 21,
-            categoryId: 21,
-            categoryName: '신선식품',
-            name: '당일 수확 토마토',
-            brand: 'FRESH',
-            price: 15_000,
-            discountPercentage: 10,
-            rating: 4.9,
-            thumbnailUrl: null,
-            salesQuantity: 18,
-        }],
-    }],
+    grocery: groceryCategories.map((category, index) => ({
+        ...category,
+        products: [
+            groceryProduct(
+                21 + index * 2,
+                category.categoryId,
+                category.categoryName,
+                `${category.categoryName} 베스트`,
+            ),
+            groceryProduct(
+                22 + index * 2,
+                category.categoryId,
+                category.categoryName,
+                `${category.categoryName} 추천`,
+            ),
+        ],
+    })),
     fashion: [{
         categoryId: 2,
         categoryName: '여성의류',
@@ -161,6 +188,27 @@ describe('메인 상품 큐레이션', () => {
         expect(screen.getByRole('heading', { name: '카테고리 베스트 세럼' })).toBeInTheDocument()
         expect(document.querySelector('a[href="/products/11"]')).toHaveAttribute('tabindex', '0')
         expect(document.querySelector('a[href="/products/12"]')).toHaveAttribute('tabindex', '0')
+    })
+
+    it('장보기 상품을 중분류별 두 개씩 네 슬라이드에 표시한다', async () => {
+        const user = userEvent.setup()
+
+        render(
+            <MemoryRouter>
+                <HomeMerchandisingSections />
+            </MemoryRouter>,
+        )
+
+        const grocery = await screen.findByRole('region', { name: '오늘의 장보기' })
+        expect(within(grocery).getByText('01 / 04')).toBeInTheDocument()
+        expect(within(grocery).getByRole('heading', { name: '신선식품 베스트' })).toBeInTheDocument()
+        expect(within(grocery).getByRole('heading', { name: '신선식품 추천' })).toBeInTheDocument()
+
+        await user.click(within(grocery).getByRole('button', { name: '간편식 보기' }))
+
+        expect(within(grocery).getByText('04 / 04')).toBeInTheDocument()
+        expect(document.querySelector('a[href="/products/27"]')).toHaveAttribute('tabindex', '0')
+        expect(document.querySelector('a[href="/products/28"]')).toHaveAttribute('tabindex', '0')
     })
 
     it('깨진 상품 이미지를 대체 UI로 전환한다', async () => {

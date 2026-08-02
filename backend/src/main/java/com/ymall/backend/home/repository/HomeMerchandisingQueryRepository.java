@@ -172,7 +172,7 @@ public class HomeMerchandisingQueryRepository {
                    level_two_order,
                    grocery_ranked.*
             FROM grocery_ranked
-            WHERE product_rank = 1
+            WHERE product_rank <= 2
             UNION ALL
             SELECT 3,
                    'FASHION',

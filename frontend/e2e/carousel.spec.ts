@@ -30,6 +30,14 @@ test('모바일 홈 큐레이션을 전환하고 다크 테마에서도 표시�
     await categoryBest.getByRole('button', { name: '다음 카테고리 베스트' }).click()
     await expect(categoryBest.getByRole('heading', { name: '테스트 패션 재킷' })).toBeVisible()
 
+    const grocery = page.getByRole('region', { name: '오늘의 장보기' })
+    await expect(grocery.getByText('01 / 04')).toBeVisible()
+    await expect(grocery.getByRole('heading', { name: '테스트 신선식품 베스트' })).toBeVisible()
+
+    await grocery.getByRole('button', { name: '간편식 보기' }).click()
+    await expect(grocery.getByText('04 / 04')).toBeVisible()
+    await expect(grocery.getByRole('heading', { name: '테스트 간편식 추천' })).toBeVisible()
+
     await page.getByRole('button', { name: /테마 선택:/ }).click()
     await page.getByRole('menuitemradio', { name: '다크 모드' }).click()
 
