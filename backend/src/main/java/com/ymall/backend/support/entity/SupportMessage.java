@@ -60,7 +60,6 @@ public class SupportMessage {
     private List<SupportAttachment> attachments = new ArrayList<>();
 
     private UUID clientMessageId;
-    private LocalDateTime readAt;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -78,12 +77,6 @@ public class SupportMessage {
         this.type = type;
         this.content = content;
         this.clientMessageId = clientMessageId;
-    }
-
-    public void markRead() {
-        if (readAt == null) {
-            readAt = LocalDateTime.now();
-        }
     }
 
     @PrePersist

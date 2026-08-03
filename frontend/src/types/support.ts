@@ -45,7 +45,6 @@ export interface SupportMessage {
     content: string
     attachments: SupportAttachment[]
     clientMessageId: string | null
-    readAt: string | null
     createdAt: string
 }
 

@@ -29,7 +29,6 @@ CREATE TABLE support_messages (
     type VARCHAR(20) NOT NULL,
     content VARCHAR(2000) NOT NULL,
     client_message_id UUID,
-    read_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL,
     CONSTRAINT support_messages_author_role_check
         CHECK (author_role IN ('ROLE_USER', 'ROLE_SELLER', 'ROLE_ADMIN')),

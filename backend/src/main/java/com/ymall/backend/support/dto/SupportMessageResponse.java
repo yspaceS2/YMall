@@ -17,7 +17,6 @@ public record SupportMessageResponse(
     String content,
     List<SupportAttachmentResponse> attachments,
     UUID clientMessageId,
-    LocalDateTime readAt,
     LocalDateTime createdAt
 ) {
 
@@ -33,7 +32,6 @@ public record SupportMessageResponse(
                 .map(SupportAttachmentResponse::from)
                 .toList(),
             message.getClientMessageId(),
-            message.getReadAt(),
             message.getCreatedAt()
         );
     }

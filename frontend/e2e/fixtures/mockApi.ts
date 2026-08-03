@@ -24,7 +24,6 @@ interface MockSupportInquiry {
         content: string
         attachments: Array<never>
         clientMessageId: string | null
-        readAt: string | null
         createdAt: string
     }>
 }
@@ -343,7 +342,6 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
                 content: '배송 준비 상태가 오래 지속되고 있습니다.',
                 attachments: [],
                 clientMessageId: 'e2e-support-message-1',
-                readAt: null,
                 createdAt: '2026-08-03T09:00:00+09:00',
             }],
         }] as MockSupportInquiry[],
@@ -552,7 +550,6 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
                     content: body.content,
                     attachments: [],
                     clientMessageId: 'e2e-support-message-2',
-                    readAt: null,
                     createdAt: now,
                 }],
             }
@@ -580,7 +577,6 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
                 content: body.content,
                 attachments: [],
                 clientMessageId: body.clientMessageId,
-                readAt: null,
                 createdAt: new Date().toISOString(),
             }
             inquiry.messages.push(message)
@@ -603,7 +599,6 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
                 content: body.content,
                 attachments: [],
                 clientMessageId: null,
-                readAt: null,
                 createdAt: now,
             })
             inquiry.status = 'CLOSED'
