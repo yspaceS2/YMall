@@ -5,6 +5,7 @@ import { getSellerDashboardStatistics } from '../../api/dashboard'
 import { ApiError } from '../../api/client'
 import type { DashboardPeriodCode, SellerDashboardStatistics } from '../../types/dashboard'
 import { formatPrice } from '../../utils/product'
+import { REALTIME_EVENT } from '../../realtime/RealtimeProvider'
 import {
     DashboardEmpty,
     DashboardPanel,
@@ -31,6 +32,22 @@ export function SellerDashboard() {
     const [statistics, setStatistics] = useState<SellerDashboardStatistics | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [errorMessage, setErrorMessage] = useState('')
+    const [refreshVersion, setRefreshVersion] = useState(0)
+
+    useEffect(() => {
+        const refresh = (event: Event) => {
+            const detail = (event as CustomEvent<{ type?: string }>).detail
+            if (!detail?.type || detail.type === 'DASHBOARD_INVALIDATED') {
+                setRefreshVersion((version) => version + 1)
+            }
+        }
+        window.addEventListener(REALTIME_EVENT, refresh)
+        window.addEventListener('focus', refresh)
+        return () => {
+            window.removeEventListener(REALTIME_EVENT, refresh)
+            window.removeEventListener('focus', refresh)
+        }
+    }, [])
 
     useEffect(() => {
         const controller = new AbortController()
@@ -46,7 +63,7 @@ export function SellerDashboard() {
                 if (!controller.signal.aborted) setIsLoading(false)
             })
         return () => controller.abort()
-    }, [period])
+    }, [period, refreshVersion])
 
     if (isLoading && !statistics) {
         return <div className="grid min-h-80 place-content-center"><LoaderCircle className="size-6 animate-spin" /></div>

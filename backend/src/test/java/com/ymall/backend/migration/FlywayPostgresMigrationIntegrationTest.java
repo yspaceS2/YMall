@@ -33,14 +33,14 @@ class FlywayPostgresMigrationIntegrationTest {
             .load();
         MigrateResult result = flyway.migrate();
 
-        assertThat(result.migrationsExecuted).isEqualTo(4);
+        assertThat(result.migrationsExecuted).isEqualTo(6);
         flyway.validate();
 
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
             assertThat(queryForInt(
                 connection,
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = TRUE"
-            )).isEqualTo(4);
+            )).isEqualTo(6);
             assertThat(queryForString(
                 connection,
                 "SELECT version || ':' || type || ':' || success "

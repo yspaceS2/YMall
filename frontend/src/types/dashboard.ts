@@ -69,6 +69,7 @@ export interface AdminDashboardStatistics {
         refunds: number
         returns: number
         settlements: number
+        support: number
     }
     generatedAt: string
 }

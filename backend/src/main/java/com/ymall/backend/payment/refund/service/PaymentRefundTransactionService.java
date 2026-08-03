@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.exception.BusinessException;
+import com.ymall.backend.dashboard.service.DashboardRealtimePublisher;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.messaging.OrderEventType;
 import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
@@ -57,6 +58,7 @@ public class PaymentRefundTransactionService {
     private final ProductCacheInvalidator productCacheInvalidator;
     private final SellerProfileRepository sellerProfileRepository;
     private final OrderOutboxService orderOutboxService;
+    private final DashboardRealtimePublisher dashboardRealtimePublisher;
 
     @Transactional
     public PaymentRefundPreparation prepareUser(
@@ -214,6 +216,7 @@ public class PaymentRefundTransactionService {
             calculateRefundAmount(quantity, pendingQuantities)
         )));
         refundRepository.save(refund);
+        dashboardRealtimePublisher.invalidateOrder(orderId);
 
         return new PaymentRefundPreparation(
             refund.getId(),
@@ -322,6 +325,7 @@ public class PaymentRefundTransactionService {
                 "refundAmount", refund.getAmount()
             )
         );
+        dashboardRealtimePublisher.invalidateOrder(order.getId());
         return toResponse(refund);
     }
 

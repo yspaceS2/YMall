@@ -22,6 +22,8 @@ import com.ymall.backend.notification.dto.NotificationUnreadCountResponse;
 import com.ymall.backend.notification.entity.Notification;
 import com.ymall.backend.notification.event.NotificationEvent;
 import com.ymall.backend.notification.repository.NotificationRepository;
+import com.ymall.backend.realtime.dto.RealtimeEvent;
+import com.ymall.backend.realtime.service.RealtimePublisher;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +35,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final MemberRepository memberRepository;
     private final Clock clock;
+    private final RealtimePublisher realtimePublisher;
 
     public PageResponse<NotificationResponse> getNotifications(Long memberId, int page, int size) {
         Pageable pageable = PageRequest.of(
@@ -100,6 +103,17 @@ public class NotificationService {
             event.message(),
             event.targetUrl()
         ));
+        realtimePublisher.publishToMember(
+            event.memberId(),
+            RealtimeEvent.of("NOTIFICATIONS_INVALIDATED", "notification", null)
+        );
+        if (event.type().name().startsWith("ORDER_")
+            || event.type().name().startsWith("PAYMENT_")
+            || event.type().name().startsWith("RETURN_")) {
+            realtimePublisher.publishToAdmins(
+                RealtimeEvent.of("DASHBOARD_INVALIDATED", "order", null)
+            );
+        }
     }
 
     private void validatePersonalNotificationDeletion(Long memberId) {

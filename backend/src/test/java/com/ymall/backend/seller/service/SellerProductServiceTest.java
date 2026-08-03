@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.ymall.backend.product.dto.ProductDetailImageCreateRequest;
+import com.ymall.backend.dashboard.service.DashboardRealtimePublisher;
 import com.ymall.backend.product.dto.ProductDetailResponse;
 import com.ymall.backend.product.dto.ProductUpdateRequest;
 import com.ymall.backend.product.entity.Category;
@@ -48,6 +49,8 @@ class SellerProductServiceTest {
     private ProductCacheInvalidator productCacheInvalidator;
     @Mock
     private ProductRevisionRepository productRevisionRepository;
+    @Mock
+    private DashboardRealtimePublisher dashboardRealtimePublisher;
     @Mock
     private SellerProfile sellerProfile;
     @Mock

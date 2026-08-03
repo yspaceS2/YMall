@@ -37,7 +37,8 @@ public record AdminDashboardStatisticsResponse(
         long sellers,
         long refunds,
         long returns,
-        long settlements
+        long settlements,
+        long support
     ) {
     }
 }

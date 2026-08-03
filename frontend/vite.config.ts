@@ -11,12 +11,19 @@ export default defineConfig({
     clearMocks: true,
     include: ['src/**/*.test.{ts,tsx}'],
   },
-  server: {
-    proxy: {
+    server: {
+        watch: {
+            ignored: ['**/playwright-report/**', '**/test-results/**'],
+        },
+        proxy: {
       '/api': 'http://localhost:8080',
       '/images': 'http://localhost:8080',
       '/oauth2/authorization': 'http://localhost:8080',
       '/login/oauth2': 'http://localhost:8080',
+      '/ws': {
+        target: 'ws://localhost:8080',
+        ws: true,
+      },
     },
   },
 })

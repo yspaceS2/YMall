@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ymall.backend.global.messaging.OrderEventEnvelope;
 import com.ymall.backend.global.messaging.OrderEventType;
+import com.ymall.backend.dashboard.service.DashboardRealtimePublisher;
 import com.ymall.backend.notification.entity.OrderEventProcessingResult;
 import com.ymall.backend.notification.entity.ProcessedOrderEvent;
 import com.ymall.backend.notification.event.OrderNotificationEventMapper;
@@ -22,11 +23,13 @@ public class OrderNotificationEventProcessor {
     private final OrderEventTransitionValidator transitionValidator;
     private final OrderNotificationEventMapper eventMapper;
     private final NotificationService notificationService;
+    private final DashboardRealtimePublisher dashboardRealtimePublisher;
     private final Clock clock;
 
     @Transactional
     public void process(OrderEventEnvelope event) {
         if (event.eventType() == OrderEventType.REFUND_COMPLETED) {
+            dashboardRealtimePublisher.invalidateOrder(event.orderId());
             return;
         }
         if (processedEventRepository.existsByEventId(event.eventId())) {
@@ -47,6 +50,7 @@ public class OrderNotificationEventProcessor {
         }
 
         notificationService.create(eventMapper.map(event));
+        dashboardRealtimePublisher.invalidateOrder(event.orderId());
         processedEventRepository.save(new ProcessedOrderEvent(
             event, OrderEventProcessingResult.ACCEPTED, clock.instant()
         ));

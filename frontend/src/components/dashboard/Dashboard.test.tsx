@@ -59,7 +59,7 @@ const adminStatistics: AdminDashboardStatistics = {
         { categoryId: 9, categoryName: '가구', netSalesAmount: 0, salesQuantity: 0 },
     ],
     topProducts: sellerStatistics.topProducts,
-    pendingTasks: { products: 4, sellers: 2, refunds: 1, returns: 3, settlements: 2 },
+    pendingTasks: { products: 4, sellers: 2, refunds: 1, returns: 3, settlements: 2, support: 5 },
     generatedAt: '2026-08-02T14:00:00+09:00',
 }
 
@@ -105,5 +105,6 @@ describe('dashboard visualization', () => {
         expect(screen.getByRole('link', { name: '환불 처리 1건 관리 페이지로 이동' })).toHaveAttribute('href', '/admin/orders?workType=PENDING_REFUND')
         expect(screen.getByRole('link', { name: '반품 처리 3건 관리 페이지로 이동' })).toHaveAttribute('href', '/admin/orders?workType=PENDING_RETURN')
         expect(screen.getByRole('link', { name: '정산 처리 2건 관리 페이지로 이동' })).toHaveAttribute('href', '/admin/settlement?workType=ACTION_REQUIRED')
+        expect(screen.getByRole('link', { name: '고객센터 문의 5건 관리 페이지로 이동' })).toHaveAttribute('href', '/admin/support?status=WAITING')
     })
 })

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.dashboard.service.DashboardRealtimePublisher;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.security.RefreshTokenService;
@@ -41,6 +42,7 @@ public class SellerApplicationService {
     private final SellerProfileRepository sellerProfileRepository;
     private final MemberRepository memberRepository;
     private final RefreshTokenService refreshTokenService;
+    private final DashboardRealtimePublisher dashboardRealtimePublisher;
 
     public SellerApplicationResponse getMyApplication(Long memberId) {
         return toResponse(sellerApplicationRepository.findByMemberId(memberId)
@@ -80,7 +82,12 @@ public class SellerApplicationService {
                 request.description()
             );
         }
-        return toResponse(sellerApplicationRepository.save(application));
+        SellerApplication savedApplication = sellerApplicationRepository.save(application);
+        dashboardRealtimePublisher.invalidateAdmins(
+            "sellerApplication",
+            savedApplication.getId()
+        );
+        return toResponse(savedApplication);
     }
 
     public PageResponse<SellerApplicationResponse> getApplications(
@@ -137,6 +144,11 @@ public class SellerApplicationService {
                 throw new BusinessException(ErrorCode.INVALID_REQUEST);
             }
             application.reject(reviewer, request.rejectionReason());
+            dashboardRealtimePublisher.invalidateSellerAndAdmins(
+                application.getMember().getId(),
+                "sellerApplication",
+                applicationId
+            );
             return toResponse(application);
         }
 
@@ -158,6 +170,11 @@ public class SellerApplicationService {
         applicant.promoteToSeller();
         application.approve(reviewer);
         refreshTokenService.revokeAll(applicant.getId());
+        dashboardRealtimePublisher.invalidateSellerAndAdmins(
+            applicant.getId(),
+            "sellerApplication",
+            applicationId
+        );
         return toResponse(application);
     }
 

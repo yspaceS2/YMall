@@ -19,6 +19,7 @@ import com.ymall.backend.admin.dto.AdminProductStatusUpdateRequest;
 import com.ymall.backend.admin.dto.AdminSellerResponse;
 import com.ymall.backend.admin.mapper.AdminMapper;
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.dashboard.service.DashboardRealtimePublisher;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.repository.MemberRepository;
@@ -47,6 +48,7 @@ public class AdminService {
     private final PaymentRepository paymentRepository;
     private final AdminMapper adminMapper;
     private final ProductCacheInvalidator productCacheInvalidator;
+    private final DashboardRealtimePublisher dashboardRealtimePublisher;
 
     public PageResponse<AdminProductResponse> getProducts(
         ProductStatus status,
@@ -108,6 +110,11 @@ public class AdminService {
             product.reject(request.rejectionReason());
         }
         productCacheInvalidator.evictDetail(productId);
+        dashboardRealtimePublisher.invalidateSellerAndAdmins(
+            product.getSellerProfile().getMember().getId(),
+            "product",
+            productId
+        );
 
         return adminMapper.toProductResponse(product);
     }

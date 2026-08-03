@@ -170,7 +170,8 @@ public class DashboardStatisticsService {
                 pending.sellers(),
                 pending.refunds(),
                 pending.returns(),
-                pending.settlements()
+                pending.settlements(),
+                pending.support()
             ),
             generatedAt()
         );
