@@ -42,7 +42,7 @@ test('판매자 로그아웃 후 일반 회원으로 전환하면 이전 경로�
     await loginThroughUi(page, 'seller@example.test')
     await page.goto('/seller')
 
-    await page.getByRole('button', { name: '로그아웃' }).click()
+    await page.getByRole('button', { name: '로그아웃', exact: true }).click()
     await expect(page).toHaveURL('/')
 
     await loginThroughUi(page, 'member@example.test')
@@ -54,7 +54,7 @@ test('관리자 로그아웃 후 판매자로 전환하면 이전 관리자 경�
     await loginThroughUi(page, 'admin@example.test')
     await page.goto('/admin/settlement')
 
-    await page.getByRole('button', { name: '로그아웃' }).click()
+    await page.getByRole('button', { name: '로그아웃', exact: true }).click()
     await expect(page).toHaveURL('/')
 
     await loginThroughUi(page, 'seller@example.test')
