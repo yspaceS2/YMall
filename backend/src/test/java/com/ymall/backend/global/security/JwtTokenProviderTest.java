@@ -31,6 +31,7 @@ class JwtTokenProviderTest {
         assertThat(principal.memberId()).isEqualTo(1L);
         assertThat(principal.email()).isEqualTo("user@example.com");
         assertThat(principal.role()).isEqualTo(MemberRole.ROLE_USER);
+        assertThat(principal.authVersion()).isZero();
         assertThat(response.expiresIn()).isEqualTo(1800);
     }
 

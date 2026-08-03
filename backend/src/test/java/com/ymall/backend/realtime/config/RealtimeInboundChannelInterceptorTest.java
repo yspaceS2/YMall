@@ -22,6 +22,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.global.security.MemberPrincipal;
+import com.ymall.backend.global.security.MemberPrincipalResolver;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.support.entity.SupportInquiry;
 import com.ymall.backend.support.repository.SupportInquiryRepository;
@@ -29,6 +30,7 @@ import com.ymall.backend.support.repository.SupportInquiryRepository;
 class RealtimeInboundChannelInterceptorTest {
 
     private JwtTokenProvider jwtTokenProvider;
+    private MemberPrincipalResolver principalResolver;
     private SupportInquiryRepository inquiryRepository;
     private RealtimeInboundChannelInterceptor interceptor;
     private MessageChannel channel;
@@ -37,10 +39,15 @@ class RealtimeInboundChannelInterceptorTest {
     @SuppressWarnings("unchecked")
     void setUp() {
         jwtTokenProvider = mock(JwtTokenProvider.class);
+        principalResolver = mock(MemberPrincipalResolver.class);
         inquiryRepository = mock(SupportInquiryRepository.class);
         ObjectProvider<SupportInquiryRepository> provider = mock(ObjectProvider.class);
         when(provider.getObject()).thenReturn(inquiryRepository);
-        interceptor = new RealtimeInboundChannelInterceptor(jwtTokenProvider, provider);
+        interceptor = new RealtimeInboundChannelInterceptor(
+            jwtTokenProvider,
+            principalResolver,
+            provider
+        );
         channel = mock(MessageChannel.class);
     }
 
@@ -48,6 +55,7 @@ class RealtimeInboundChannelInterceptorTest {
     void connectTokenIsStoredAsAuthenticatedUser() {
         MemberPrincipal principal = principal(7L, MemberRole.ROLE_USER);
         when(jwtTokenProvider.parseAccessToken("access-token")).thenReturn(principal);
+        when(principalResolver.resolve(principal)).thenReturn(principal);
         StompHeaderAccessor accessor = accessor(StompCommand.CONNECT);
         accessor.setNativeHeader("Authorization", "Bearer access-token");
         Message<byte[]> message = message(accessor);

@@ -95,7 +95,29 @@ export interface AdminMember {
     email: string
     name: string
     role: MemberRole
+    adminGrade: AdminGrade | null
     createdAt: string
+}
+
+export type AdminGrade = 'MANAGER' | 'SUPERVISOR' | 'SUPER_ADMIN'
+
+export interface AdminAuthorization {
+    memberId: number
+    adminGrade: AdminGrade
+    permissions: string[]
+}
+
+export interface AdminRoleUpdateRequest {
+    role: Extract<MemberRole, 'ROLE_USER' | 'ROLE_ADMIN'>
+    adminGrade: AdminGrade | null
+    reason: string
+}
+
+export interface AdminRoleUpdateResponse {
+    memberId: number
+    role: MemberRole
+    adminGrade: AdminGrade | null
+    permissions: string[]
 }
 
 export interface AdminSeller {

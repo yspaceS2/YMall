@@ -1,0 +1,11 @@
+package com.ymall.backend.admin.entity;
+
+public enum AdminAuditAction {
+    ADMIN_ROLE_CHANGED,
+    MEMBER_RESTRICTION_CHANGED,
+    SELLER_APPLICATION_REVIEWED,
+    PRODUCT_REVIEWED,
+    REFUND_PROCESSED,
+    SETTLEMENT_APPROVED,
+    CATEGORY_POLICY_CHANGED
+}

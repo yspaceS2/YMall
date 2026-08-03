@@ -1,11 +1,8 @@
 package com.ymall.backend.global.security;
 
 import java.io.IOException;
-import java.util.List;
-
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -23,6 +20,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final MemberPrincipalResolver principalResolver;
     private final SecurityErrorResponseWriter responseWriter;
 
     @Override
@@ -39,9 +37,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         MemberPrincipal principal;
         try {
-            principal = jwtTokenProvider.parseAccessToken(
+            MemberPrincipal tokenPrincipal = jwtTokenProvider.parseAccessToken(
                 authorization.substring(BEARER_PREFIX.length())
             );
+            principal = principalResolver.resolve(tokenPrincipal);
         } catch (BusinessException exception) {
             SecurityContextHolder.clearContext();
             responseWriter.write(response, exception.getErrorCode());
@@ -52,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken.authenticated(
                 principal,
                 null,
-                List.of(new SimpleGrantedAuthority(principal.role().name()))
+                principal.authorities()
             );
         SecurityContextHolder.getContext().setAuthentication(authentication);
         filterChain.doFilter(request, response);

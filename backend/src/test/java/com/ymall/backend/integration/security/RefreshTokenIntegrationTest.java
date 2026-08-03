@@ -26,6 +26,7 @@ import jakarta.servlet.http.Cookie;
 
 import com.ymall.backend.global.security.RefreshTokenService;
 import com.ymall.backend.global.security.RefreshTokenCookieManager;
+import com.ymall.backend.admin.entity.AdminGrade;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
@@ -121,6 +122,26 @@ class RefreshTokenIntegrationTest {
 
         assertThat(redisTemplate.hasKey(legacyTokenKey)).isFalse();
         assertThat(redisTemplate.hasKey(anotherMemberTokenKey)).isTrue();
+    }
+
+    @Test
+    void refreshTokenIssuedBeforeRoleChangeCannotBeRotated() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/members/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email":"refresh@example.com","password":"password123"}
+                    """))
+            .andExpect(status().isOk())
+            .andReturn();
+        Cookie refreshCookie = loginResult.getResponse()
+            .getCookie(RefreshTokenCookieManager.COOKIE_NAME);
+
+        member.changeAdminRole(MemberRole.ROLE_ADMIN, AdminGrade.MANAGER);
+        memberRepository.flush();
+
+        mockMvc.perform(post("/api/members/tokens/refresh").cookie(refreshCookie))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TOKEN"));
     }
 
     private void assertSecureCookie(Cookie cookie) {

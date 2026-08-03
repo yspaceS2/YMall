@@ -27,6 +27,7 @@ public class RefreshTokenService {
 
     private static final String KEY_PREFIX = "auth:refresh:";
     private static final String MEMBER_KEY_PREFIX = "auth:member-refresh:";
+    private static final String VALUE_SEPARATOR = ":";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final StringRedisTemplate redisTemplate;
@@ -40,7 +41,7 @@ public class RefreshTokenService {
         String memberKey = memberKey(member.getId());
         redisTemplate.opsForValue().set(
             tokenKey,
-            member.getId().toString(),
+            tokenValue(member),
             jwtProperties.getRefreshTokenExpiration()
         );
         redisTemplate.opsForSet().add(memberKey, tokenKey);
@@ -53,16 +54,24 @@ public class RefreshTokenService {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
         String tokenKey = key(refreshToken);
-        String memberId = redisTemplate.opsForValue().getAndDelete(tokenKey);
-        if (memberId == null) {
+        String storedValue = redisTemplate.opsForValue().getAndDelete(tokenKey);
+        if (storedValue == null) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
         Member member;
         try {
-            Long parsedMemberId = Long.valueOf(memberId);
+            String[] valueParts = storedValue.split(VALUE_SEPARATOR, -1);
+            if (valueParts.length != 2) {
+                throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+            }
+            Long parsedMemberId = Long.valueOf(valueParts[0]);
+            long issuedAuthVersion = Long.parseLong(valueParts[1]);
             redisTemplate.opsForSet().remove(memberKey(parsedMemberId), tokenKey);
             member = memberRepository.findById(parsedMemberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
+            if (member.getAuthVersion() != issuedAuthVersion) {
+                throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+            }
         } catch (NumberFormatException exception) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
@@ -72,10 +81,11 @@ public class RefreshTokenService {
     public void revoke(String refreshToken) {
         if (refreshToken != null && !refreshToken.isBlank()) {
             String tokenKey = key(refreshToken);
-            String memberId = redisTemplate.opsForValue().getAndDelete(tokenKey);
-            if (memberId != null) {
+            String storedValue = redisTemplate.opsForValue().getAndDelete(tokenKey);
+            if (storedValue != null) {
                 try {
-                    redisTemplate.opsForSet().remove(memberKey(Long.valueOf(memberId)), tokenKey);
+                    Long memberId = Long.valueOf(storedValue.split(VALUE_SEPARATOR, -1)[0]);
+                    redisTemplate.opsForSet().remove(memberKey(memberId), tokenKey);
                 } catch (NumberFormatException ignored) {
                     // Invalid Redis data is already revoked by deleting the token key.
                 }
@@ -105,8 +115,10 @@ public class RefreshTokenService {
             .build();
         try (Cursor<String> cursor = redisTemplate.scan(scanOptions)) {
             cursor.forEachRemaining(tokenKey -> {
-                String storedMemberId = redisTemplate.opsForValue().get(tokenKey);
-                if (memberId.toString().equals(storedMemberId)) {
+                String storedValue = redisTemplate.opsForValue().get(tokenKey);
+                if (memberId.toString().equals(storedValue)
+                    || (storedValue != null
+                    && storedValue.startsWith(memberId + VALUE_SEPARATOR))) {
                     tokenKeys.add(tokenKey);
                 }
             });
@@ -132,5 +144,9 @@ public class RefreshTokenService {
 
     private String memberKey(Long memberId) {
         return MEMBER_KEY_PREFIX + memberId;
+    }
+
+    private String tokenValue(Member member) {
+        return member.getId() + VALUE_SEPARATOR + member.getAuthVersion();
     }
 }
