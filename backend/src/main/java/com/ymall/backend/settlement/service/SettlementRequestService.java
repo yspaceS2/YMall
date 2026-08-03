@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.dashboard.service.DashboardRealtimePublisher;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.entity.Member;
@@ -54,6 +55,7 @@ public class SettlementRequestService {
     private final SellerSettlementAccountRepository settlementAccountRepository;
     private final SellerProfileService sellerProfileService;
     private final MemberRepository memberRepository;
+    private final DashboardRealtimePublisher dashboardRealtimePublisher;
 
     public SettlementAvailabilityResponse getAvailability(Long memberId) {
         SellerProfile seller = sellerProfileService.getProfileEntity(memberId);
@@ -132,6 +134,11 @@ public class SettlementRequestService {
 
         entries.forEach(entry -> entry.requestSettlement(request));
         saveHistory(request, null, SettlementRequestStatus.REQUESTED, actor, null);
+        dashboardRealtimePublisher.invalidateSellerAndAdmins(
+            actor.getId(),
+            "settlementRequest",
+            request.getId()
+        );
         return toResponse(request);
     }
 
@@ -175,6 +182,7 @@ public class SettlementRequestService {
         try {
             SettlementRequestStatus previous = request.approve(admin);
             saveHistory(request, previous, SettlementRequestStatus.APPROVED, admin, null);
+            invalidateSettlement(request);
             return toResponse(request);
         } catch (IllegalStateException exception) {
             throw new BusinessException(ErrorCode.SETTLEMENT_REQUEST_STATUS_INVALID);
@@ -200,6 +208,7 @@ public class SettlementRequestService {
                 admin,
                 reason.trim()
             );
+            invalidateSettlement(request);
             return toResponse(request);
         } catch (IllegalStateException exception) {
             throw new BusinessException(ErrorCode.SETTLEMENT_REQUEST_STATUS_INVALID);
@@ -219,6 +228,7 @@ public class SettlementRequestService {
             ledgerRepository.findAllBySettlementRequestId(requestId)
                 .forEach(SettlementLedgerEntry::markPaid);
             saveHistory(request, previous, SettlementRequestStatus.PAID, admin, reference);
+            invalidateSettlement(request);
             return toResponse(request);
         } catch (IllegalStateException exception) {
             throw new BusinessException(ErrorCode.SETTLEMENT_REQUEST_STATUS_INVALID);
@@ -271,6 +281,14 @@ public class SettlementRequestService {
     private SettlementRequest requestForUpdate(Long requestId) {
         return requestRepository.findByIdForUpdate(requestId)
             .orElseThrow(() -> new BusinessException(ErrorCode.SETTLEMENT_REQUEST_NOT_FOUND));
+    }
+
+    private void invalidateSettlement(SettlementRequest request) {
+        dashboardRealtimePublisher.invalidateSellerAndAdmins(
+            request.getSellerProfile().getMember().getId(),
+            "settlementRequest",
+            request.getId()
+        );
     }
 
     private Member member(Long memberId) {

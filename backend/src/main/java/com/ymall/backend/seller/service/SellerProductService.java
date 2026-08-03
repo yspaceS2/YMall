@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.dashboard.service.DashboardRealtimePublisher;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.product.dto.ProductCreateRequest;
@@ -47,6 +48,7 @@ public class SellerProductService {
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
     private final ProductCacheInvalidator productCacheInvalidator;
+    private final DashboardRealtimePublisher dashboardRealtimePublisher;
     private final ProductRevisionRepository productRevisionRepository;
 
     public PageResponse<SellerProductResponse> getProducts(
@@ -107,7 +109,13 @@ public class SellerProductService {
         Category category = getCategory(request.categoryId());
         Product product = productMapper.toEntity(request, category, ProductStatus.PENDING);
         product.assignSellerProfile(profile);
-        return productMapper.toProductDetailResponse(productRepository.save(product));
+        Product savedProduct = productRepository.save(product);
+        dashboardRealtimePublisher.invalidateSellerAndAdmins(
+            memberId,
+            "product",
+            savedProduct.getId()
+        );
+        return productMapper.toProductDetailResponse(savedProduct);
     }
 
     @Transactional
@@ -156,6 +164,7 @@ public class SellerProductService {
             }
         }
         productCacheInvalidator.evictDetail(productId);
+        dashboardRealtimePublisher.invalidateSellerAndAdmins(memberId, "product", productId);
         return productMapper.toProductDetailResponse(product);
     }
 

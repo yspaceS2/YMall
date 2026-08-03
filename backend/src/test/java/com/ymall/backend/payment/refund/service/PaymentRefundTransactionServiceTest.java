@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.ymall.backend.global.exception.BusinessException;
+import com.ymall.backend.dashboard.service.DashboardRealtimePublisher;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.order.entity.Order;
@@ -53,7 +54,8 @@ class PaymentRefundTransactionServiceTest {
             mock(ProductRepository.class),
             mock(ProductCacheInvalidator.class),
             sellerProfileRepository,
-            mock(OrderOutboxService.class)
+            mock(OrderOutboxService.class),
+            mock(DashboardRealtimePublisher.class)
         );
     }
 
