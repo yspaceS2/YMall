@@ -189,6 +189,26 @@ describe('ManagementLayout', () => {
             .toHaveAttribute('href', '/admin/orders')
     })
 
+    it.each([
+        ['member', '/mypage/notifications'],
+        ['seller', '/seller/notifications'],
+        ['admin', '/admin/notifications'],
+    ] as const)('%s 헤더에 역할별 알림 링크를 표시한다', (role, href) => {
+        renderManagementLayout(role)
+
+        expect(screen.getByRole('link', { name: '헤더 알림' }))
+            .toHaveAttribute('href', href)
+    })
+
+    it('헤더 로그아웃 버튼으로 인증 로그아웃을 요청한다', async () => {
+        const user = userEvent.setup()
+        const { logout } = renderManagementLayout('seller')
+
+        await user.click(screen.getByRole('button', { name: '헤더 로그아웃' }))
+
+        expect(logout).toHaveBeenCalledOnce()
+    })
+
     it('로그아웃 버튼으로 인증 로그아웃을 요청한다', async () => {
         const user = userEvent.setup()
         const { logout } = renderManagementLayout('admin')

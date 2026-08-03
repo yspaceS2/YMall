@@ -87,6 +87,13 @@ public enum ErrorCode {
     PRODUCT_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "상품 문의를 찾을 수 없습니다."),
     PRODUCT_QUESTION_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상품에는 문의를 등록할 수 없습니다."),
     PRODUCT_QUESTION_ALREADY_ANSWERED(HttpStatus.CONFLICT, "답변이 등록된 문의는 수정할 수 없습니다."),
+    SUPPORT_INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "고객센터 문의를 찾을 수 없습니다."),
+    SUPPORT_INQUIRY_CLOSED(HttpStatus.CONFLICT, "종료된 문의에는 메시지를 작성할 수 없습니다."),
+    SUPPORT_INQUIRY_STATUS_INVALID(HttpStatus.CONFLICT, "현재 문의 상태에서는 요청을 처리할 수 없습니다."),
+    SUPPORT_CHAT_NOT_FOUND(HttpStatus.NOT_FOUND, "실시간 상담 요청을 찾을 수 없습니다."),
+    SUPPORT_CHAT_STATUS_INVALID(HttpStatus.CONFLICT, "현재 상담 상태에서는 요청을 처리할 수 없습니다."),
+    SUPPORT_ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "첨부파일을 찾을 수 없습니다."),
+    SUPPORT_ATTACHMENT_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "첨부파일은 메시지당 최대 5개까지 등록할 수 있습니다."),
     SELLER_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "판매자 프로필을 찾을 수 없습니다."),
     SELLER_PROFILE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 판매자 프로필이 존재합니다."),
     SELLER_BUSINESS_NUMBER_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 사업자 번호입니다."),
@@ -120,8 +127,9 @@ public enum ErrorCode {
     CATEGORY_DELETE_NOT_ALLOWED(HttpStatus.CONFLICT, "하위 카테고리 또는 연결된 상품이 있어 삭제할 수 없습니다."),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청 값이 올바르지 않습니다."),
     FILE_EMPTY(HttpStatus.BAD_REQUEST, "업로드할 파일이 없습니다."),
-    FILE_SIZE_EXCEEDED(HttpStatus.CONTENT_TOO_LARGE, "이미지 파일이 허용된 최대 용량을 초과했습니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.CONTENT_TOO_LARGE, "파일이 허용된 최대 용량을 초과했습니다."),
     INVALID_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "지원하지 않는 이미지 형식입니다."),
+    INVALID_ATTACHMENT_TYPE(HttpStatus.BAD_REQUEST, "JPG, PNG, WebP, PDF 파일만 첨부할 수 있습니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다.");
 
     private final HttpStatus status;

@@ -123,10 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             await logoutMember()
         } finally {
+            navigate('/', { replace: true, state: null })
             clearAccessToken()
             setIsAuthenticated(false)
             setRole(null)
-            navigate('/', { replace: true, state: null })
             window.dispatchEvent(new Event(AUTH_LOGOUT_COMPLETED_EVENT))
             window.requestAnimationFrame(() => {
                 window.requestAnimationFrame(() => setIsLoggingOut(false))

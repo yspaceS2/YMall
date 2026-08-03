@@ -54,6 +54,10 @@ import {
     SellerProductQuestionListPage,
 } from './pages/SellerProductQuestionsPage'
 import { SettlementRequestDetailPage } from './pages/SettlementRequestDetailPage'
+import {
+    SupportInquiryDetailPage,
+    SupportInquiryListPage,
+} from './pages/SupportInquiryPages'
 
 function App() {
     return (
@@ -105,6 +109,8 @@ function MemberPortalRoutes() {
             <Route path="orders" element={<OrderHistoryPage />} />
             <Route path="orders/:orderId" element={<OrderDetailPage />} />
             <Route path="notifications" element={<NotificationPage />} />
+            <Route path="support" element={<SupportInquiryListPage />} />
+            <Route path="support/:inquiryId" element={<SupportInquiryDetailPage />} />
             <Route path="seller-application" element={<MyPage />} />
             <Route path="*" element={<Navigate to="/mypage" replace />} />
         </Routes>
@@ -129,6 +135,8 @@ function SellerPortalRoutes() {
             <Route path="questions" element={<SellerProductQuestionListPage />} />
             <Route path="questions/:questionId" element={<SellerProductQuestionDetailPage />} />
             <Route path="notifications" element={<NotificationPage />} />
+            <Route path="support" element={<SupportInquiryListPage />} />
+            <Route path="support/:inquiryId" element={<SupportInquiryDetailPage />} />
             <Route
                 path="settlement"
                 element={<PortalPage><SettlementManagementPanel /></PortalPage>}
@@ -180,6 +188,8 @@ function AdminPortalRoutes() {
                 element={<AdminResourceDetailPage resource="orders" />}
             />
             <Route path="notifications" element={<NotificationPage />} />
+            <Route path="support" element={<SupportInquiryListPage admin />} />
+            <Route path="support/:inquiryId" element={<SupportInquiryDetailPage admin />} />
             <Route
                 path="settlement"
                 element={<PortalPage><AdminSettlementRequestList /></PortalPage>}

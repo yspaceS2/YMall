@@ -1,6 +1,5 @@
 import {
     Bell,
-    Headphones,
     Heart,
     LogOut,
     Menu,
@@ -245,11 +244,6 @@ export function StoreHeader({
                                             관리자 콘솔
                                         </Link>
                                     )}
-                                    <span className={`${accountMenuItemClass} cursor-not-allowed text-muted`} role="menuitem" aria-disabled="true">
-                                        <Headphones className="size-4.5" aria-hidden="true" />
-                                        <span className="flex-1">고객센터</span>
-                                        <span className="text-[10px]">준비 중</span>
-                                    </span>
                                     <button className={`${accountMenuItemClass} border-t border-line text-left`} type="button" role="menuitem" onClick={handleLogout}>
                                         <LogOut className="size-4.5" aria-hidden="true" />
                                         로그아웃

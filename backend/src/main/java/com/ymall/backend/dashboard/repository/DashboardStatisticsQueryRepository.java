@@ -266,14 +266,17 @@ public class DashboardStatisticsQueryRepository {
                    (SELECT COUNT(*) FROM payment_refunds WHERE status = 'PENDING') AS pending_refunds,
                    (SELECT COUNT(*) FROM product_return_requests WHERE status = 'REQUESTED') AS pending_returns,
                    (SELECT COUNT(*) FROM settlement_requests
-                    WHERE status IN ('REQUESTED', 'APPROVED')) AS pending_settlements
+                    WHERE status IN ('REQUESTED', 'APPROVED')) AS pending_settlements,
+                   (SELECT COUNT(*) FROM support_inquiries
+                    WHERE status IN ('WAITING', 'LIVE_REQUESTED')) AS pending_support
             """, Map.of(),
             (resultSet, rowNumber) -> new AdminPendingRow(
                 resultSet.getLong("pending_products"),
                 resultSet.getLong("pending_sellers"),
                 resultSet.getLong("pending_refunds"),
                 resultSet.getLong("pending_returns"),
-                resultSet.getLong("pending_settlements")
+                resultSet.getLong("pending_settlements"),
+                resultSet.getLong("pending_support")
             ));
     }
 
@@ -357,7 +360,8 @@ public class DashboardStatisticsQueryRepository {
         long sellers,
         long refunds,
         long returns,
-        long settlements
+        long settlements,
+        long support
     ) {
     }
 }

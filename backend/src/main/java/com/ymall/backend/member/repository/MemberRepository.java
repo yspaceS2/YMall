@@ -12,12 +12,15 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberRole;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
     boolean existsByEmailIgnoreCase(String email);
 
     Optional<Member> findByEmailIgnoreCase(String email);
+
+    java.util.List<Member> findAllByRole(MemberRole role);
 
     @Query("""
         select member from Member member

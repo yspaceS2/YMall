@@ -4,6 +4,7 @@ import {
     BriefcaseBusiness,
     ClipboardCheck,
     Heart,
+    Headphones,
     LayoutDashboard,
     LogOut,
     Mail,
@@ -39,6 +40,8 @@ import {
 import ymallSymbolLight from '../../assets/brand/ymall-symbol-light.svg'
 import { useAuth } from '../../auth/useAuth'
 import { ThemeSelector } from '../ThemeSelector'
+import { getPendingSupportCount } from '../../api/support'
+import { REALTIME_EVENT } from '../../realtime/RealtimeProvider'
 
 type ManagementRole = 'member' | 'seller' | 'admin'
 
@@ -56,6 +59,7 @@ const memberNavigation: NavigationItem[] = [
     { label: '찜한 상품', href: '/mypage/wishlist', icon: Heart },
     { label: '배송지 관리', href: '/mypage/addresses', icon: MapPin },
     { label: '주문·배송 조회', href: '/mypage/orders', icon: ReceiptText },
+    { label: '고객센터', href: '/mypage/support', icon: Headphones },
     { label: '알림', href: '/mypage/notifications', icon: Bell },
     { label: '판매자 신청', href: '/mypage/seller-application', icon: BriefcaseBusiness },
 ]
@@ -67,6 +71,7 @@ const sellerNavigation: NavigationItem[] = [
     { label: '주문·배송 관리', href: '/seller/orders', icon: ReceiptText },
     { label: '반품 관리', href: '/seller/returns', icon: Undo2 },
     { label: '상품 문의 관리', href: '/seller/questions', icon: MessageSquareText },
+    { label: '고객센터', href: '/seller/support', icon: Headphones },
     { label: '알림', href: '/seller/notifications', icon: Bell },
     { label: '정산 관리', href: '/seller/settlement', icon: WalletCards },
 ]
@@ -83,6 +88,7 @@ const adminNavigation: NavigationItem[] = [
     { label: '상품 승인 관리', href: '/admin/products', icon: PackageSearch },
     { label: '카테고리 관리', href: '/admin/categories', icon: Tags },
     { label: '주문 관리', href: '/admin/orders', icon: ReceiptText },
+    { label: '고객센터 관리', href: '/admin/support', icon: Headphones },
     { label: '알림', href: '/admin/notifications', icon: Bell },
     { label: '정산 관리', href: '/admin/settlement', icon: WalletCards },
 ]
@@ -99,6 +105,7 @@ export function ManagementLayout({
     const [pendingQuestionCount, setPendingQuestionCount] = useState(0)
     const [pendingOrderCount, setPendingOrderCount] = useState(0)
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
+    const [pendingSupportCount, setPendingSupportCount] = useState(0)
     const location = useLocation()
     const isAdmin = role === 'admin'
     const isMember = role === 'member'
@@ -111,6 +118,7 @@ export function ManagementLayout({
         ? roleNavigation.filter((item) => item.href !== '/mypage/seller-application')
         : roleNavigation
     const roleRootPath = isMember ? '/mypage' : `/${role}`
+    const notificationPath = `${roleRootPath}/notifications`
     const centerName = isMember ? '마이페이지' : isAdmin ? '관리자 센터' : '판매자 센터'
 
     useEffect(() => {
@@ -139,6 +147,35 @@ export function ManagementLayout({
             window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount)
         }
     }, [])
+
+    useEffect(() => {
+        if (role !== 'admin') return
+        let active = true
+        let controller: AbortController | null = null
+        const loadPendingSupportCount = () => {
+            controller?.abort()
+            controller = new AbortController()
+            getPendingSupportCount(controller.signal)
+                .then((response) => {
+                    if (active) setPendingSupportCount(response.count)
+                })
+                .catch((error: unknown) => {
+                    if (error instanceof Error && error.name === 'AbortError') return
+                    if (active) setPendingSupportCount(0)
+                })
+        }
+        loadPendingSupportCount()
+        const intervalId = window.setInterval(loadPendingSupportCount, 30_000)
+        window.addEventListener(REALTIME_EVENT, loadPendingSupportCount)
+        window.addEventListener('focus', loadPendingSupportCount)
+        return () => {
+            active = false
+            controller?.abort()
+            window.clearInterval(intervalId)
+            window.removeEventListener(REALTIME_EVENT, loadPendingSupportCount)
+            window.removeEventListener('focus', loadPendingSupportCount)
+        }
+    }, [role])
 
     useEffect(() => {
         if (role !== 'seller') return
@@ -257,10 +294,13 @@ export function ManagementLayout({
                             const isOrderMenu = role === 'seller'
                                 && item.href === '/seller/orders'
                             const isNotificationMenu = item.href.endsWith('/notifications')
+                            const isSupportMenu = role === 'admin' && item.href === '/admin/support'
                             const badgeCount = isOrderMenu
                                 ? pendingOrderCount
                                 : isQuestionMenu
                                     ? pendingQuestionCount
+                                    : isSupportMenu
+                                        ? pendingSupportCount
                                     : isNotificationMenu
                                         ? unreadNotificationCount
                                         : 0
@@ -268,6 +308,8 @@ export function ManagementLayout({
                                 ? '/seller/orders?workType=ACTION_REQUIRED&page=1'
                                 : isQuestionMenu && pendingQuestionCount > 0
                                     ? '/seller/questions?status=WAITING&page=1'
+                                    : isSupportMenu && pendingSupportCount > 0
+                                        ? '/admin/support?status=WAITING'
                                     : item.href
                             return (
                                 <li key={item.href}>
@@ -291,6 +333,8 @@ export function ManagementLayout({
                                                     ? `처리 필요 주문 ${badgeCount}건`
                                                     : isQuestionMenu
                                                         ? `답변 대기 문의 ${badgeCount}건`
+                                                        : isSupportMenu
+                                                            ? `처리 대기 고객센터 문의 ${badgeCount}건`
                                                         : `읽지 않은 알림 ${badgeCount}건`}
                                             >
                                                 {badgeCount > 99 ? '99+' : badgeCount}
@@ -349,7 +393,36 @@ export function ManagementLayout({
                             <strong className="text-sm">{centerName}</strong>
                         </div>
                     </div>
-                    <ThemeSelector />
+                    <div className="flex items-center gap-2">
+                        <ThemeSelector />
+                        <Link
+                            className="group relative inline-flex min-w-12 flex-col items-center justify-center gap-1 p-1 text-[10px] font-bold"
+                            to={notificationPath}
+                            aria-label={unreadNotificationCount > 0
+                                ? `헤더 알림, 읽지 않은 알림 ${unreadNotificationCount}건`
+                                : '헤더 알림'}
+                        >
+                            <Bell className="size-5 transition-transform group-hover:scale-110" aria-hidden="true" />
+                            <span className="hidden min-[901px]:inline">알림</span>
+                            {unreadNotificationCount > 0 && (
+                                <span
+                                    className="absolute -top-1 right-0 grid min-w-4.5 place-items-center rounded-full bg-lime px-1 py-0.5 text-[9px] font-extrabold text-[#171717]"
+                                    aria-hidden="true"
+                                >
+                                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                                </span>
+                            )}
+                        </Link>
+                        <button
+                            className="group inline-flex min-w-12 flex-col items-center justify-center gap-1 p-1 text-[10px] font-bold"
+                            type="button"
+                            aria-label="헤더 로그아웃"
+                            onClick={() => void logout()}
+                        >
+                            <LogOut className="size-5 transition-transform group-hover:scale-110" aria-hidden="true" />
+                            <span className="hidden min-[901px]:inline">로그아웃</span>
+                        </button>
+                    </div>
                 </header>
                 <main>{children}</main>
             </div>

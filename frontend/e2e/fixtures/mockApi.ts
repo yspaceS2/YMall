@@ -2,6 +2,32 @@ import type { Page, Route } from '@playwright/test'
 
 type Role = 'ROLE_USER' | 'ROLE_SELLER' | 'ROLE_ADMIN'
 type DashboardMode = 'normal' | 'empty' | 'error'
+type SupportStatus = 'WAITING' | 'IN_PROGRESS' | 'ANSWERED' | 'LIVE_REQUESTED' | 'LIVE_OFFERED' | 'LIVE_ACTIVE' | 'CLOSED'
+
+interface MockSupportInquiry {
+    inquiryId: number
+    requesterType: 'CUSTOMER' | 'SELLER'
+    requesterName: string
+    category: 'ORDER' | 'SETTLEMENT'
+    title: string
+    status: SupportStatus
+    assignedAdminName: string | null
+    createdAt: string
+    updatedAt: string
+    closedAt: string | null
+    messages: Array<{
+        messageId: number
+        authorId: number
+        authorName: string
+        authorRole: Role
+        type: 'INQUIRY' | 'REPLY' | 'SYSTEM' | 'RESOLUTION'
+        content: string
+        attachments: Array<never>
+        clientMessageId: string | null
+        readAt: string | null
+        createdAt: string
+    }>
+}
 
 interface MockApiOptions {
     role?: Role
@@ -234,7 +260,7 @@ const adminDashboardStatistics = {
         { categoryId: 8, categoryName: '가구·인테리어', netSalesAmount: 0, salesQuantity: 0 },
     ],
     topProducts: sellerDashboardStatistics.topProducts,
-    pendingTasks: { products: 14, sellers: 6, refunds: 9, returns: 11, settlements: 8 },
+    pendingTasks: { products: 14, sellers: 6, refunds: 9, returns: 11, settlements: 8, support: 4 },
     generatedAt: '2026-08-02T14:00:00+09:00',
 }
 
@@ -297,7 +323,39 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
             seller: [] as string[],
             admin: [] as string[],
         },
+        supportInquiries: [{
+            inquiryId: 31,
+            requesterType: 'CUSTOMER',
+            requesterName: '테스트 회원',
+            category: 'ORDER',
+            title: '배송 상태를 확인해 주세요',
+            status: 'WAITING',
+            assignedAdminName: '상담 관리자',
+            createdAt: '2026-08-03T09:00:00+09:00',
+            updatedAt: '2026-08-03T09:00:00+09:00',
+            closedAt: null,
+            messages: [{
+                messageId: 1,
+                authorId: 101,
+                authorName: '테스트 회원',
+                authorRole: 'ROLE_USER',
+                type: 'INQUIRY',
+                content: '배송 준비 상태가 오래 지속되고 있습니다.',
+                attachments: [],
+                clientMessageId: 'e2e-support-message-1',
+                readAt: null,
+                createdAt: '2026-08-03T09:00:00+09:00',
+            }],
+        }] as MockSupportInquiry[],
     }
+
+    await page.routeWebSocket('**/ws', (webSocket) => {
+        webSocket.onMessage((message) => {
+            if (String(message).startsWith('CONNECT')) {
+                webSocket.send('CONNECTED\nversion:1.2\nheart-beat:0,0\n\n\0')
+            }
+        })
+    })
 
     await page.route('**/api/**', async (route) => {
         const request = route.request()
@@ -445,13 +503,113 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
                     registrationTrend: [],
                     categorySales: [],
                     topProducts: [],
-                    pendingTasks: { products: 0, sellers: 0, refunds: 0, returns: 0, settlements: 0 },
+                    pendingTasks: { products: 0, sellers: 0, refunds: 0, returns: 0, settlements: 0, support: 0 },
                 }
                 : adminDashboardStatistics
             return ok(route, {
                 ...statistics,
                 period: { ...statistics.period, period },
             })
+        }
+        if (path === '/admin/support/inquiries/pending-count' && method === 'GET') {
+            return ok(route, {
+                count: state.supportInquiries.filter((item) =>
+                    item.status === 'WAITING' || item.status === 'LIVE_REQUESTED').length,
+            })
+        }
+        if ((path === '/support/inquiries' || path === '/admin/support/inquiries') && method === 'GET') {
+            const status = url.searchParams.get('status')
+            const keyword = (url.searchParams.get('keyword') ?? '').toLowerCase()
+            const content = state.supportInquiries
+                .filter((item) => !status || item.status === status)
+                .filter((item) => !keyword
+                    || item.title.toLowerCase().includes(keyword)
+                    || item.requesterName.toLowerCase().includes(keyword)
+                    || (item.assignedAdminName ?? '').toLowerCase().includes(keyword))
+                .map(supportSummary)
+            return ok(route, pageResponse(content, 30))
+        }
+        if (path === '/support/inquiries' && method === 'POST') {
+            const body = request.postDataJSON() as { category: 'ORDER'; title: string; content: string }
+            const now = new Date().toISOString()
+            const inquiry: MockSupportInquiry = {
+                inquiryId: 32,
+                requesterType: state.currentRole === 'ROLE_SELLER' ? 'SELLER' : 'CUSTOMER',
+                requesterName: '테스트 회원',
+                category: body.category,
+                title: body.title,
+                status: 'WAITING',
+                assignedAdminName: null,
+                createdAt: now,
+                updatedAt: now,
+                closedAt: null,
+                messages: [{
+                    messageId: 2,
+                    authorId: 101,
+                    authorName: '테스트 회원',
+                    authorRole: state.currentRole,
+                    type: 'INQUIRY',
+                    content: body.content,
+                    attachments: [],
+                    clientMessageId: 'e2e-support-message-2',
+                    readAt: null,
+                    createdAt: now,
+                }],
+            }
+            state.supportInquiries.unshift(inquiry)
+            return ok(route, supportDetail(inquiry, false), 201)
+        }
+        const supportDetailMatch = path.match(/^\/(?:admin\/)?support\/inquiries\/(\d+)$/)
+        if (supportDetailMatch && method === 'GET') {
+            const inquiry = state.supportInquiries.find((item) => item.inquiryId === Number(supportDetailMatch[1]))
+            return inquiry
+                ? ok(route, supportDetail(inquiry, path.startsWith('/admin/')))
+                : error(route, 404, 'SUPPORT_INQUIRY_NOT_FOUND', '문의를 찾을 수 없습니다.')
+        }
+        const supportMessageMatch = path.match(/^\/(admin\/)?support\/inquiries\/(\d+)\/messages$/)
+        if (supportMessageMatch && method === 'POST') {
+            const inquiry = state.supportInquiries.find((item) => item.inquiryId === Number(supportMessageMatch[2]))
+            if (!inquiry) return error(route, 404, 'SUPPORT_INQUIRY_NOT_FOUND', '문의를 찾을 수 없습니다.')
+            const body = request.postDataJSON() as { content: string; clientMessageId: string }
+            const message = {
+                messageId: inquiry.messages.length + 1,
+                authorId: 101,
+                authorName: supportMessageMatch[1] ? '상담 관리자' : '테스트 회원',
+                authorRole: (supportMessageMatch[1] ? 'ROLE_ADMIN' : state.currentRole) as Role,
+                type: (supportMessageMatch[1] ? 'REPLY' : 'INQUIRY') as 'REPLY' | 'INQUIRY',
+                content: body.content,
+                attachments: [],
+                clientMessageId: body.clientMessageId,
+                readAt: null,
+                createdAt: new Date().toISOString(),
+            }
+            inquiry.messages.push(message)
+            inquiry.status = supportMessageMatch[1] ? 'ANSWERED' : 'WAITING'
+            inquiry.updatedAt = message.createdAt
+            return ok(route, message)
+        }
+        const supportCloseMatch = path.match(/^\/admin\/support\/inquiries\/(\d+)\/close$/)
+        if (supportCloseMatch && method === 'POST') {
+            const inquiry = state.supportInquiries.find((item) => item.inquiryId === Number(supportCloseMatch[1]))
+            if (!inquiry) return error(route, 404, 'SUPPORT_INQUIRY_NOT_FOUND', '문의를 찾을 수 없습니다.')
+            const body = request.postDataJSON() as { content: string }
+            const now = new Date().toISOString()
+            inquiry.messages.push({
+                messageId: inquiry.messages.length + 1,
+                authorId: 101,
+                authorName: '상담 관리자',
+                authorRole: 'ROLE_ADMIN',
+                type: 'RESOLUTION',
+                content: body.content,
+                attachments: [],
+                clientMessageId: null,
+                readAt: null,
+                createdAt: now,
+            })
+            inquiry.status = 'CLOSED'
+            inquiry.closedAt = now
+            inquiry.updatedAt = now
+            return ok(route, supportDetail(inquiry))
         }
         if (path === '/notifications/unread-count' && method === 'GET') {
             return ok(route, {
@@ -573,6 +731,32 @@ function pageResponse<T>(content: T[], size = 20) {
         totalPages: content.length === 0 ? 0 : 1,
         hasNext: false,
         hasPrevious: false,
+    }
+}
+
+function supportDetail(inquiry: MockSupportInquiry, includeResolution = true) {
+    return {
+        inquiry: supportSummary(inquiry),
+        relatedOrderId: null,
+        relatedProductId: null,
+        relatedSettlementId: null,
+        chatSession: null,
+        messages: inquiry.messages.filter((message) => includeResolution || message.type !== 'RESOLUTION'),
+    }
+}
+
+function supportSummary(inquiry: MockSupportInquiry) {
+    return {
+        inquiryId: inquiry.inquiryId,
+        requesterType: inquiry.requesterType,
+        requesterName: inquiry.requesterName,
+        category: inquiry.category,
+        title: inquiry.title,
+        status: inquiry.status,
+        assignedAdminName: inquiry.assignedAdminName,
+        createdAt: inquiry.createdAt,
+        updatedAt: inquiry.updatedAt,
+        closedAt: inquiry.closedAt,
     }
 }
 
