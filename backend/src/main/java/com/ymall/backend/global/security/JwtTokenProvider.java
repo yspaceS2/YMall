@@ -66,11 +66,12 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
+            Long authVersion = claims.get(AUTH_VERSION_CLAIM, Long.class);
             return MemberPrincipal.token(
                 Long.valueOf(claims.getSubject()),
                 claims.get("email", String.class),
                 MemberRole.valueOf(claims.get(ROLE_CLAIM, String.class)),
-                claims.get(AUTH_VERSION_CLAIM, Long.class)
+                authVersion == null ? 0L : authVersion
             );
         } catch (ExpiredJwtException exception) {
             throw new BusinessException(ErrorCode.EXPIRED_TOKEN);

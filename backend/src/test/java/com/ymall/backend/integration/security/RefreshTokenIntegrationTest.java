@@ -5,7 +5,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
@@ -125,6 +129,21 @@ class RefreshTokenIntegrationTest {
     }
 
     @Test
+    void rotatesLegacyRefreshTokenWithoutAuthVersionAsVersionZero() throws Exception {
+        String refreshToken = "legacy-refresh-token";
+        redisTemplate.opsForValue().set(
+            refreshTokenKey(refreshToken),
+            member.getId().toString(),
+            Duration.ofMinutes(30)
+        );
+
+        mockMvc.perform(post("/api/members/tokens/refresh")
+                .cookie(new Cookie(RefreshTokenCookieManager.COOKIE_NAME, refreshToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.accessToken").isNotEmpty());
+    }
+
+    @Test
     void refreshTokenIssuedBeforeRoleChangeCannotBeRotated() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/api/members/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -154,6 +173,16 @@ class RefreshTokenIntegrationTest {
         Set<String> keys = redisTemplate.keys("auth:refresh:*");
         assertThat(keys).hasSize(1);
         return redisTemplate.getExpire(keys.iterator().next());
+    }
+
+    private String refreshTokenKey(String refreshToken) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                .digest(refreshToken.getBytes(StandardCharsets.UTF_8));
+            return "auth:refresh:" + HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
     }
 
     private void deleteRefreshTokens() {

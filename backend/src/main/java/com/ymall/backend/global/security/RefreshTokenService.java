@@ -61,11 +61,13 @@ public class RefreshTokenService {
         Member member;
         try {
             String[] valueParts = storedValue.split(VALUE_SEPARATOR, -1);
-            if (valueParts.length != 2) {
+            if (valueParts.length < 1 || valueParts.length > 2) {
                 throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
             }
             Long parsedMemberId = Long.valueOf(valueParts[0]);
-            long issuedAuthVersion = Long.parseLong(valueParts[1]);
+            long issuedAuthVersion = valueParts.length == 1
+                ? 0L
+                : Long.parseLong(valueParts[1]);
             redisTemplate.opsForSet().remove(memberKey(parsedMemberId), tokenKey);
             member = memberRepository.findById(parsedMemberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
