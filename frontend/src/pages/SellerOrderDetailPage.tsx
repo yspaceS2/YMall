@@ -345,4 +345,3 @@ export function SellerOrderDetailPage() {
         </ManagementPage>
     )
 }
-
