@@ -202,6 +202,60 @@ class SupportApiIntegrationTest {
     }
 
     @Test
+    void adminLiveOfferCanBeRejectedOrAcceptedOnlyByInquiryOwner() throws Exception {
+        mockMvc.perform(post("/api/support/inquiries")
+                .header(HttpHeaders.AUTHORIZATION, bearer(customerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "category": "SERVICE",
+                      "title": "실시간 상담을 제안해 주세요",
+                      "content": "상담 가능 여부를 확인하고 싶습니다."
+                    }
+                    """))
+            .andExpect(status().isCreated());
+
+        SupportInquiry inquiry = inquiryRepository.findAll().get(0);
+
+        mockMvc.perform(post(
+                "/api/admin/support/inquiries/{inquiryId}/live-offers",
+                inquiry.getId()
+            ).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.inquiry.status").value("LIVE_OFFERED"))
+            .andExpect(jsonPath("$.data.chatSession.status").value("WAITING"))
+            .andExpect(jsonPath("$.data.chatSession.initiatedBy").value("ADMIN_OFFER"));
+
+        mockMvc.perform(post(
+                "/api/support/inquiries/{inquiryId}/live-requests/accept",
+                inquiry.getId()
+            ).header(HttpHeaders.AUTHORIZATION, bearer(otherCustomerToken)))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(post(
+                "/api/support/inquiries/{inquiryId}/live-requests/reject",
+                inquiry.getId()
+            ).header(HttpHeaders.AUTHORIZATION, bearer(customerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.inquiry.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.data.chatSession.status").value("REJECTED"));
+
+        mockMvc.perform(post(
+                "/api/admin/support/inquiries/{inquiryId}/live-offers",
+                inquiry.getId()
+            ).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(post(
+                "/api/support/inquiries/{inquiryId}/live-requests/accept",
+                inquiry.getId()
+            ).header(HttpHeaders.AUTHORIZATION, bearer(customerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.inquiry.status").value("LIVE_ACTIVE"))
+            .andExpect(jsonPath("$.data.chatSession.status").value("ACTIVE"));
+    }
+
+    @Test
     void attachmentIsStoredAndOnlyInquiryParticipantsCanDownloadIt() throws Exception {
         mockMvc.perform(post("/api/support/inquiries")
                 .header(HttpHeaders.AUTHORIZATION, bearer(customerToken))
