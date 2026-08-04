@@ -171,6 +171,28 @@ class AdminRoleApiIntegrationTest {
     }
 
     @Test
+    void managerCanReadOperationsButCannotPerformSupervisorDecisions() throws Exception {
+        Member manager = adminWithGrade("manager-permissions@example.test", AdminGrade.MANAGER);
+        String authorization = bearer(token(manager));
+
+        mockMvc.perform(get("/api/admin/members")
+                .header(HttpHeaders.AUTHORIZATION, authorization))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/admin/seller-applications/{applicationId}", 1L)
+                .header(HttpHeaders.AUTHORIZATION, authorization)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"status":"APPROVED"}
+                    """))
+            .andExpect(status().isForbidden());
+
+        mockMvc.perform(patch("/api/admin/settlement-requests/{requestId}/approval", 1L)
+                .header(HttpHeaders.AUTHORIZATION, authorization))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
     void cannotChangeSelfOrPromoteSeller() throws Exception {
         changeRole(superAdmin, superAdmin, MemberRole.ROLE_USER, null)
             .andExpect(status().isForbidden())

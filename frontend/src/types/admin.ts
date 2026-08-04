@@ -101,10 +101,34 @@ export interface AdminMember {
 
 export type AdminGrade = 'MANAGER' | 'SUPERVISOR' | 'SUPER_ADMIN'
 
+export type AdminPermission =
+    | 'DASHBOARD_READ'
+    | 'MEMBER_READ'
+    | 'MEMBER_RESTRICT_LIMITED'
+    | 'MEMBER_RESTRICT_ALL'
+    | 'SELLER_READ'
+    | 'SELLER_APPLICATION_REVIEW'
+    | 'SELLER_APPLICATION_DECIDE'
+    | 'SUPPORT_REPLY'
+    | 'PRODUCT_REVIEW'
+    | 'REFUND_STANDARD'
+    | 'REFUND_ALL'
+    | 'SETTLEMENT_REVIEW'
+    | 'SETTLEMENT_APPROVE'
+    | 'TASK_SELF'
+    | 'TASK_ASSIGN'
+    | 'CATEGORY_READ'
+    | 'CATEGORY_MANAGE_PARTIAL'
+    | 'CATEGORY_MANAGE_ALL'
+    | 'ADMIN_MANAGER_MANAGE'
+    | 'ADMIN_ALL_MANAGE'
+    | 'AUDIT_OWN_READ'
+    | 'AUDIT_ALL_READ'
+
 export interface AdminAuthorization {
     memberId: number
     adminGrade: AdminGrade
-    permissions: string[]
+    permissions: AdminPermission[]
 }
 
 export interface AdminRoleUpdateRequest {
@@ -117,7 +141,7 @@ export interface AdminRoleUpdateResponse {
     memberId: number
     role: MemberRole
     adminGrade: AdminGrade | null
-    permissions: string[]
+    permissions: AdminPermission[]
 }
 
 export interface AdminSeller {

@@ -13,10 +13,10 @@ import org.springframework.stereotype.Component;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.admin.entity.AdminPermission;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.global.security.MemberPrincipal;
 import com.ymall.backend.global.security.MemberPrincipalResolver;
-import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.support.repository.SupportInquiryRepository;
 
 @Component
@@ -73,7 +73,7 @@ public class RealtimeInboundChannelInterceptor implements ChannelInterceptor {
         if (destination.startsWith(INQUIRY_TOPIC)) {
             Long inquiryId = parseId(destination, INQUIRY_TOPIC);
             SupportInquiryRepository inquiryRepository = inquiryRepositoryProvider.getObject();
-            boolean allowed = principal.role() == MemberRole.ROLE_ADMIN
+            boolean allowed = principal.permissions().contains(AdminPermission.SUPPORT_REPLY)
                 ? inquiryRepository.existsById(inquiryId)
                 : inquiryRepository.findByIdAndMemberId(inquiryId, principal.memberId()).isPresent();
             if (!allowed) {
@@ -83,13 +83,14 @@ public class RealtimeInboundChannelInterceptor implements ChannelInterceptor {
         }
         if (destination.startsWith(MEMBER_TOPIC)) {
             Long memberId = parseId(destination, MEMBER_TOPIC);
-            if (!memberId.equals(principal.memberId()) && principal.role() != MemberRole.ROLE_ADMIN) {
+            if (!memberId.equals(principal.memberId())
+                && !principal.permissions().contains(AdminPermission.ADMIN_ALL_MANAGE)) {
                 throw new BusinessException(ErrorCode.ACCESS_DENIED);
             }
             return;
         }
         if ("/topic/realtime/admin".equals(destination)
-            && principal.role() == MemberRole.ROLE_ADMIN) {
+            && principal.permissions().contains(AdminPermission.DASHBOARD_READ)) {
             return;
         }
         throw new BusinessException(ErrorCode.ACCESS_DENIED);

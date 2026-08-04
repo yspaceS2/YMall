@@ -14,8 +14,10 @@ import {
     RankedBars,
     SalesTrendChart,
 } from './DashboardPrimitives'
+import { useAdminAuthorization } from '../../auth/useAdminAuthorization'
 
 export function AdminDashboard() {
+    const { hasPermission } = useAdminAuthorization()
     const [period, setPeriod] = useState<DashboardPeriodCode>('30d')
     const [statistics, setStatistics] = useState<AdminDashboardStatistics | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -62,6 +64,27 @@ export function AdminDashboard() {
     }
 
     const pendingTotal = Object.values(statistics.pendingTasks).reduce((sum, value) => sum + value, 0)
+    const pendingQueues = [
+        hasPermission('PRODUCT_REVIEW')
+            ? { href: '/admin/products', label: '상품 승인', value: statistics.pendingTasks.products }
+            : null,
+        hasPermission('SELLER_APPLICATION_DECIDE')
+            ? { href: '/admin/seller-applications', label: '판매자 승인', value: statistics.pendingTasks.sellers }
+            : null,
+        hasPermission('REFUND_STANDARD')
+            ? { href: '/admin/orders?workType=PENDING_REFUND', label: '환불 처리', value: statistics.pendingTasks.refunds }
+            : null,
+        hasPermission('REFUND_STANDARD')
+            ? { href: '/admin/orders?workType=PENDING_RETURN', label: '반품 처리', value: statistics.pendingTasks.returns }
+            : null,
+        hasPermission('SETTLEMENT_APPROVE')
+            ? { href: '/admin/settlement?workType=ACTION_REQUIRED', label: '정산 처리', value: statistics.pendingTasks.settlements }
+            : null,
+        hasPermission('SUPPORT_REPLY')
+            ? { href: '/admin/support?status=WAITING', label: '고객센터 문의', value: statistics.pendingTasks.support }
+            : null,
+    ].filter((queue): queue is { href: string; label: string; value: number } =>
+        queue !== null)
 
     function changePeriod(value: DashboardPeriodCode) {
         setIsLoading(true)
@@ -122,13 +145,10 @@ export function AdminDashboard() {
                     />
                 </DashboardPanel>
                 <DashboardPanel className="min-[1200px]:col-span-4 min-[1200px]:h-full" eyebrow="OPERATIONS QUEUE" title="처리 대기 업무">
-                    <div className="grid h-full grid-rows-3 gap-px bg-line min-[501px]:grid-cols-2">
-                        <PendingQueue href="/admin/products" label="상품 승인" value={statistics.pendingTasks.products} />
-                        <PendingQueue href="/admin/seller-applications" label="판매자 승인" value={statistics.pendingTasks.sellers} />
-                        <PendingQueue href="/admin/orders?workType=PENDING_REFUND" label="환불 처리" value={statistics.pendingTasks.refunds} />
-                        <PendingQueue href="/admin/orders?workType=PENDING_RETURN" label="반품 처리" value={statistics.pendingTasks.returns} />
-                        <PendingQueue href="/admin/settlement?workType=ACTION_REQUIRED" label="정산 처리" value={statistics.pendingTasks.settlements} />
-                        <PendingQueue href="/admin/support?status=WAITING" label="고객센터 문의" value={statistics.pendingTasks.support} />
+                    <div className="grid h-full auto-rows-fr gap-px bg-line min-[501px]:grid-cols-2">
+                        {pendingQueues.map((queue) => (
+                            <PendingQueue key={queue.href} {...queue} />
+                        ))}
                     </div>
                 </DashboardPanel>
             </div>

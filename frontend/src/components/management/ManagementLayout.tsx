@@ -39,6 +39,8 @@ import {
 } from '../../api/seller'
 import ymallSymbolLight from '../../assets/brand/ymall-symbol-light.svg'
 import { useAuth } from '../../auth/useAuth'
+import { useOptionalAdminAuthorization } from '../../auth/useAdminAuthorization'
+import type { AdminPermission } from '../../types/admin'
 import { ThemeSelector } from '../ThemeSelector'
 import { getPendingSupportCount } from '../../api/support'
 import { REALTIME_EVENT } from '../../realtime/RealtimeProvider'
@@ -49,6 +51,7 @@ interface NavigationItem {
     label: string
     href: string
     icon: LucideIcon
+    permission?: AdminPermission
 }
 
 const memberNavigation: NavigationItem[] = [
@@ -77,20 +80,21 @@ const sellerNavigation: NavigationItem[] = [
 ]
 
 const adminNavigation: NavigationItem[] = [
-    { label: '대시보드', href: '/admin', icon: LayoutDashboard },
-    { label: '회원 관리', href: '/admin/members', icon: Users },
-    { label: '판매자 관리', href: '/admin/sellers', icon: Store },
+    { label: '대시보드', href: '/admin', icon: LayoutDashboard, permission: 'DASHBOARD_READ' },
+    { label: '회원 관리', href: '/admin/members', icon: Users, permission: 'MEMBER_READ' },
+    { label: '판매자 관리', href: '/admin/sellers', icon: Store, permission: 'SELLER_READ' },
     {
         label: '판매자 신청 관리',
         href: '/admin/seller-applications',
         icon: ClipboardCheck,
+        permission: 'SELLER_APPLICATION_REVIEW',
     },
-    { label: '상품 승인 관리', href: '/admin/products', icon: PackageSearch },
-    { label: '카테고리 관리', href: '/admin/categories', icon: Tags },
-    { label: '주문 관리', href: '/admin/orders', icon: ReceiptText },
-    { label: '고객센터 관리', href: '/admin/support', icon: Headphones },
+    { label: '상품 승인 관리', href: '/admin/products', icon: PackageSearch, permission: 'PRODUCT_REVIEW' },
+    { label: '카테고리 관리', href: '/admin/categories', icon: Tags, permission: 'CATEGORY_READ' },
+    { label: '주문 관리', href: '/admin/orders', icon: ReceiptText, permission: 'REFUND_STANDARD' },
+    { label: '고객센터 관리', href: '/admin/support', icon: Headphones, permission: 'SUPPORT_REPLY' },
     { label: '알림', href: '/admin/notifications', icon: Bell },
-    { label: '정산 관리', href: '/admin/settlement', icon: WalletCards },
+    { label: '정산 관리', href: '/admin/settlement', icon: WalletCards, permission: 'SETTLEMENT_REVIEW' },
 ]
 
 export function ManagementLayout({
@@ -101,6 +105,7 @@ export function ManagementLayout({
     children: ReactNode
 }) {
     const { logout, role: authenticatedRole } = useAuth()
+    const adminAuthorization = useOptionalAdminAuthorization()
     const [isNavigationOpen, setIsNavigationOpen] = useState(false)
     const [pendingQuestionCount, setPendingQuestionCount] = useState(0)
     const [pendingOrderCount, setPendingOrderCount] = useState(0)
@@ -116,7 +121,10 @@ export function ManagementLayout({
             : sellerNavigation
     const navigation = isMember && authenticatedRole !== 'ROLE_USER'
         ? roleNavigation.filter((item) => item.href !== '/mypage/seller-application')
-        : roleNavigation
+        : isAdmin && adminAuthorization
+            ? roleNavigation.filter((item) => !item.permission
+                || adminAuthorization.hasPermission(item.permission))
+            : roleNavigation
     const roleRootPath = isMember ? '/mypage' : `/${role}`
     const notificationPath = `${roleRootPath}/notifications`
     const centerName = isMember ? '마이페이지' : isAdmin ? '관리자 센터' : '판매자 센터'
@@ -149,7 +157,8 @@ export function ManagementLayout({
     }, [])
 
     useEffect(() => {
-        if (role !== 'admin') return
+        if (role !== 'admin'
+            || !adminAuthorization?.hasPermission('SUPPORT_REPLY')) return
         let active = true
         let controller: AbortController | null = null
         const loadPendingSupportCount = () => {
@@ -175,7 +184,7 @@ export function ManagementLayout({
             window.removeEventListener(REALTIME_EVENT, loadPendingSupportCount)
             window.removeEventListener('focus', loadPendingSupportCount)
         }
-    }, [role])
+    }, [adminAuthorization, role])
 
     useEffect(() => {
         if (role !== 'seller') return

@@ -12,6 +12,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.admin.entity.AdminPermission;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.security.MemberPrincipal;
@@ -636,7 +637,10 @@ public class SupportService {
         String title,
         String message
     ) {
-        memberRepository.findAllByRole(MemberRole.ROLE_ADMIN).forEach(admin ->
+        memberRepository.findAllByRole(MemberRole.ROLE_ADMIN).stream()
+            .filter(admin -> admin.getAdminGrade() != null
+                && admin.getAdminGrade().hasPermission(AdminPermission.SUPPORT_REPLY))
+            .forEach(admin ->
             notificationService.create(new NotificationEvent(
                 UUID.randomUUID(),
                 admin.getId(),
