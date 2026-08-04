@@ -120,7 +120,7 @@ export function ProductImageUploadField({
     }
 
     return (
-        <div className="grid gap-3 text-xs font-bold min-[701px]:col-span-2">
+        <div className="grid gap-3 border-b border-line px-4 py-5 text-xs font-bold min-[701px]:col-span-2">
             <span>{label}</span>
             <div className="grid gap-4">
                 <div>

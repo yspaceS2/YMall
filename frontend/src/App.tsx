@@ -130,7 +130,7 @@ function SellerPortalRoutes() {
             <Route path="products" element={<SellerProductListPage />} />
             <Route
                 path="products/new"
-                element={<SellerManagementPage section="products" productFormOnly />}
+                element={<SellerManagementPage section="products" />}
             />
             <Route path="products/:productId" element={<SellerProductEditorRoute />} />
             <Route path="orders" element={<SellerOrderListPage />} />
@@ -159,7 +159,7 @@ function AdminPortalRoutes() {
     return (
         <Routes>
             <Route index element={withAdminPermission(
-                <AdminManagementPage section="dashboard" />,
+                <AdminManagementPage />,
                 'DASHBOARD_READ',
             )} />
             <Route path="members" element={withAdminPermission(
@@ -282,7 +282,6 @@ function SellerProductEditorRoute() {
     return (
         <SellerManagementPage
             section="products"
-            productFormOnly
             initialProductId={parsedProductId}
         />
     )

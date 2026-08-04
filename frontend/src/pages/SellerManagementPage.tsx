@@ -1,14 +1,10 @@
-import { LoaderCircle, PackageCheck, Pencil, Store, Trash2, Truck } from 'lucide-react'
+import { LoaderCircle, PackageCheck, Store } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { uploadProductImage } from '../api/files'
 import { getCategories } from '../api/products'
-import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
-import { RefundDialog } from '../components/RefundDialog'
 import { ProductImageUploadField } from '../components/seller/ProductImageUploadField'
-import { SettlementManagementPanel } from '../components/seller/SettlementManagementPanel'
 import { SellerDashboard } from '../components/dashboard/SellerDashboard'
 import {
     ProductCategorySelector,
@@ -16,28 +12,14 @@ import {
 import {
     createSellerProduct,
     createSellerProfile,
-    deleteSellerProduct,
-    getSellerOrders,
     getSellerProduct,
-    getSellerProducts,
     getSellerProfile,
-    getSellerRefunds,
-    requestSellerRefund,
-    updateSellerOrderStatus,
     updateSellerProduct,
     updateSellerProfile,
 } from '../api/seller'
-import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
-import type { Category, ProductSummary } from '../types/product'
-import type {
-    FulfillmentStatus,
-    SellerOrder,
-    SellerProductRequest,
-    SellerProfile,
-} from '../types/seller'
-import { formatKoreanDateTime } from '../utils/dateTime'
+import type { Category } from '../types/product'
+import type { SellerProductRequest, SellerProfile } from '../types/seller'
 import { findFirstLeafCategoryId } from '../utils/productCategory'
-import { formatPrice } from '../utils/product'
 import { useToast } from '../toast/useToast'
 
 const emptyProduct: SellerProductRequest = {
@@ -58,48 +40,19 @@ const emptyProduct: SellerProductRequest = {
     detailImages: [],
 }
 
-const nextStatus: Partial<Record<FulfillmentStatus, FulfillmentStatus>> = {
-    PENDING: 'PREPARING',
-    PREPARING: 'SHIPPED',
-    SHIPPED: 'DELIVERED',
-}
-
-const statusLabel: Record<FulfillmentStatus, string> = {
-    PENDING: '처리 대기',
-    PREPARING: '상품 준비 중',
-    SHIPPED: '배송 중',
-    DELIVERED: '배송 완료',
-}
-
-type SellerSection = 'dashboard' | 'profile' | 'settlement' | 'products' | 'orders'
-
-const sellerSections: SellerSection[] = [
-    'dashboard',
-    'profile',
-    'settlement',
-    'products',
-    'orders',
-]
+type SellerSection = 'dashboard' | 'profile' | 'products'
 
 export function SellerManagementPage({
-    section,
-    productFormOnly = false,
+    section = 'dashboard',
     initialProductId,
 }: {
     section?: SellerSection
-    productFormOnly?: boolean
     initialProductId?: number
 } = {}) {
     const { showToast } = useToast()
-    const [searchParams] = useSearchParams()
-    const requestedSection = searchParams.get('section')
-    const activeSection = section ?? (sellerSections.includes(requestedSection as SellerSection)
-        ? requestedSection as SellerSection
-        : 'dashboard')
+    const activeSection = section
     const [profile, setProfile] = useState<SellerProfile | null>(null)
     const [profileForm, setProfileForm] = useState({ storeName: '', businessNumber: '', description: '' })
-    const [products, setProducts] = useState<ProductSummary[]>([])
-    const [orders, setOrders] = useState<SellerOrder[]>([])
     const [categories, setCategories] = useState<Category[]>([])
     const [productForm, setProductForm] = useState<SellerProductRequest>(emptyProduct)
     const [thumbnailFiles, setThumbnailFiles] = useState<File[]>([])
@@ -109,19 +62,7 @@ export function SellerManagementPage({
     const [editingProductId, setEditingProductId] = useState<number | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
-    const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false)
-    const [isLoadingMoreOrders, setIsLoadingMoreOrders] = useState(false)
-    const [nextProductPage, setNextProductPage] = useState(2)
-    const [nextOrderPage, setNextOrderPage] = useState(2)
-    const [hasMoreProducts, setHasMoreProducts] = useState(false)
-    const [hasMoreOrders, setHasMoreOrders] = useState(false)
     const [errorMessage, setErrorMessage] = useState('')
-    const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null)
-    const [refundOrder, setRefundOrder] = useState<SellerOrder | null>(null)
-    const [refunds, setRefunds] = useState<PaymentRefund[]>([])
-    const [isLoadingRefunds, setIsLoadingRefunds] = useState(false)
-    const [isRefunding, setIsRefunding] = useState(false)
-    const [refundError, setRefundError] = useState('')
     const resetPendingImages = useCallback(() => {
         setThumbnailFiles([])
         setProductImageFiles([])
@@ -131,18 +72,11 @@ export function SellerManagementPage({
 
     useEffect(() => {
         const controller = new AbortController()
-        Promise.all([
-            getSellerProfile(controller.signal).catch((error: unknown) => {
+        async function loadPage() {
+            const profileResponse = await getSellerProfile(controller.signal).catch((error: unknown) => {
                 if (error instanceof ApiError && error.code === 'SELLER_PROFILE_NOT_FOUND') return null
                 throw error
-            }),
-            getCategories(controller.signal),
-        ]).then(([profileResponse, categoryResponse]) => {
-            setCategories(categoryResponse)
-            setProductForm((current) => ({
-                ...current,
-                categoryId: current.categoryId || findFirstLeafCategoryId(categoryResponse),
-            }))
+            })
             if (!profileResponse) return
             setProfile(profileResponse)
             setProfileForm({
@@ -150,28 +84,24 @@ export function SellerManagementPage({
                 businessNumber: profileResponse.businessNumber,
                 description: profileResponse.description ?? '',
             })
-            return loadManagementData(controller.signal)
-        }).catch((error: unknown) => {
+
+            if (activeSection !== 'products') return
+            const categoryResponse = await getCategories(controller.signal)
+            setCategories(categoryResponse)
+            setProductForm((current) => ({
+                ...current,
+                categoryId: current.categoryId || findFirstLeafCategoryId(categoryResponse),
+            }))
+        }
+
+        void loadPage().catch((error: unknown) => {
             if (error instanceof Error && error.name === 'AbortError') return
             setErrorMessage(error instanceof ApiError ? error.message : '판매자 정보를 불러오지 못했습니다.')
         }).finally(() => {
             if (!controller.signal.aborted) setIsLoading(false)
         })
         return () => controller.abort()
-    }, [])
-
-    async function loadManagementData(signal?: AbortSignal) {
-        const [productResponse, orderResponse] = await Promise.all([
-            getSellerProducts({ signal }),
-            getSellerOrders({ signal }),
-        ])
-        setProducts(productResponse.content)
-        setOrders(orderResponse.content)
-        setHasMoreProducts(productResponse.hasNext)
-        setHasMoreOrders(orderResponse.hasNext)
-        setNextProductPage(2)
-        setNextOrderPage(2)
-    }
+    }, [activeSection])
 
     async function saveProfile(event: FormEvent) {
         event.preventDefault()
@@ -189,7 +119,6 @@ export function SellerManagementPage({
                 profile ? '판매자 정보가 수정되었습니다.' : '판매자 등록이 완료되었습니다.',
                 'success',
             )
-            if (!profile) await loadManagementData()
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '판매자 정보를 저장하지 못했습니다.')
         } finally {
@@ -250,10 +179,6 @@ export function SellerManagementPage({
                 categoryId: findFirstLeafCategoryId(categories),
             })
             resetPendingImages()
-            const response = await getSellerProducts()
-            setProducts(response.content)
-            setHasMoreProducts(response.hasNext)
-            setNextProductPage(2)
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '상품을 저장하지 못했습니다.')
         } finally {
@@ -305,114 +230,6 @@ export function SellerManagementPage({
         return () => window.clearTimeout(timeoutId)
     }, [initialProductId, startEditing])
 
-    async function removeProduct(productId: number) {
-        setIsSaving(true)
-        setErrorMessage('')
-        try {
-            await deleteSellerProduct(productId)
-            const response = await getSellerProducts()
-            setProducts(response.content)
-            setHasMoreProducts(response.hasNext)
-            setNextProductPage(2)
-            setProductToDelete(null)
-            showToast('상품이 삭제되었습니다.', 'success')
-        } catch (error) {
-            setErrorMessage(error instanceof ApiError ? error.message : '상품을 삭제하지 못했습니다.')
-        } finally {
-            setIsSaving(false)
-        }
-    }
-
-    async function advanceOrder(order: SellerOrder) {
-        const currentStatus = order.items[0]?.fulfillmentStatus
-        const target = currentStatus ? nextStatus[currentStatus] : undefined
-        if (!target) return
-        try {
-            const updated = await updateSellerOrderStatus(order.orderId, target)
-            setOrders((current) => current.map((item) => item.orderId === updated.orderId ? updated : item))
-            showToast(`주문 #${order.orderId}의 배송 상태가 변경되었습니다.`, 'success')
-        } catch (error) {
-            setErrorMessage(error instanceof ApiError ? error.message : '배송 상태를 변경하지 못했습니다.')
-        }
-    }
-
-    async function openRefundDialog(order: SellerOrder) {
-        setRefundOrder(order)
-        setRefunds([])
-        setRefundError('')
-        setIsLoadingRefunds(true)
-        try {
-            setRefunds(await getSellerRefunds(order.orderId))
-        } catch (error) {
-            setRefundError(error instanceof ApiError
-                ? error.message
-                : '환불 내역을 불러오지 못했습니다.')
-        } finally {
-            setIsLoadingRefunds(false)
-        }
-    }
-
-    async function submitRefund(request: PaymentRefundRequest) {
-        if (!refundOrder) return false
-        setRefundError('')
-        setIsRefunding(true)
-        try {
-            await requestSellerRefund(refundOrder.orderId, request)
-            const [refundHistory, orderPage] = await Promise.all([
-                getSellerRefunds(refundOrder.orderId),
-                getSellerOrders(),
-            ])
-            setRefunds(refundHistory)
-            setOrders(orderPage.content)
-            setRefundOrder(
-                orderPage.content.find((order) =>
-                    order.orderId === refundOrder.orderId
-                ) ?? refundOrder,
-            )
-            showToast('환불 요청이 처리되었습니다.', 'success')
-            return true
-        } catch (error) {
-            setRefundError(error instanceof ApiError
-                ? error.message
-                : '환불 요청을 처리하지 못했습니다.')
-            return false
-        } finally {
-            setIsRefunding(false)
-        }
-    }
-
-    async function loadMoreProducts() {
-        if (!hasMoreProducts || isLoadingMoreProducts) return
-        setIsLoadingMoreProducts(true)
-        setErrorMessage('')
-        try {
-            const response = await getSellerProducts({ page: nextProductPage })
-            setProducts((current) => [...current, ...response.content])
-            setHasMoreProducts(response.hasNext)
-            setNextProductPage((current) => current + 1)
-        } catch (error) {
-            setErrorMessage(error instanceof ApiError ? error.message : '상품을 추가로 불러오지 못했습니다.')
-        } finally {
-            setIsLoadingMoreProducts(false)
-        }
-    }
-
-    async function loadMoreOrders() {
-        if (!hasMoreOrders || isLoadingMoreOrders) return
-        setIsLoadingMoreOrders(true)
-        setErrorMessage('')
-        try {
-            const response = await getSellerOrders({ page: nextOrderPage })
-            setOrders((current) => [...current, ...response.content])
-            setHasMoreOrders(response.hasNext)
-            setNextOrderPage((current) => current + 1)
-        } catch (error) {
-            setErrorMessage(error instanceof ApiError ? error.message : '주문을 추가로 불러오지 못했습니다.')
-        } finally {
-            setIsLoadingMoreOrders(false)
-        }
-    }
-
     if (isLoading) {
         return <div className="grid min-h-100 place-content-center"><LoaderCircle className="size-6 animate-spin" /></div>
     }
@@ -448,20 +265,16 @@ export function SellerManagementPage({
                 </Panel>
                 )}
 
-                {!profile && activeSection !== 'dashboard' && activeSection !== 'profile' && (
+                {!profile && activeSection === 'products' && (
                     <FeedbackMessage tone="error">
                         판매자 정보를 먼저 등록해야 이 관리 기능을 사용할 수 있습니다.
                     </FeedbackMessage>
                 )}
 
-                {profile && activeSection === 'settlement' && (
-                    <SettlementManagementPanel />
-                )}
-
                 {profile && activeSection === 'products' && (
                     <Panel icon={<PackageCheck />} title="상품 관리">
-                        <form className="mb-8 grid overflow-hidden border-y-2 border-ink" onSubmit={saveProduct}>
-                            <div className={productFormRowClassName}>
+                        <form className="mb-8 grid grid-cols-1 overflow-hidden border-y-2 border-ink min-[701px]:grid-cols-2" onSubmit={saveProduct}>
+                            <div className={`${productFormRowClassName} min-[701px]:col-span-2`}>
                                 <span>카테고리</span>
                                 <ProductCategorySelector
                                     categories={categories}
@@ -474,7 +287,7 @@ export function SellerManagementPage({
                             </div>
                             <Field label="상품명" value={productForm.name} onChange={(value) => setProductForm({ ...productForm, name: value })} required row />
                             <Field label="브랜드" value={productForm.brand} onChange={(value) => setProductForm({ ...productForm, brand: value })} row />
-                            <div className="border-b border-line bg-surface px-4 py-3 text-xs text-muted min-[701px]:pl-[180px]">
+                            <div className="border-b border-line bg-surface px-4 py-3 text-xs text-muted min-[701px]:col-span-2 min-[701px]:pl-[180px]">
                                 선택한 이미지는 상품을 저장할 때 함께 업로드됩니다. 업로드가 끝날 때까지
                                 창을 닫지 마세요.
                             </div>
@@ -520,29 +333,29 @@ export function SellerManagementPage({
                                 })}
                                 min={0}
                                 max={100}
+                                fullWidth
+                                compact
                             />
-                            {productForm.discountPercentage > 0 && (
-                                <>
-                                    <DateField
-                                        label="할인 시작일"
-                                        value={productForm.discountStartDate ?? ''}
-                                        onChange={(value) => setProductForm({
-                                            ...productForm,
-                                            discountStartDate: value || null,
-                                        })}
-                                        max={productForm.discountEndDate ?? undefined}
-                                    />
-                                    <DateField
-                                        label="할인 종료일"
-                                        value={productForm.discountEndDate ?? ''}
-                                        onChange={(value) => setProductForm({
-                                            ...productForm,
-                                            discountEndDate: value || null,
-                                        })}
-                                        min={getDiscountEndMinimum(productForm.discountStartDate)}
-                                    />
-                                </>
-                            )}
+                            <DateField
+                                label="할인 시작일"
+                                value={productForm.discountStartDate ?? ''}
+                                onChange={(value) => setProductForm({
+                                    ...productForm,
+                                    discountStartDate: value || null,
+                                })}
+                                max={productForm.discountEndDate ?? undefined}
+                                disabled={productForm.discountPercentage <= 0}
+                            />
+                            <DateField
+                                label="할인 종료일"
+                                value={productForm.discountEndDate ?? ''}
+                                onChange={(value) => setProductForm({
+                                    ...productForm,
+                                    discountEndDate: value || null,
+                                })}
+                                min={getDiscountEndMinimum(productForm.discountStartDate)}
+                                disabled={productForm.discountPercentage <= 0}
+                            />
                             <label className={productFormRowClassName}>
                                 <span>배송 방식</span>
                                 <span className="flex min-h-11 items-center gap-3 border border-line bg-surface px-3 font-normal text-ink">
@@ -558,14 +371,6 @@ export function SellerManagementPage({
                                     무료배송
                                 </span>
                             </label>
-                            {!productForm.freeShipping && (
-                                <NumberField
-                                    label="배송비"
-                                    value={productForm.shippingFee}
-                                    onChange={(value) => setProductForm({ ...productForm, shippingFee: value })}
-                                    min={1}
-                                />
-                            )}
                             <NumberField
                                 label="예상 배송기간(일)"
                                 value={productForm.estimatedDeliveryDays}
@@ -573,123 +378,25 @@ export function SellerManagementPage({
                                 min={1}
                                 max={30}
                             />
-                            <label className={productFormRowClassName}><span>설명</span><textarea className="min-h-28 resize-y border border-line bg-surface p-3 font-normal text-ink" value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} /></label>
-                            <div className="flex flex-wrap gap-2 border-b border-line px-4 py-4 last:border-b-0 min-[701px]:pl-[180px]">
+                            {!productForm.freeShipping && (
+                                <NumberField
+                                    label="배송비"
+                                    value={productForm.shippingFee}
+                                    onChange={(value) => setProductForm({ ...productForm, shippingFee: value })}
+                                    min={1}
+                                    fullWidth
+                                />
+                            )}
+                            <label className={`${productFormRowClassName} min-[701px]:col-span-2`}><span>설명</span><textarea className="min-h-28 resize-y border border-line bg-surface p-3 font-normal text-ink" value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} /></label>
+                            <div className="flex flex-wrap gap-2 border-b border-line px-4 py-4 last:border-b-0 min-[701px]:col-span-2 min-[701px]:pl-[180px]">
                                 <button className="h-11 bg-ink px-6 text-xs font-bold text-white disabled:opacity-50" disabled={isSaving} type="submit">{editingProductId ? '상품 수정' : '상품 등록'}</button>
                                 {editingProductId && <button className="h-11 border border-line px-5 text-xs font-bold" type="button" onClick={() => { setEditingProductId(null); setProductForm({ ...emptyProduct, categoryId: findFirstLeafCategoryId(categories) }); resetPendingImages() }}>취소</button>}
                             </div>
                         </form>
-                        {!productFormOnly && (
-                            <>
-                                <div className="grid gap-3">{products.length === 0 ? <p className="text-sm text-muted">등록한 상품이 없습니다.</p> : products.map((product) => <div className="flex flex-wrap items-center justify-between gap-3 border border-line p-4" key={product.productId}><div><strong>{product.name}</strong><p className="mt-1 text-xs text-muted">{formatPrice(product.price)} · 재고 {product.stock} · {product.status}</p></div><div className="flex gap-2"><button className="p-2" type="button" aria-label="상품 수정" onClick={() => startEditing(product.productId)}><Pencil className="size-4" /></button><button className="p-2 text-danger" type="button" aria-label="상품 삭제" onClick={() => setProductToDelete(product)}><Trash2 className="size-4" /></button></div></div>)}</div>
-                                {hasMoreProducts && <button className="mx-auto mt-5 grid h-10 min-w-32 place-items-center border border-ink px-5 text-xs font-bold disabled:opacity-50" type="button" disabled={isLoadingMoreProducts} onClick={loadMoreProducts}>{isLoadingMoreProducts ? <LoaderCircle className="size-4 animate-spin" /> : '상품 더 보기'}</button>}
-                            </>
-                        )}
                     </Panel>
                 )}
 
-                {profile && activeSection === 'orders' && (
-                    <Panel icon={<Truck />} title="주문·배송 관리">
-                        <div className="grid gap-4">
-                            {orders.length === 0 ? (
-                                <p className="text-sm text-muted">처리할 주문이 없습니다.</p>
-                            ) : orders.map((order) => {
-                                const activeItems = order.items.filter((item) =>
-                                    item.quantity > item.refundedQuantity
-                                )
-                                const current = activeItems[0]?.fulfillmentStatus
-                                const canAdvance = order.orderStatus === 'PAID'
-                                    || order.orderStatus === 'PARTIALLY_REFUNDED'
-                                    || order.orderStatus === 'PREPARING'
-                                    || order.orderStatus === 'SHIPPED'
-                                const target = canAdvance && current
-                                    ? nextStatus[current]
-                                    : undefined
-                                const canOpenRefund = order.refundSupported
-                                    && (order.orderStatus === 'PAID'
-                                        || order.orderStatus === 'PARTIALLY_REFUNDED'
-                                        || order.orderStatus === 'REFUNDED')
-                                return (
-                                    <article className="border border-line p-4" key={order.orderId}>
-                                        <div className="flex flex-wrap items-center justify-between gap-3">
-                                            <div>
-                                                <strong>주문 #{order.orderId}</strong>
-                                                <p className="mt-1 text-xs text-muted">
-                                                    {formatKoreanDateTime(order.createdAt)}
-                                                    {' · '}판매 금액 {formatPrice(order.sellerAmount)}
-                                                    {' · '}{order.orderStatus}
-                                                </p>
-                                            </div>
-                                            {current && (
-                                                <span className="bg-success-soft px-3 py-1 text-xs font-bold text-success">
-                                                    {statusLabel[current]}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <ul className="my-4 grid gap-1 text-sm">
-                                            {order.items.map((item) => (
-                                                <li key={item.orderItemId}>
-                                                    {item.productName} × {item.quantity}
-                                                    {item.refundedQuantity > 0
-                                                        ? ` · 환불 ${item.refundedQuantity}개`
-                                                        : ''}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                        <div className="flex flex-wrap gap-2">
-                                            {target && (
-                                                <button
-                                                    className="h-10 border border-ink px-4 text-xs font-bold"
-                                                    type="button"
-                                                    onClick={() => advanceOrder(order)}
-                                                >
-                                                    {statusLabel[target]}
-                                                    {target === 'DELIVERED' ? '로' : '으로'} 변경
-                                                </button>
-                                            )}
-                                            {canOpenRefund && (
-                                                <button
-                                                    className="h-10 border border-ink px-4 text-xs font-bold"
-                                                    type="button"
-                                                    onClick={() => void openRefundDialog(order)}
-                                                >
-                                                    환불 처리·내역
-                                                </button>
-                                            )}
-                                        </div>
-                                    </article>
-                                )
-                            })}
-                        </div>
-                        {hasMoreOrders && <button className="mx-auto mt-5 grid h-10 min-w-32 place-items-center border border-ink px-5 text-xs font-bold disabled:opacity-50" type="button" disabled={isLoadingMoreOrders} onClick={loadMoreOrders}>{isLoadingMoreOrders ? <LoaderCircle className="size-4 animate-spin" /> : '주문 더 보기'}</button>}
-                    </Panel>
-                )}
             </div>
-            <ConfirmDialog
-                open={productToDelete !== null}
-                title="상품을 삭제할까요?"
-                description={`삭제한 상품은 복구할 수 없습니다.${productToDelete ? ` '${productToDelete.name}' 상품을 삭제합니다.` : ''}`}
-                confirmLabel="상품 삭제"
-                isPending={isSaving}
-                onCancel={() => setProductToDelete(null)}
-                onConfirm={() => {
-                    if (productToDelete) void removeProduct(productToDelete.productId)
-                }}
-            />
-            <RefundDialog
-                key={refundOrder?.orderId ?? 'closed'}
-                open={refundOrder !== null}
-                orderId={refundOrder?.orderId ?? null}
-                items={refundOrder?.items ?? []}
-                refunds={refunds}
-                isLoadingHistory={isLoadingRefunds}
-                isSubmitting={isRefunding}
-                errorMessage={refundError}
-                onClose={() => {
-                    if (!isRefunding) setRefundOrder(null)
-                }}
-                onSubmit={submitRefund}
-            />
         </section>
     )
 }
@@ -702,12 +409,18 @@ function Field({ label, value, onChange, required = false, disabled = false, row
     return <label className={row ? productFormRowClassName : 'grid gap-2 text-xs font-bold'}><span>{label}</span><input className="h-11 border border-line bg-surface px-3 font-normal text-ink disabled:bg-surface disabled:text-muted" value={value} onChange={(event) => onChange(event.target.value)} required={required} disabled={disabled} /></label>
 }
 
-function NumberField({ label, value, onChange, min, max }: { label: string; value: number; onChange: (value: number) => void; min: number; max?: number }) {
-    return <label className={productFormRowClassName}><span>{label}</span><input className="h-11 border border-line bg-surface px-3 font-normal text-ink" type="number" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} required /></label>
+function NumberField({ label, value, onChange, min, max, fullWidth = false, compact = false }: { label: string; value: number; onChange: (value: number) => void; min: number; max?: number; fullWidth?: boolean; compact?: boolean }) {
+    const className = fullWidth
+        ? `${productFormRowClassName} min-[701px]:col-span-2`
+        : productFormRowClassName
+    const inputClassName = compact
+        ? 'h-11 border border-line bg-surface px-3 font-normal text-ink min-[701px]:w-40'
+        : 'h-11 border border-line bg-surface px-3 font-normal text-ink'
+    return <label className={className}><span>{label}</span><input className={inputClassName} type="number" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} required /></label>
 }
 
-function DateField({ label, value, onChange, min, max }: { label: string; value: string; onChange: (value: string) => void; min?: string; max?: string }) {
-    return <label className={productFormRowClassName}><span>{label}</span><input className="h-11 border border-line bg-surface px-3 font-normal text-ink" type="date" value={value} min={min} max={max} onChange={(event) => onChange(event.target.value)} required /></label>
+function DateField({ label, value, onChange, min, max, disabled = false }: { label: string; value: string; onChange: (value: string) => void; min?: string; max?: string; disabled?: boolean }) {
+    return <label className={productFormRowClassName}><span>{label}</span><input className="h-11 border border-line bg-surface px-3 font-normal text-ink disabled:text-muted" type="date" value={value} min={min} max={max} onChange={(event) => onChange(event.target.value)} required={!disabled} disabled={disabled} /></label>
 }
 
 const productFormRowClassName =
