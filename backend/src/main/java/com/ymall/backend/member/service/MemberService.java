@@ -92,14 +92,14 @@ public class MemberService {
         );
     }
 
+    @Transactional
     public AuthenticationTokens login(MemberLoginRequest request) {
         Member member = memberRepository.findByEmailIgnoreCase(request.email())
             .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
         if (!member.hasPassword() || !passwordEncoder.matches(request.password(), member.getPassword())) {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
-
-        return refreshTokenService.issue(member);
+        return refreshTokenService.issueForLogin(member);
     }
 
     private Member findMember(Long memberId) {

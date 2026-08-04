@@ -96,8 +96,17 @@ export interface AdminMember {
     name: string
     role: MemberRole
     adminGrade: AdminGrade | null
+    accessStatus: MemberAccessStatus
+    lastLoginAt: string | null
+    restrictionReason: string | null
+    restrictedAt: string | null
+    restrictedByMemberId: number | null
+    orderCount: number
+    totalPaidAmount: number
     createdAt: string
 }
+
+export type MemberAccessStatus = 'ACTIVE' | 'RESTRICTED'
 
 export type AdminGrade = 'MANAGER' | 'SUPERVISOR' | 'SUPER_ADMIN'
 
@@ -144,6 +153,18 @@ export interface AdminRoleUpdateResponse {
     permissions: AdminPermission[]
 }
 
+export interface AdminAuditLog {
+    auditLogId: number
+    actorMemberId: number
+    actorName: string
+    actorGrade: AdminGrade
+    action: 'ADMIN_ROLE_CHANGED' | 'MEMBER_RESTRICTION_CHANGED' | 'MEMBER_SESSIONS_REVOKED'
+    beforeValue: string | null
+    afterValue: string | null
+    reason: string
+    createdAt: string
+}
+
 export interface AdminSeller {
     sellerProfileId: number
     memberId: number
@@ -151,6 +172,17 @@ export interface AdminSeller {
     memberName: string
     storeName: string
     businessNumber: string
+    productCount: number
+    pendingProductCount: number
+    orderCount: number
+    grossSalesAmount: number
+    refundedQuantity: number
+    pendingReturnCount: number
+    pendingSupportCount: number
+    pendingSettlementCount: number
+    applicationStatus: 'PENDING' | 'NEEDS_REVISION' | 'APPROVED' | 'REJECTED' | null
+    applicationReviewReason: string | null
+    applicationReviewedAt: string | null
     createdAt: string
 }
 

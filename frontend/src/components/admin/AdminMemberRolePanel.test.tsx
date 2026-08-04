@@ -20,6 +20,13 @@ const member: AdminMember = {
     name: '테스트 회원',
     role: 'ROLE_USER',
     adminGrade: null,
+    accessStatus: 'ACTIVE',
+    lastLoginAt: null,
+    restrictionReason: null,
+    restrictedAt: null,
+    restrictedByMemberId: null,
+    orderCount: 0,
+    totalPaidAmount: 0,
     createdAt: '2026-08-03T00:00:00',
 }
 

@@ -73,7 +73,7 @@ public class GoogleOneTapController {
         }
 
         refreshTokenService.revoke(refreshTokenCookieManager.read(servletRequest));
-        AuthenticationTokens tokens = refreshTokenService.issue(member.get());
+        AuthenticationTokens tokens = refreshTokenService.issueForLogin(member.get());
         refreshTokenCookieManager.write(servletResponse, tokens.refreshToken());
         return ApiResponse.success(
             GoogleOneTapLoginResponse.authenticated(tokens.accessToken()),

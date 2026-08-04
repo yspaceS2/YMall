@@ -81,7 +81,7 @@ class GoogleOneTapControllerTest {
         given(tokenVerifier.verify("google-credential")).willReturn(profile);
         given(oAuthMemberService.findExistingMember(OAuthProvider.GOOGLE, "google-user"))
             .willReturn(Optional.of(member));
-        given(refreshTokenService.issue(member)).willReturn(new AuthenticationTokens(
+        given(refreshTokenService.issueForLogin(member)).willReturn(new AuthenticationTokens(
             new TokenResponse("access-token", "Bearer", 1800),
             "refresh-token"
         ));

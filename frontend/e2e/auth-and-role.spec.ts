@@ -10,7 +10,7 @@ test('이메일 중복 확인 후 회원가입하고 로그인 화면으로 이�
     await expect(page.getByText('사용 가능한 이메일입니다. 인증번호를 발송해 주세요.')).toBeVisible()
 
     await page.getByRole('button', { name: '인증번호 발송' }).click()
-    await expect(page.getByText('인증번호를 발송했습니다. MailHog 또는 받은편지함을 확인해 주세요.')).toBeVisible()
+    await expect(page.getByText('인증번호를 발송했습니다. 받은편지함을 확인해 주세요.')).toBeVisible()
     await page.locator('#signup-email-verification-code').fill('123456')
     await page.getByRole('button', { name: '인증 확인' }).click()
     await expect(page.getByText('이메일 인증이 완료되었습니다.')).toBeVisible()

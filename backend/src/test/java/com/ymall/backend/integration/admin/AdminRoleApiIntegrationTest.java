@@ -27,6 +27,8 @@ import com.ymall.backend.global.security.RefreshTokenService;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.seller.entity.SellerApplication;
+import com.ymall.backend.seller.repository.SellerApplicationRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -37,6 +39,7 @@ class AdminRoleApiIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private MemberRepository memberRepository;
     @Autowired private AdminAuditLogRepository auditLogRepository;
+    @Autowired private SellerApplicationRepository sellerApplicationRepository;
     @Autowired private JwtTokenProvider jwtTokenProvider;
 
     @MockitoBean private RefreshTokenService refreshTokenService;
@@ -174,12 +177,18 @@ class AdminRoleApiIntegrationTest {
     void managerCanReadOperationsButCannotPerformSupervisorDecisions() throws Exception {
         Member manager = adminWithGrade("manager-permissions@example.test", AdminGrade.MANAGER);
         String authorization = bearer(token(manager));
+        SellerApplication application = sellerApplicationRepository.saveAndFlush(
+            new SellerApplication(user, "Permission Test Store", "101-20-39999", null)
+        );
 
         mockMvc.perform(get("/api/admin/members")
                 .header(HttpHeaders.AUTHORIZATION, authorization))
             .andExpect(status().isOk());
 
-        mockMvc.perform(patch("/api/admin/seller-applications/{applicationId}", 1L)
+        mockMvc.perform(patch(
+                "/api/admin/seller-applications/{applicationId}",
+                application.getId()
+            )
                 .header(HttpHeaders.AUTHORIZATION, authorization)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""

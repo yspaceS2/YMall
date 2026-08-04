@@ -112,4 +112,15 @@ public interface ProductReturnRequestRepository
         @Param("orderItemId") Long orderItemId,
         @Param("status") ReturnRequestStatus status
     );
+
+    @Query("""
+        select count(request)
+        from ProductReturnRequest request
+        where request.orderItem.product.sellerProfile.id = :sellerProfileId
+          and request.status = :status
+        """)
+    long countBySellerProfileIdAndStatus(
+        @Param("sellerProfileId") Long sellerProfileId,
+        @Param("status") ReturnRequestStatus status
+    );
 }

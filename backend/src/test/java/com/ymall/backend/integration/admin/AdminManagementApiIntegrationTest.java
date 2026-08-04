@@ -23,6 +23,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.admin.entity.AdminAuditAction;
+import com.ymall.backend.admin.entity.AdminGrade;
+import com.ymall.backend.admin.repository.AdminAuditLogRepository;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
@@ -63,6 +66,9 @@ class AdminManagementApiIntegrationTest {
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
+
+    @Autowired
+    private AdminAuditLogRepository adminAuditLogRepository;
 
     private Member admin;
     private Member seller;
@@ -234,7 +240,11 @@ class AdminManagementApiIntegrationTest {
                 sellerProfile.getId()
             ).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.storeName").value("테스트 상점"));
+            .andExpect(jsonPath("$.data.storeName").value("테스트 상점"))
+            .andExpect(jsonPath("$.data.productCount").value(1))
+            .andExpect(jsonPath("$.data.pendingProductCount").value(0))
+            .andExpect(jsonPath("$.data.orderCount").value(1))
+            .andExpect(jsonPath("$.data.grossSalesAmount").value(20000));
 
         mockMvc.perform(get("/api/admin/orders")
                 .param("keyword", order.getId().toString())
@@ -249,6 +259,77 @@ class AdminManagementApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.orderId").value(order.getId()))
             .andExpect(jsonPath("$.data.items[0].productName").value("주문 상품"));
+    }
+
+    @Test
+    void superAdminRestrictsMemberAndImmediatelyInvalidatesExistingToken() throws Exception {
+        String buyerToken = token(buyer);
+
+        mockMvc.perform(patch("/api/admin/members/{memberId}/restriction", buyer.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"restricted":true,"reason":"반복적인 운영 정책 위반"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.accessStatus").value("RESTRICTED"))
+            .andExpect(jsonPath("$.data.restrictionReason").value("반복적인 운영 정책 위반"));
+
+        mockMvc.perform(get("/api/members/me")
+                .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"));
+
+        assertThat(adminAuditLogRepository.findAll())
+            .anySatisfy(log -> {
+                assertThat(log.getAction()).isEqualTo(AdminAuditAction.MEMBER_RESTRICTION_CHANGED);
+                assertThat(log.getTargetId()).isEqualTo(buyer.getId());
+                assertThat(log.getReason()).isEqualTo("반복적인 운영 정책 위반");
+            });
+    }
+
+    @Test
+    void managerCanRestrictUserButCannotRestrictSeller() throws Exception {
+        Member manager = saveMember("manager@example.com", "매니저", MemberRole.ROLE_ADMIN);
+        manager.changeAdminRole(MemberRole.ROLE_ADMIN, AdminGrade.MANAGER);
+        memberRepository.save(manager);
+        String managerToken = token(manager);
+
+        mockMvc.perform(patch("/api/admin/members/{memberId}/restriction", buyer.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(managerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"restricted":true,"reason":"회원 운영 확인"}
+                    """))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/admin/members/{memberId}/restriction", seller.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(managerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"restricted":true,"reason":"판매자 운영 확인"}
+                    """))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("MEMBER_OPERATION_FORBIDDEN"));
+    }
+
+    @Test
+    void adminFiltersMembersAndReadsOperationalMetrics() throws Exception {
+        Product product = saveProduct("회원 지표 상품", ProductStatus.APPROVED);
+        Order order = new Order(buyer, "member-metrics-test");
+        order.addItem(new OrderItem(product, product.getName(), product.getPrice(), 2));
+        order.completePayment();
+        orderRepository.save(order);
+
+        mockMvc.perform(get("/api/admin/members")
+                .param("role", "ROLE_USER")
+                .param("status", "ACTIVE")
+                .param("keyword", "buyer")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].orderCount").value(1))
+            .andExpect(jsonPath("$.data.content[0].accessStatus").value("ACTIVE"));
     }
 
     @Test

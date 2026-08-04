@@ -1,4 +1,4 @@
-import type { OrderStatus } from '../types/order'
+import type { OrderItemFulfillmentStatus, OrderStatus } from '../types/order'
 import { formatKoreanDateTime } from './dateTime'
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -13,8 +13,19 @@ const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
     DELIVERED: '배송 완료',
 }
 
+const ORDER_ITEM_FULFILLMENT_STATUS_LABELS: Record<OrderItemFulfillmentStatus, string> = {
+    PENDING: '처리 대기',
+    PREPARING: '상품 준비 중',
+    SHIPPED: '배송 중',
+    DELIVERED: '배송 완료',
+}
+
 export function getOrderStatusLabel(status: OrderStatus) {
     return ORDER_STATUS_LABELS[status]
+}
+
+export function getOrderItemFulfillmentStatusLabel(status: OrderItemFulfillmentStatus) {
+    return ORDER_ITEM_FULFILLMENT_STATUS_LABELS[status]
 }
 
 export function formatOrderDate(value: string) {

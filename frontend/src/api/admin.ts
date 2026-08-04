@@ -4,6 +4,9 @@ import type {
     AdminAuthorization,
     AdminMember,
     AdminMemberPage,
+    AdminAuditLog,
+    AdminGrade,
+    MemberAccessStatus,
     AdminRoleUpdateRequest,
     AdminRoleUpdateResponse,
     AdminOrder,
@@ -52,6 +55,14 @@ interface AdminPageOptions {
     page?: number
     signal?: AbortSignal
     keyword?: string
+}
+
+export interface AdminMemberPageOptions extends AdminPageOptions {
+    status?: MemberAccessStatus
+    role?: 'ROLE_USER' | 'ROLE_SELLER' | 'ROLE_ADMIN'
+    adminGrade?: AdminGrade
+    joinedFrom?: string
+    joinedTo?: string
 }
 
 export type AdminOrderWorkType = 'PENDING_REFUND' | 'PENDING_RETURN'
@@ -138,14 +149,50 @@ export function reviewAdminProductChangeRequest(
     )
 }
 
-export function getAdminMembers(options: AdminPageOptions = {}) {
-    const { page = 1, signal, keyword = '' } = options
+export function getAdminMembers(options: AdminMemberPageOptions = {}) {
+    const {
+        page = 1,
+        signal,
+        keyword = '',
+        status,
+        role,
+        adminGrade,
+        joinedFrom,
+        joinedTo,
+    } = options
     const query = new URLSearchParams({
         page: String(page),
         size: String(ADMIN_PAGE_SIZE),
         keyword,
     })
+    if (status) query.set('status', status)
+    if (role) query.set('role', role)
+    if (adminGrade) query.set('adminGrade', adminGrade)
+    if (joinedFrom) query.set('joinedFrom', joinedFrom)
+    if (joinedTo) query.set('joinedTo', joinedTo)
     return apiRequest<AdminMemberPage>(`/admin/members?${query.toString()}`, { signal })
+}
+
+export function updateAdminMemberRestriction(
+    memberId: number,
+    restricted: boolean,
+    reason: string,
+) {
+    return apiRequest<AdminMember>(`/admin/members/${memberId}/restriction`, {
+        method: 'PATCH',
+        body: { restricted, reason },
+    })
+}
+
+export function revokeAdminMemberSessions(memberId: number, reason: string) {
+    return apiRequest<void>(`/admin/members/${memberId}/sessions/revoke`, {
+        method: 'POST',
+        body: { reason },
+    })
+}
+
+export function getAdminMemberAuditLogs(memberId: number, signal?: AbortSignal) {
+    return apiRequest<AdminAuditLog[]>(`/admin/members/${memberId}/audit-logs`, { signal })
 }
 
 export function getAdminMember(memberId: number, signal?: AbortSignal) {

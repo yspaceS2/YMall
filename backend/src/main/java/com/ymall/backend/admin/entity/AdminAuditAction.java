@@ -3,6 +3,7 @@ package com.ymall.backend.admin.entity;
 public enum AdminAuditAction {
     ADMIN_ROLE_CHANGED,
     MEMBER_RESTRICTION_CHANGED,
+    MEMBER_SESSIONS_REVOKED,
     SELLER_APPLICATION_REVIEWED,
     PRODUCT_REVIEWED,
     REFUND_PROCESSED,

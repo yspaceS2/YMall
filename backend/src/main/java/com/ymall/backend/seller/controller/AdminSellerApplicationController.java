@@ -62,7 +62,9 @@ public class AdminSellerApplicationController {
             ),
             request.status() == SellerApplicationStatus.APPROVED
                 ? "판매자 신청을 승인했습니다."
-                : "판매자 신청을 반려했습니다."
+                : request.status() == SellerApplicationStatus.NEEDS_REVISION
+                    ? "판매자 신청의 보완을 요청했습니다."
+                    : "판매자 신청을 반려했습니다."
         );
     }
 }

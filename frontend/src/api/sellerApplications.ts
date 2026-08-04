@@ -51,7 +51,7 @@ export function getAdminSellerApplication(
 
 export function reviewSellerApplication(
     sellerApplicationId: number,
-    status: Extract<SellerApplicationStatus, 'APPROVED' | 'REJECTED'>,
+    status: Extract<SellerApplicationStatus, 'NEEDS_REVISION' | 'APPROVED' | 'REJECTED'>,
     rejectionReason?: string,
 ) {
     return apiRequest<SellerApplication>(

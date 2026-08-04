@@ -23,6 +23,10 @@ import com.ymall.backend.product.entity.ProductStatus;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    long countBySellerProfileIdAndStatusNot(Long sellerProfileId, ProductStatus status);
+
+    long countBySellerProfileIdAndStatus(Long sellerProfileId, ProductStatus status);
+
     List<Product> findByDiscountPercentageGreaterThanAndDiscountEndDateBefore(
         BigDecimal discountPercentage,
         LocalDate date

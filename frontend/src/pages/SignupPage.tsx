@@ -221,7 +221,7 @@ export function SignupPage() {
                                 {isEmailVerified
                                     ? '이메일 인증이 완료되었습니다.'
                                     : verificationRequestId
-                                        ? '인증번호를 발송했습니다. MailHog 또는 받은편지함을 확인해 주세요.'
+                                        ? '인증번호를 발송했습니다. 받은편지함을 확인해 주세요.'
                                         : '사용 가능한 이메일입니다. 인증번호를 발송해 주세요.'}
                             </span>
                         )}

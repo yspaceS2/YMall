@@ -6,12 +6,9 @@ import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import com.ymall.backend.admin.dto.AdminMemberResponse;
 import com.ymall.backend.admin.dto.AdminOrderItemResponse;
 import com.ymall.backend.admin.dto.AdminOrderResponse;
 import com.ymall.backend.admin.dto.AdminProductResponse;
-import com.ymall.backend.admin.dto.AdminSellerResponse;
-import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.product.dto.ProductDetailImageResponse;
@@ -19,7 +16,6 @@ import com.ymall.backend.product.dto.ProductImageResponse;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductDetailImage;
 import com.ymall.backend.product.entity.ProductImage;
-import com.ymall.backend.seller.entity.SellerProfile;
 
 @Mapper(componentModel = "spring")
 public interface AdminMapper {
@@ -60,15 +56,6 @@ public interface AdminMapper {
             ))
             .toList();
     }
-
-    @Mapping(source = "id", target = "memberId")
-    AdminMemberResponse toMemberResponse(Member member);
-
-    @Mapping(source = "id", target = "sellerProfileId")
-    @Mapping(source = "member.id", target = "memberId")
-    @Mapping(source = "member.email", target = "email")
-    @Mapping(source = "member.name", target = "memberName")
-    AdminSellerResponse toSellerResponse(SellerProfile sellerProfile);
 
     @Mapping(source = "order.id", target = "orderId")
     @Mapping(source = "order.member.id", target = "memberId")

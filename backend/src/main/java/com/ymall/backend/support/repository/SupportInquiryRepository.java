@@ -45,4 +45,6 @@ public interface SupportInquiryRepository extends JpaRepository<SupportInquiry, 
     );
 
     long countByStatusIn(Iterable<SupportInquiryStatus> statuses);
+
+    long countByMemberIdAndStatusIn(Long memberId, Iterable<SupportInquiryStatus> statuses);
 }

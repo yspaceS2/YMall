@@ -1,6 +1,7 @@
 package com.ymall.backend.payment.repository;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -40,6 +41,18 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
         """)
     Set<Long> findRefundSupportedOrderIds(
         @Param("orderIds") Collection<Long> orderIds,
+        @Param("result") PaymentResult result
+    );
+
+    @Query("""
+        select payment.order.member.id, coalesce(sum(payment.approvedAmount), 0)
+        from Payment payment
+        where payment.order.member.id in :memberIds
+          and payment.result = :result
+        group by payment.order.member.id
+        """)
+    List<Object[]> sumApprovedAmountByMemberIds(
+        @Param("memberIds") Collection<Long> memberIds,
         @Param("result") PaymentResult result
     );
 }

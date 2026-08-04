@@ -13,6 +13,7 @@ import { FeedbackMessage } from '../ui/FeedbackMessage'
 
 const statusLabels = {
     PENDING: '심사 대기',
+    NEEDS_REVISION: '보완 필요',
     APPROVED: '승인 완료',
     REJECTED: '반려',
 } as const
@@ -94,7 +95,9 @@ export function SellerApplicationPanel() {
         )
     }
 
-    const canApply = application === null || application.status === 'REJECTED'
+    const canApply = application === null
+        || application.status === 'REJECTED'
+        || application.status === 'NEEDS_REVISION'
 
     return (
         <div className="mt-8 grid gap-6 min-[901px]:grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)]">
@@ -135,6 +138,11 @@ export function SellerApplicationPanel() {
                 {application?.status === 'REJECTED' && (
                     <FeedbackMessage className="mt-5" tone="error">
                         반려 사유: {application.rejectionReason}
+                    </FeedbackMessage>
+                )}
+                {application?.status === 'NEEDS_REVISION' && (
+                    <FeedbackMessage className="mt-5" tone="info">
+                        보완 요청: {application.rejectionReason}
                     </FeedbackMessage>
                 )}
 

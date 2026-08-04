@@ -33,6 +33,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Page<Order> findByMemberIdOrderByCreatedAtDesc(Long memberId, Pageable pageable);
 
+    @Query("""
+        select orders.member.id, count(orders.id)
+        from Order orders
+        where orders.member.id in :memberIds
+        group by orders.member.id
+        """)
+    List<Object[]> countOrdersByMemberIds(@Param("memberIds") Collection<Long> memberIds);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         select orders from Order orders
