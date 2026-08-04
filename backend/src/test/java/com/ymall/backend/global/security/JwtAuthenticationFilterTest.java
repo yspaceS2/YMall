@@ -22,10 +22,12 @@ import com.ymall.backend.member.entity.MemberRole;
 class JwtAuthenticationFilterTest {
 
     private final JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
+    private final MemberPrincipalResolver principalResolver = mock(MemberPrincipalResolver.class);
     private final SecurityErrorResponseWriter responseWriter =
         mock(SecurityErrorResponseWriter.class);
     private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(
         jwtTokenProvider,
+        principalResolver,
         responseWriter
     );
 
@@ -45,11 +47,13 @@ class JwtAuthenticationFilterTest {
             throw downstreamException;
         };
 
-        when(jwtTokenProvider.parseAccessToken("valid-token")).thenReturn(new MemberPrincipal(
+        MemberPrincipal principal = new MemberPrincipal(
             1L,
             "seller@example.com",
             MemberRole.ROLE_SELLER
-        ));
+        );
+        when(jwtTokenProvider.parseAccessToken("valid-token")).thenReturn(principal);
+        when(principalResolver.resolve(principal)).thenReturn(principal);
 
         assertThatThrownBy(() -> filter.doFilter(request, response, filterChain))
             .isSameAs(downstreamException);

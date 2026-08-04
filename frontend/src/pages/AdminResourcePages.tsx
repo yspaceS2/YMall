@@ -19,6 +19,12 @@ import {
     managementPageClassName,
 } from '../components/management/ManagementListUi'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { AdminMemberRolePanel } from '../components/admin/AdminMemberRolePanel'
+import {
+    formatAdminGrade,
+    formatMemberAuthority,
+    formatMemberRole,
+} from '../components/admin/adminRolePresentation'
 import type {
     AdminMember,
     AdminMemberPage,
@@ -232,7 +238,18 @@ export function AdminResourceDetailPage({ resource }: { resource: AdminResource 
                     {invalidId ? '잘못된 상세 페이지 주소입니다.' : errorMessage || '상세 정보가 없습니다.'}
                 </FeedbackMessage>
             ) : (
-                <DetailContent resource={resource} item={item} />
+                <DetailContent
+                    resource={resource}
+                    item={item}
+                    onMemberChanged={(response) => setItem((current) => {
+                        if (!current || resource !== 'members') return current
+                        return {
+                            ...(current as AdminMember),
+                            role: response.role,
+                            adminGrade: response.adminGrade,
+                        }
+                    })}
+                />
             )}
         </section>
     )
@@ -241,19 +258,29 @@ export function AdminResourceDetailPage({ resource }: { resource: AdminResource 
 function DetailContent({
     resource,
     item,
+    onMemberChanged,
 }: {
     resource: AdminResource
     item: AdminResourceItem
+    onMemberChanged: Parameters<typeof AdminMemberRolePanel>[0]['onChanged']
 }) {
     if (resource === 'members') {
         const member = item as AdminMember
-        return <DetailGrid values={[
-            ['회원번호', String(member.memberId)],
-            ['이름', member.name],
-            ['이메일', member.email],
-            ['권한', member.role],
-            ['가입일', formatKoreanDateTime(member.createdAt)],
-        ]} />
+        return (
+            <div className="grid gap-8">
+                <DetailGrid columns={2} values={[
+                    ['회원번호', String(member.memberId)],
+                    ['이름', member.name],
+                    ['이메일', member.email],
+                    ['계정 유형', formatMemberRole(member.role)],
+                    ...(member.role === 'ROLE_ADMIN'
+                        ? [['관리자 등급', formatAdminGrade(member.adminGrade)] as [string, string]]
+                        : []),
+                    ['가입일', formatKoreanDateTime(member.createdAt)],
+                ]} />
+                <AdminMemberRolePanel member={member} onChanged={onMemberChanged} />
+            </div>
+        )
     }
 
     if (resource === 'sellers') {
@@ -310,11 +337,24 @@ function DetailContent({
     )
 }
 
-function DetailGrid({ values }: { values: Array<[string, string]> }) {
+function DetailGrid({
+    values,
+    columns = 1,
+}: {
+    values: Array<[string, string]>
+    columns?: 1 | 2
+}) {
     return (
-        <dl className="border-t border-ink">
+        <dl className={columns === 2
+            ? 'grid border-t border-ink min-[901px]:grid-cols-2'
+            : 'border-t border-ink'}>
             {values.map(([label, value]) => (
-                <div className="grid gap-2 border-b border-line py-5 min-[701px]:grid-cols-[180px_1fr]" key={label}>
+                <div
+                    className={columns === 2
+                        ? 'grid gap-2 border-b border-line py-4 min-[701px]:grid-cols-[140px_1fr] min-[901px]:pr-6'
+                        : 'grid gap-2 border-b border-line py-5 min-[701px]:grid-cols-[180px_1fr]'}
+                    key={label}
+                >
                     <dt className="text-xs font-bold text-muted">{label}</dt>
                     <dd className="text-sm font-bold">{value}</dd>
                 </div>
@@ -358,7 +398,12 @@ function headers(resource: AdminResource) {
 function rowCells(resource: AdminResource, item: AdminResourceItem) {
     if (resource === 'members') {
         const member = item as AdminMember
-        return [member.name, member.email, member.role, formatKoreanDateTime(member.createdAt)]
+        return [
+            member.name,
+            member.email,
+            formatMemberAuthority(member),
+            formatKoreanDateTime(member.createdAt),
+        ]
     }
     if (resource === 'sellers') {
         const seller = item as AdminSeller

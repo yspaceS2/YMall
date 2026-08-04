@@ -2,6 +2,7 @@ package com.ymall.backend.admin.dto;
 
 import java.time.LocalDateTime;
 
+import com.ymall.backend.admin.entity.AdminGrade;
 import com.ymall.backend.member.entity.MemberRole;
 
 public record AdminMemberResponse(
@@ -9,6 +10,7 @@ public record AdminMemberResponse(
     String email,
     String name,
     MemberRole role,
+    AdminGrade adminGrade,
     LocalDateTime createdAt
 ) {
 }

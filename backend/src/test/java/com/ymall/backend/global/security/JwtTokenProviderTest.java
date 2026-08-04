@@ -3,11 +3,19 @@ package com.ymall.backend.global.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
+
+import javax.crypto.SecretKey;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
@@ -31,7 +39,27 @@ class JwtTokenProviderTest {
         assertThat(principal.memberId()).isEqualTo(1L);
         assertThat(principal.email()).isEqualTo("user@example.com");
         assertThat(principal.role()).isEqualTo(MemberRole.ROLE_USER);
+        assertThat(principal.authVersion()).isZero();
         assertThat(response.expiresIn()).isEqualTo(1800);
+    }
+
+    @Test
+    void parsesLegacyAccessTokenWithoutAuthVersionAsVersionZero() {
+        JwtTokenProvider tokenProvider = tokenProvider(Duration.ofMinutes(30));
+        Instant now = Instant.now();
+        SecretKey signingKey = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        String token = Jwts.builder()
+            .subject("1")
+            .claim("email", "user@example.com")
+            .claim("role", MemberRole.ROLE_USER.name())
+            .issuedAt(Date.from(now))
+            .expiration(Date.from(now.plus(Duration.ofMinutes(30))))
+            .signWith(signingKey)
+            .compact();
+
+        MemberPrincipal principal = tokenProvider.parseAccessToken(token);
+
+        assertThat(principal.authVersion()).isZero();
     }
 
     @Test

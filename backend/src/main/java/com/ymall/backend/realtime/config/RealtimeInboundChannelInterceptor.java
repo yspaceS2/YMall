@@ -1,8 +1,7 @@
 package com.ymall.backend.realtime.config;
 
-import java.util.List;
-
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -10,14 +9,13 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
-import org.springframework.beans.factory.ObjectProvider;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.global.security.MemberPrincipal;
+import com.ymall.backend.global.security.MemberPrincipalResolver;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.support.repository.SupportInquiryRepository;
 
@@ -30,6 +28,7 @@ public class RealtimeInboundChannelInterceptor implements ChannelInterceptor {
     private static final String MEMBER_TOPIC = "/topic/realtime/members/";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final MemberPrincipalResolver principalResolver;
     private final ObjectProvider<SupportInquiryRepository> inquiryRepositoryProvider;
 
     @Override
@@ -54,13 +53,14 @@ public class RealtimeInboundChannelInterceptor implements ChannelInterceptor {
         if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
-        MemberPrincipal principal = jwtTokenProvider.parseAccessToken(
+        MemberPrincipal tokenPrincipal = jwtTokenProvider.parseAccessToken(
             authorization.substring(BEARER_PREFIX.length())
         );
+        MemberPrincipal principal = principalResolver.resolve(tokenPrincipal);
         accessor.setUser(UsernamePasswordAuthenticationToken.authenticated(
             principal,
             null,
-            List.of(new SimpleGrantedAuthority(principal.role().name()))
+            principal.authorities()
         ));
     }
 

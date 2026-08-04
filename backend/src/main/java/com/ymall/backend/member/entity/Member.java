@@ -16,6 +16,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import com.ymall.backend.admin.entity.AdminGrade;
+
 @Getter
 @Entity
 @Table(name = "members")
@@ -49,6 +51,13 @@ public class Member {
     @Column(nullable = false, length = 20)
     private MemberRole role;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private AdminGrade adminGrade;
+
+    @Column(nullable = false)
+    private long authVersion;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -66,6 +75,8 @@ public class Member {
         this.name = name;
         this.phone = phone;
         this.role = role;
+        this.adminGrade = role == MemberRole.ROLE_ADMIN ? AdminGrade.SUPER_ADMIN : null;
+        this.authVersion = 0L;
     }
 
     public void updateProfile(String name, String phone) {
@@ -84,6 +95,24 @@ public class Member {
 
     public void promoteToSeller() {
         this.role = MemberRole.ROLE_SELLER;
+        this.adminGrade = null;
+        incrementAuthVersion();
+    }
+
+    public void changeAdminRole(MemberRole targetRole, AdminGrade targetGrade) {
+        if (targetRole == MemberRole.ROLE_ADMIN && targetGrade == null) {
+            throw new IllegalArgumentException("Admin grade is required for an admin member");
+        }
+        if (targetRole != MemberRole.ROLE_ADMIN && targetGrade != null) {
+            throw new IllegalArgumentException("Admin grade is only allowed for an admin member");
+        }
+        this.role = targetRole;
+        this.adminGrade = targetGrade;
+        incrementAuthVersion();
+    }
+
+    private void incrementAuthVersion() {
+        this.authVersion = Math.addExact(this.authVersion, 1L);
     }
 
     @PrePersist

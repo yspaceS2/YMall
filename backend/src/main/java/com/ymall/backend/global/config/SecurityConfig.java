@@ -18,12 +18,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import lombok.RequiredArgsConstructor;
 
+import com.ymall.backend.global.security.CustomOAuth2UserService;
+import com.ymall.backend.global.security.CustomOidcUserService;
 import com.ymall.backend.global.security.JwtAccessDeniedHandler;
 import com.ymall.backend.global.security.JwtAuthenticationEntryPoint;
 import com.ymall.backend.global.security.JwtAuthenticationFilter;
 import com.ymall.backend.global.security.JwtTokenProvider;
-import com.ymall.backend.global.security.CustomOAuth2UserService;
-import com.ymall.backend.global.security.CustomOidcUserService;
+import com.ymall.backend.global.security.MemberPrincipalResolver;
 import com.ymall.backend.global.security.OAuth2AuthenticationFailureHandler;
 import com.ymall.backend.global.security.OAuth2AuthenticationSuccessHandler;
 import com.ymall.backend.global.security.SecurityErrorResponseWriter;
@@ -51,6 +52,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http,
         JwtTokenProvider jwtTokenProvider,
+        MemberPrincipalResolver principalResolver,
         SecurityErrorResponseWriter responseWriter
     ) throws Exception {
         return http
@@ -114,7 +116,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .addFilterBefore(
-                new JwtAuthenticationFilter(jwtTokenProvider, responseWriter),
+                new JwtAuthenticationFilter(jwtTokenProvider, principalResolver, responseWriter),
                 UsernamePasswordAuthenticationFilter.class
             )
             .build();

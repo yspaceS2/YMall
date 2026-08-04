@@ -42,6 +42,8 @@ public enum ErrorCode {
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "만료된 인증 토큰입니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않거나 만료된 로그인 세션입니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+    ADMIN_ROLE_CHANGE_FORBIDDEN(HttpStatus.FORBIDDEN, "해당 관리자 역할을 변경할 권한이 없습니다."),
+    ADMIN_ROLE_CHANGE_INVALID(HttpStatus.CONFLICT, "허용되지 않는 관리자 역할 변경입니다."),
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
     PRODUCT_REVIEW_NOT_ALLOWED(HttpStatus.CONFLICT, "이미 심사가 완료된 상품입니다."),
     PRODUCT_CHANGE_REQUEST_NOT_FOUND(

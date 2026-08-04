@@ -1,8 +1,11 @@
 import type {
     AdminCategory,
     AdminCategoryRequest,
+    AdminAuthorization,
     AdminMember,
     AdminMemberPage,
+    AdminRoleUpdateRequest,
+    AdminRoleUpdateResponse,
     AdminOrder,
     AdminOrderPage,
     AdminProduct,
@@ -147,6 +150,20 @@ export function getAdminMembers(options: AdminPageOptions = {}) {
 
 export function getAdminMember(memberId: number, signal?: AbortSignal) {
     return apiRequest<AdminMember>(`/admin/members/${memberId}`, { signal })
+}
+
+export function getAdminAuthorization(signal?: AbortSignal) {
+    return apiRequest<AdminAuthorization>('/admin/authorization', { signal })
+}
+
+export function updateAdminMemberRole(
+    memberId: number,
+    request: AdminRoleUpdateRequest,
+) {
+    return apiRequest<AdminRoleUpdateResponse>(
+        `/admin/members/${memberId}/admin-role`,
+        { method: 'PATCH', body: request },
+    )
 }
 
 export function getAdminSellers(options: AdminPageOptions = {}) {
