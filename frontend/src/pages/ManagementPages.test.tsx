@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getCategories } from '../api/products'
 import {
@@ -10,6 +11,7 @@ import type { SellerProfile } from '../types/seller'
 import { AdminManagementPage } from './AdminManagementPage'
 import { SellerDashboardPage } from './SellerDashboardPage'
 import { SellerProductEditorPage } from './SellerProductEditorPage'
+import { SellerProductListPage } from './SellerProductListPage'
 import { SellerProfilePage } from './SellerProfilePage'
 
 vi.mock('../api/products', () => ({
@@ -19,6 +21,7 @@ vi.mock('../api/products', () => ({
 vi.mock('../api/seller', () => ({
     createSellerProduct: vi.fn(),
     createSellerProfile: vi.fn(),
+    deleteSellerProduct: vi.fn(),
     getSellerOrders: vi.fn(),
     getSellerProduct: vi.fn(),
     getSellerProducts: vi.fn(),
@@ -64,6 +67,15 @@ const sellerProfile: SellerProfile = {
 describe('management pages', () => {
     beforeEach(() => {
         vi.mocked(getSellerProfile).mockResolvedValue(sellerProfile)
+        vi.mocked(getSellerProducts).mockResolvedValue({
+            content: [],
+            page: 1,
+            size: 20,
+            totalElements: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrevious: false,
+        })
         vi.mocked(getCategories).mockResolvedValue([
             { categoryId: 1, name: '식품', slug: 'food', depth: 1 },
         ])
@@ -94,6 +106,19 @@ describe('management pages', () => {
         expect(screen.getByLabelText('할인 시작일')).toBeDisabled()
         expect(screen.getByLabelText('할인 종료일')).toBeDisabled()
         expect(getSellerProducts).not.toHaveBeenCalled()
+        expect(getSellerOrders).not.toHaveBeenCalled()
+    })
+
+    it('상품 목록 화면에서는 상품과 카테고리만 조회한다', async () => {
+        render(
+            <MemoryRouter initialEntries={['/seller/products']}>
+                <SellerProductListPage />
+            </MemoryRouter>,
+        )
+
+        await waitFor(() => expect(getSellerProducts).toHaveBeenCalledOnce())
+        expect(getCategories).toHaveBeenCalledOnce()
+        expect(getSellerProfile).not.toHaveBeenCalled()
         expect(getSellerOrders).not.toHaveBeenCalled()
     })
 
