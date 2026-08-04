@@ -10,6 +10,7 @@ import {
 } from '../api/seller'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
+import { StatusBadge, type StatusBadgeTone } from '../components/ui/StatusBadge'
 import type { ReturnRequest, ReturnRequestStatus } from '../types/order'
 import { formatKoreanDateTime } from '../utils/dateTime'
 import { resolveImageUrl } from '../utils/product'
@@ -415,15 +416,15 @@ function ManagementPage({
 }
 
 function ReturnStatusBadge({ status }: { status: ReturnRequestStatus }) {
-    const tone = {
-        REQUESTED: 'border-warning text-warning',
-        APPROVED: 'border-success text-success',
-        REJECTED: 'border-danger text-danger',
-    }[status]
+    const tones: Record<ReturnRequestStatus, StatusBadgeTone> = {
+        REQUESTED: 'warning',
+        APPROVED: 'success',
+        REJECTED: 'danger',
+    }
     return (
-        <span className={`inline-flex border px-2.5 py-1 text-[11px] font-bold ${tone}`}>
+        <StatusBadge tone={tones[status]}>
             {returnStatusLabel[status]}
-        </span>
+        </StatusBadge>
     )
 }
 

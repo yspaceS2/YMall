@@ -7,9 +7,10 @@ import {
 } from '../../api/sellerApplications'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
-import type { SellerApplication } from '../../types/sellerApplication'
+import type { SellerApplication, SellerApplicationStatus } from '../../types/sellerApplication'
 import { formatKoreanDateTime } from '../../utils/dateTime'
 import { FeedbackMessage } from '../ui/FeedbackMessage'
+import { StatusBadge, type StatusBadgeTone } from '../ui/StatusBadge'
 
 const statusLabels = {
     PENDING: '심사 대기',
@@ -17,6 +18,13 @@ const statusLabels = {
     APPROVED: '승인 완료',
     REJECTED: '반려',
 } as const
+
+const statusTones: Record<SellerApplicationStatus, StatusBadgeTone> = {
+    PENDING: 'warning',
+    NEEDS_REVISION: 'warning',
+    APPROVED: 'success',
+    REJECTED: 'danger',
+}
 
 export function SellerApplicationPanel() {
     const { logout, role } = useAuth()
@@ -207,7 +215,11 @@ export function SellerApplicationPanel() {
                     <dl className="mt-7 grid gap-3 border-t border-line pt-5 text-sm">
                         <div className="flex justify-between gap-4">
                             <dt className="text-muted">현재 상태</dt>
-                            <dd className="font-bold">{statusLabels[application.status]}</dd>
+                            <dd>
+                                <StatusBadge tone={statusTones[application.status]}>
+                                    {statusLabels[application.status]}
+                                </StatusBadge>
+                            </dd>
                         </div>
                         <div className="flex justify-between gap-4">
                             <dt className="text-muted">신청일</dt>

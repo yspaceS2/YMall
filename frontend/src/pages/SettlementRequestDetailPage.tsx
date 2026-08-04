@@ -11,8 +11,9 @@ import {
 } from '../api/admin'
 import { ApiError } from '../api/client'
 import { getSettlementRequest } from '../api/seller'
-import { settlementStatusLabel } from '../components/settlement/settlementStatus'
+import { settlementStatusLabel, settlementStatusTone } from '../components/settlement/settlementStatus'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { StatusBadge } from '../components/ui/StatusBadge'
 import type { SettlementRequest, SettlementRequestHistory } from '../types/seller'
 import { formatKoreanDateTime } from '../utils/dateTime'
 import { formatPrice } from '../utils/product'
@@ -142,9 +143,9 @@ export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin'
                                     {request.storeName} · 신청 {formatKoreanDateTime(request.createdAt)}
                                 </p>
                             </div>
-                            <span className="border border-line px-3 py-2 text-xs font-bold">
+                            <StatusBadge className="px-3 py-2 text-xs" tone={settlementStatusTone[request.status]}>
                                 {settlementStatusLabel[request.status]}
-                            </span>
+                            </StatusBadge>
                         </div>
                     </header>
 

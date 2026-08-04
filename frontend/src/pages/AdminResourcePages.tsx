@@ -19,6 +19,7 @@ import {
     managementPageClassName,
 } from '../components/management/ManagementListUi'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { StatusBadge } from '../components/ui/StatusBadge'
 import { AdminMemberRolePanel } from '../components/admin/AdminMemberRolePanel'
 import { AdminMemberOperationsPanel } from '../components/admin/AdminMemberOperationsPanel'
 import {
@@ -601,7 +602,9 @@ function rowCells(resource: AdminResource, item: AdminResourceItem) {
             member.name,
             member.email,
             formatMemberAuthority(member),
-            member.accessStatus === 'ACTIVE' ? '정상' : '이용 제한',
+            <StatusBadge tone={member.accessStatus === 'ACTIVE' ? 'success' : 'danger'}>
+                {member.accessStatus === 'ACTIVE' ? '정상' : '이용 제한'}
+            </StatusBadge>,
             `${member.orderCount}건`,
             formatPrice(member.totalPaidAmount),
             member.lastLoginAt ? formatKoreanDateTime(member.lastLoginAt) : '-',
@@ -621,9 +624,19 @@ function rowCells(resource: AdminResource, item: AdminResourceItem) {
         order.memberName,
         productLabel,
         formatPrice(order.totalAmount),
-        getOrderStatusLabel(order.status),
+        <StatusBadge tone={adminOrderStatusTone(order.status)}>
+            {getOrderStatusLabel(order.status)}
+        </StatusBadge>,
         formatKoreanDateTime(order.createdAt),
     ]
+}
+
+function adminOrderStatusTone(status: AdminOrder['status']) {
+    if (status === 'DELIVERED') return 'success' as const
+    if (status === 'PAYMENT_FAILED') return 'danger' as const
+    if (status === 'PENDING_PAYMENT' || status === 'PARTIALLY_REFUNDED') return 'warning' as const
+    if (status === 'CANCELED' || status === 'REFUNDED') return 'neutral' as const
+    return 'info' as const
 }
 
 function itemId(resource: AdminResource, item: AdminResourceItem) {

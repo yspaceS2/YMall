@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { getOrders } from '../api/orders'
+import { OrderStatusBadge } from '../components/order/OrderStatusBadge'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
 import type { Order } from '../types/order'
-import { formatOrderDate, getOrderStatusLabel } from '../utils/order'
+import { formatOrderDate } from '../utils/order'
 import { formatPrice, resolveImageUrl } from '../utils/product'
 
 export function OrderHistoryPage() {
@@ -131,9 +132,7 @@ export function OrderHistoryPage() {
                                             <Link className="truncate font-bold hover:underline" to={detailUrl}>
                                                 {orderTitle}
                                             </Link>
-                                            <span className="shrink-0 bg-success-soft px-2 py-1 text-[10px] font-extrabold text-success">
-                                                {getOrderStatusLabel(order.status)}
-                                            </span>
+                                            <OrderStatusBadge className="shrink-0" status={order.status} />
                                         </div>
                                         <p className="mt-2 text-xs text-muted">
                                             주문 #{order.orderId} · {formatOrderDate(order.createdAt)}

@@ -14,6 +14,8 @@ import type {
 } from '../../types/admin'
 import { formatKoreanDateTime } from '../../utils/dateTime'
 import { formatPrice } from '../../utils/product'
+import { StatusBadge } from '../ui/StatusBadge'
+import { settlementStatusTone } from '../settlement/settlementStatus'
 
 const statusLabel: Record<SettlementRequestStatus, string> = {
     REQUESTED: '승인 대기',
@@ -102,9 +104,9 @@ export function AdminSettlementPanel() {
                                         신청 {formatKoreanDateTime(request.createdAt)}
                                     </p>
                                 </div>
-                                <span className="border border-line px-2.5 py-1 text-xs font-bold">
+                                <StatusBadge tone={settlementStatusTone[request.status]}>
                                     {statusLabel[request.status]}
-                                </span>
+                                </StatusBadge>
                             </div>
                             <div className="mt-4 grid gap-2 text-sm min-[701px]:grid-cols-3">
                                 <p>매출 <b>{formatPrice(request.grossAmount)}</b></p>

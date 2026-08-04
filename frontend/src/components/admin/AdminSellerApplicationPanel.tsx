@@ -7,6 +7,7 @@ import {
 import { ApiError } from '../../api/client'
 import type { SellerApplication } from '../../types/sellerApplication'
 import { formatKoreanDateTime } from '../../utils/dateTime'
+import { StatusBadge } from '../ui/StatusBadge'
 import { FeedbackMessage } from '../ui/FeedbackMessage'
 import { useAdminAuthorization } from '../../auth/useAdminAuthorization'
 
@@ -104,9 +105,9 @@ export function AdminSellerApplicationPanel() {
                             <div>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <strong className="text-lg">{application.storeName}</strong>
-                                    <span className="bg-success-soft px-2.5 py-1 text-[11px] font-bold text-success">
+                                    <StatusBadge tone="warning">
                                         심사 대기
-                                    </span>
+                                    </StatusBadge>
                                 </div>
                                 <dl className="mt-4 grid gap-2 text-sm">
                                     <div className="flex flex-wrap gap-2">

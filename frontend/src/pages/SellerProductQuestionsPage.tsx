@@ -17,6 +17,7 @@ import {
 } from '../components/management/ManagementListUi'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
+import { StatusBadge } from '../components/ui/StatusBadge'
 import type {
     ProductQuestion,
     ProductQuestionStatus,
@@ -366,13 +367,9 @@ function Thumbnail({ name, url }: { name: string; url: string | null }) {
 
 function QuestionStatusBadge({ status }: { status: ProductQuestionStatus }) {
     return (
-        <span className={`inline-flex px-2.5 py-1 text-[11px] font-bold ${
-            status === 'ANSWERED'
-                ? 'bg-lime text-[#171717]'
-                : 'bg-warning-soft text-warning'
-        }`}>
+        <StatusBadge tone={status === 'ANSWERED' ? 'success' : 'warning'}>
             {status === 'ANSWERED' ? '답변 완료' : '답변 대기'}
-        </span>
+        </StatusBadge>
     )
 }
 

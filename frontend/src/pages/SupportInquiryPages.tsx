@@ -24,6 +24,7 @@ import {
     managementPageClassName,
 } from '../components/management/ManagementListUi'
 import { PageState } from '../components/ui/PageState'
+import { StatusBadge, type StatusBadgeTone } from '../components/ui/StatusBadge'
 import { REALTIME_EVENT } from '../realtime/RealtimeProvider'
 import { useRealtime } from '../realtime/useRealtime'
 import { useToast } from '../toast/useToast'
@@ -40,6 +41,16 @@ import { InquiryCreateForm, InquiryDetail } from './SupportCenterPage'
 import { CATEGORY_LABELS, STATUS_LABELS } from './supportPresentation'
 
 const SUPPORT_STATUSES = new Set<SupportInquiryStatus>(Object.keys(STATUS_LABELS) as SupportInquiryStatus[])
+
+const supportStatusTones: Record<SupportInquiryStatus, StatusBadgeTone> = {
+    WAITING: 'warning',
+    IN_PROGRESS: 'info',
+    ANSWERED: 'success',
+    LIVE_REQUESTED: 'warning',
+    LIVE_OFFERED: 'info',
+    LIVE_ACTIVE: 'success',
+    CLOSED: 'neutral',
+}
 
 export function SupportInquiryListPage({ admin = false }: { admin?: boolean }) {
     const { role } = useAuth()
@@ -198,7 +209,11 @@ export function SupportInquiryListPage({ admin = false }: { admin?: boolean }) {
                                         <strong className="mt-1 block">{inquiry.title}</strong>
                                     </td>
                                     {admin && <td className="p-4">{inquiry.requesterName}</td>}
-                                    <td className="p-4">{STATUS_LABELS[inquiry.status]}</td>
+                                    <td className="p-4">
+                                        <StatusBadge tone={supportStatusTones[inquiry.status]}>
+                                            {STATUS_LABELS[inquiry.status]}
+                                        </StatusBadge>
+                                    </td>
                                     {admin && <td className="p-4">{inquiry.assignedAdminName ?? '-'}</td>}
                                     <td className="p-4 text-muted">{formatKoreanDateTime(inquiry.updatedAt)}</td>
                                 </tr>

@@ -23,6 +23,7 @@ import type {
 } from '../types/support'
 import { formatKoreanDateTime } from '../utils/dateTime'
 import { CATEGORY_LABELS, STATUS_LABELS } from './supportPresentation'
+import { StatusBadge as CommonStatusBadge, type StatusBadgeTone } from '../components/ui/StatusBadge'
 
 const CUSTOMER_CATEGORIES: SupportInquiryCategory[] = [
     'ORDER', 'PAYMENT', 'CANCEL_REFUND', 'DELIVERY', 'ACCOUNT', 'SERVICE',
@@ -393,14 +394,14 @@ function resizeTextArea(textArea: HTMLTextAreaElement | null) {
 }
 
 function StatusBadge({ status }: { status: SupportInquiryStatus }) {
-    const tone = status === 'LIVE_ACTIVE'
-        ? 'bg-lime text-[#171717]'
+    const tone: StatusBadgeTone = status === 'LIVE_ACTIVE'
+        ? 'success'
         : status === 'CLOSED'
-            ? 'bg-line text-muted'
+            ? 'neutral'
             : status === 'WAITING' || status === 'LIVE_REQUESTED'
-                ? 'bg-danger/10 text-danger'
-                : 'bg-accent/10 text-accent'
-    return <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${tone}`}>{STATUS_LABELS[status]}</span>
+                ? 'warning'
+                : 'info'
+    return <CommonStatusBadge tone={tone}>{STATUS_LABELS[status]}</CommonStatusBadge>
 }
 
 function ActionButton({ icon: Icon, label, onClick, disabled, accent = false }: {

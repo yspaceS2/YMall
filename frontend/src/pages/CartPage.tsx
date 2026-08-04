@@ -5,6 +5,7 @@ import { deleteCartItem, getCart, updateCartItemQuantity } from '../api/cart'
 import { ApiError } from '../api/client'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
+import { StatusBadge } from '../components/ui/StatusBadge'
 import type { CartItem } from '../types/cart'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
 
@@ -169,7 +170,7 @@ export function CartPage() {
                                     </Link>
                                     <div className="flex min-w-0 flex-col justify-between">
                                         <div className="flex flex-col items-start gap-1.5">
-                                            {!isAvailable && <span className="bg-danger-soft px-1.5 py-0.5 text-[10px] font-extrabold text-danger">구매 불가</span>}
+                                            {!isAvailable && <StatusBadge tone="danger">구매 불가</StatusBadge>}
                                             <Link className="text-[15px] font-bold" to={`/products/${item.productId}`}>{item.productName}</Link>
                                             {item.discountPercentage > 0 && (
                                                 <del className="text-[11px] text-muted">{formatPrice(item.price)}</del>

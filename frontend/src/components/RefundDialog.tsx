@@ -6,6 +6,7 @@ import type {
     PaymentRefundRequest,
 } from '../types/order'
 import { formatPrice } from '../utils/product'
+import { StatusBadge } from './ui/StatusBadge'
 
 export interface RefundableOrderItem {
     orderItemId: number
@@ -280,14 +281,14 @@ function RefundStatusBadge({ status }: { status: PaymentRefund['status'] }) {
         FAILED: '처리 실패',
         UNKNOWN: '결과 확인 중',
     }
-    const colors = status === 'SUCCEEDED'
-        ? 'bg-success-soft text-success'
+    const tone = status === 'SUCCEEDED'
+        ? 'success'
         : status === 'FAILED'
-            ? 'bg-danger-soft text-danger'
-            : 'bg-warning-soft text-warning'
+            ? 'danger'
+            : 'warning'
     return (
-        <span className={`px-2.5 py-1 text-[10px] font-extrabold ${colors}`}>
+        <StatusBadge tone={tone}>
             {labels[status]}
-        </span>
+        </StatusBadge>
     )
 }
