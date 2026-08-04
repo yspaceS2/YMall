@@ -156,7 +156,7 @@ export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin'
                         <DetailRow label="검토일" value={formatOptionalDate(request.reviewedAt)} />
                         <DetailRow label="지급 처리일" value={formatOptionalDate(request.paidAt)} />
                         {request.mockPaymentReference && (
-                            <DetailRow label="모의 지급 참조번호" value={request.mockPaymentReference} />
+                            <DetailRow label="지급 처리번호" value={request.mockPaymentReference} />
                         )}
                         {request.rejectionReason && (
                             <DetailRow label="반려 사유" value={request.rejectionReason} danger />
