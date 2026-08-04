@@ -27,6 +27,12 @@ describe('ProductImageUploadField', () => {
         const input = screen.getByLabelText('상품 이미지 파일 선택')
         const file = new File(['image'], 'product.webp', { type: 'image/webp' })
 
+        expect(screen.getByText('상품 이미지').parentElement).toHaveClass(
+            'border-b',
+            'px-4',
+            'py-5',
+        )
+
         fireEvent.change(input, { target: { files: [file] } })
 
         expect(screen.getByText('product.webp')).toBeInTheDocument()

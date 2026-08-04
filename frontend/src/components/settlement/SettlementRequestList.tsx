@@ -19,7 +19,9 @@ import { formatPrice } from '../../utils/product'
 import {
     settlementStatuses,
     settlementStatusLabel,
+    settlementStatusTone,
 } from './settlementStatus'
+import { StatusBadge } from '../ui/StatusBadge'
 
 export function SellerSettlementRequestList() {
     return <SettlementRequestList role="seller" />
@@ -155,9 +157,9 @@ function SettlementRequestList({ role }: { role: 'seller' | 'admin' }) {
                                         <td className="px-4 py-4 text-right">{formatPrice(request.feeAmount)}</td>
                                         <td className="px-4 py-4 text-right font-bold">{formatPrice(request.settlementAmount)}</td>
                                         <td className="px-4 py-4">
-                                            <span className="inline-flex border border-line px-2.5 py-1 text-xs font-bold">
+                                            <StatusBadge tone={settlementStatusTone[request.status]}>
                                                 {settlementStatusLabel[request.status]}
-                                            </span>
+                                            </StatusBadge>
                                         </td>
                                         <td className="px-4 py-4 text-xs text-muted">
                                             {formatKoreanDateTime(request.createdAt)}

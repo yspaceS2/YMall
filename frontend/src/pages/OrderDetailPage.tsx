@@ -13,6 +13,7 @@ import {
 import { createReview, deleteReview, getAllMyReviews, updateReview } from '../api/reviews'
 import { RefundDialog } from '../components/RefundDialog'
 import { ReturnRequestDialog } from '../components/ReturnRequestDialog'
+import { OrderStatusBadge } from '../components/order/OrderStatusBadge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
@@ -26,7 +27,7 @@ import type {
     ReturnRequestCreateRequest,
 } from '../types/order'
 import type { Review } from '../types/review'
-import { formatOrderDate, getOrderStatusLabel } from '../utils/order'
+import { formatOrderDate } from '../utils/order'
 import { formatPrice, resolveImageUrl } from '../utils/product'
 
 interface ReviewEditorState {
@@ -246,9 +247,7 @@ export function OrderDetailPage() {
             <header className="border-b border-ink pb-8">
                 <div className="flex flex-wrap items-center gap-3">
                     <p className="text-[11px] font-extrabold tracking-[.18em] text-accent">ORDER DETAIL</p>
-                    <span className="bg-success-soft px-2.5 py-1 text-[10px] font-extrabold text-success">
-                        {getOrderStatusLabel(order.status)}
-                    </span>
+                    <OrderStatusBadge status={order.status} />
                 </div>
                 <h1 className="mt-3 font-serif text-[clamp(34px,5vw,56px)] leading-tight tracking-tight">{orderTitle}</h1>
                 <p className="mt-4 text-xs text-muted">

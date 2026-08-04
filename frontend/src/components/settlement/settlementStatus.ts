@@ -1,4 +1,5 @@
 import type { SettlementRequestStatus } from '../../types/seller'
+import type { StatusBadgeTone } from '../ui/StatusBadge'
 
 export const settlementStatusLabel: Record<SettlementRequestStatus, string> = {
     REQUESTED: '승인 대기',
@@ -10,3 +11,10 @@ export const settlementStatusLabel: Record<SettlementRequestStatus, string> = {
 export const settlementStatuses = Object.keys(
     settlementStatusLabel,
 ) as SettlementRequestStatus[]
+
+export const settlementStatusTone: Record<SettlementRequestStatus, StatusBadgeTone> = {
+    REQUESTED: 'warning',
+    APPROVED: 'info',
+    REJECTED: 'danger',
+    PAID: 'success',
+}

@@ -3,10 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SellerOrderDetail } from '../types/seller'
-import {
-    SellerOrderDetailPage,
-    SellerOrderListPage,
-} from './SellerOrderManagementPage'
+import { SellerOrderDetailPage } from './SellerOrderDetailPage'
+import { SellerOrderListPage } from './SellerOrderListPage'
 
 const mocks = vi.hoisted(() => ({
     getSellerOrder: vi.fn(),

@@ -8,6 +8,7 @@ import {
 } from '../api/admin'
 import { ApiError } from '../api/client'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { StatusBadge, type StatusBadgeTone } from '../components/ui/StatusBadge'
 import type { AdminProduct } from '../types/admin'
 import type { ProductStatus } from '../types/product'
 import { formatKoreanDateTime } from '../utils/dateTime'
@@ -158,7 +159,7 @@ export function AdminProductReviewListPage() {
                                 <td className="px-4 py-3 text-sm">{product.storeName || 'YMall'}</td>
                                 <td className="px-4 py-3 text-sm">{product.categoryName}</td>
                                 <td className="px-4 py-3 text-sm font-bold">{formatPrice(product.price)}</td>
-                                <td className="px-4 py-3"><StatusBadge status={product.status as ReviewStatus} /></td>
+                                <td className="px-4 py-3"><ProductReviewStatusBadge status={product.status as ReviewStatus} /></td>
                                 <td className="px-4 py-3 text-xs text-muted">{formatKoreanDateTime(product.createdAt)}</td>
                             </tr>
                         ))}
@@ -261,7 +262,7 @@ export function AdminProductReviewDetailPage() {
                     <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">PRODUCT REVIEW</p>
                     <h1 className="font-serif text-[clamp(34px,5vw,52px)] leading-tight tracking-tighter">{product.name}</h1>
                 </div>
-                <StatusBadge status={product.status as ReviewStatus} />
+                <ProductReviewStatusBadge status={product.status as ReviewStatus} />
             </div>
 
             {message && <FeedbackMessage className="mb-5" tone="success">{message}</FeedbackMessage>}
@@ -352,11 +353,11 @@ function ProductThumbnail({ product }: { product: AdminProduct }) {
         : <span className="grid size-14 shrink-0 place-content-center rounded-md bg-paper text-[10px] text-muted">NO IMAGE</span>
 }
 
-function StatusBadge({ status }: { status: ReviewStatus }) {
-    const className = status === 'APPROVED'
-        ? 'bg-success-soft text-success'
+function ProductReviewStatusBadge({ status }: { status: ReviewStatus }) {
+    const tone: StatusBadgeTone = status === 'APPROVED'
+        ? 'success'
         : status === 'REJECTED'
-            ? 'bg-danger-soft text-danger'
-            : 'bg-warning-soft text-warning'
-    return <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold ${className}`}>{statusLabel[status]}</span>
+            ? 'danger'
+            : 'warning'
+    return <StatusBadge tone={tone}>{statusLabel[status]}</StatusBadge>
 }

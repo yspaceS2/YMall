@@ -16,12 +16,22 @@ import {
 } from '../components/management/ManagementListUi'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
-import type { Category, ProductSummary } from '../types/product'
+import { StatusBadge, type StatusBadgeTone } from '../components/ui/StatusBadge'
+import type { Category, ProductStatus, ProductSummary } from '../types/product'
 import type { SellerProductStockCondition } from '../types/seller'
-import { formatPrice, resolveImageUrl } from '../utils/product'
+import { formatPrice, getProductStatusLabel, resolveImageUrl } from '../utils/product'
 import { getCategoryChildren } from '../utils/productCategory'
 
 const PAGE_SIZE = 20
+
+const productStatusTones: Record<ProductStatus, StatusBadgeTone> = {
+    DRAFT: 'neutral',
+    PENDING: 'warning',
+    APPROVED: 'success',
+    REJECTED: 'danger',
+    SOLD_OUT: 'neutral',
+    DELETED: 'danger',
+}
 
 export function SellerProductListPage() {
     const navigate = useNavigate()
@@ -301,7 +311,11 @@ export function SellerProductListPage() {
                                     <td className="p-4">{product.categoryName}</td>
                                     <td className="p-4">{formatPrice(product.price)}</td>
                                     <td className="p-4">{product.stock.toLocaleString()}</td>
-                                    <td className="p-4">{product.status}</td>
+                                    <td className="p-4">
+                                        <StatusBadge tone={productStatusTones[product.status]}>
+                                            {getProductStatusLabel(product.status)}
+                                        </StatusBadge>
+                                    </td>
                                     <td className="p-4">
                                         <div className="flex justify-end gap-1">
                                             <Link

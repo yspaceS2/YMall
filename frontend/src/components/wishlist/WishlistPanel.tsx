@@ -8,17 +8,18 @@ import type { WishlistProduct } from '../../types/wishlist'
 import { formatKoreanDate } from '../../utils/dateTime'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../../utils/product'
 import { FeedbackMessage } from '../ui/FeedbackMessage'
+import { StatusBadge, type StatusBadgeTone } from '../ui/StatusBadge'
 
 const PAGE_SIZE = 8
 
-function availability(product: WishlistProduct) {
+function availability(product: WishlistProduct): { label: string; tone: StatusBadgeTone } {
     if (product.stock === 0 || product.status === 'SOLD_OUT') {
-        return { label: '품절', className: 'text-danger' }
+        return { label: '품절', tone: 'danger' }
     }
     if (product.status !== 'APPROVED') {
-        return { label: '판매 중지', className: 'text-muted' }
+        return { label: '판매 중지', tone: 'neutral' }
     }
-    return { label: '판매 중', className: 'text-success' }
+    return { label: '판매 중', tone: 'success' }
 }
 
 export function WishlistPanel() {
@@ -133,7 +134,7 @@ export function WishlistPanel() {
                                             product.price,
                                             product.discountPercentage,
                                         ))}</b>
-                                        <span className={state.className}>{state.label}</span>
+                                        <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
                                         <span className="text-muted">
                                             {formatKoreanDate(product.wishedAt)} 찜
                                         </span>

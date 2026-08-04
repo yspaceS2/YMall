@@ -15,6 +15,7 @@ import { formatKoreanDateTime } from '../../utils/dateTime'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { FeedbackMessage } from '../ui/FeedbackMessage'
 import { PageState } from '../ui/PageState'
+import { StatusBadge } from '../ui/StatusBadge'
 
 const emptyForm: ProductQuestionRequest = {
     title: '',
@@ -286,9 +287,9 @@ export function ProductQuestionSection({
                     {questions.map((question) => (
                         <article className="border-b border-line py-6" key={question.questionId}>
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
-                                <span className={`px-2 py-1 font-bold ${question.status === 'ANSWERED' ? 'bg-lime text-[#171717]' : 'bg-surface'}`}>
+                                <StatusBadge tone={question.status === 'ANSWERED' ? 'success' : 'warning'}>
                                     {question.status === 'ANSWERED' ? '답변 완료' : '답변 대기'}
-                                </span>
+                                </StatusBadge>
                                 {question.privateQuestion && (
                                     <span className="inline-flex items-center gap-1">
                                         <LockKeyhole className="size-3" /> 비밀글

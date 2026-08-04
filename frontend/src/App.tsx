@@ -21,22 +21,20 @@ import { PaymentPage } from './pages/PaymentPage'
 import { PasswordResetPage } from './pages/PasswordResetPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ProductListPage } from './pages/ProductListPage'
-import { SellerManagementPage } from './pages/SellerManagementPage'
-import {
-    SellerOrderDetailPage,
-    SellerOrderListPage,
-} from './pages/SellerOrderManagementPage'
-import { SellerProductListPage } from './pages/SellerResourcePages'
+import { SellerDashboardPage } from './pages/SellerDashboardPage'
+import { SellerProductEditorPage } from './pages/SellerProductEditorPage'
+import { SellerProfilePage } from './pages/SellerProfilePage'
+import { SellerOrderDetailPage } from './pages/SellerOrderDetailPage'
+import { SellerOrderListPage } from './pages/SellerOrderListPage'
+import { SellerProductListPage } from './pages/SellerProductListPage'
 import { SignupPage } from './pages/SignupPage'
 import { TossPaymentFailPage } from './pages/TossPaymentFailPage'
 import { TossPaymentSuccessPage } from './pages/TossPaymentSuccessPage'
 import { OAuth2CallbackPage } from './pages/OAuth2CallbackPage'
 import { OAuthSignupPage } from './pages/OAuthSignupPage'
 import { AdminManagementPage } from './pages/AdminManagementPage'
-import {
-    AdminResourceDetailPage,
-    AdminResourceListPage,
-} from './pages/AdminResourcePages'
+import { AdminResourceDetailPage } from './pages/AdminResourceDetailPage'
+import { AdminResourceListPage } from './pages/AdminResourceListPage'
 import { AdminCategoryManagementPage } from './pages/AdminCategoryManagementPage'
 import {
     AdminProductReviewDetailPage,
@@ -47,19 +45,13 @@ import {
     AdminProductChangeReviewListPage,
 } from './pages/AdminProductChangeReviewPage'
 import { AccessDeniedPage } from './pages/AccessDeniedPage'
-import {
-    SellerReturnRequestDetailPage,
-    SellerReturnRequestsPage,
-} from './pages/SellerReturnRequestsPage'
-import {
-    SellerProductQuestionDetailPage,
-    SellerProductQuestionListPage,
-} from './pages/SellerProductQuestionsPage'
+import { SellerReturnRequestDetailPage } from './pages/SellerReturnRequestDetailPage'
+import { SellerReturnRequestsPage } from './pages/SellerReturnRequestsPage'
+import { SellerProductQuestionDetailPage } from './pages/SellerProductQuestionDetailPage'
+import { SellerProductQuestionListPage } from './pages/SellerProductQuestionsPage'
 import { SettlementRequestDetailPage } from './pages/SettlementRequestDetailPage'
-import {
-    SupportInquiryDetailPage,
-    SupportInquiryListPage,
-} from './pages/SupportInquiryPages'
+import { SupportInquiryDetailPage } from './pages/SupportInquiryDetailPage'
+import { SupportInquiryListPage } from './pages/SupportInquiryListPage'
 import type { AdminPermission } from './types/admin'
 
 function App() {
@@ -125,12 +117,12 @@ function MemberPortalRoutes() {
 function SellerPortalRoutes() {
     return (
         <Routes>
-            <Route index element={<SellerManagementPage section="dashboard" />} />
-            <Route path="profile" element={<SellerManagementPage section="profile" />} />
+            <Route index element={<SellerDashboardPage />} />
+            <Route path="profile" element={<SellerProfilePage />} />
             <Route path="products" element={<SellerProductListPage />} />
             <Route
                 path="products/new"
-                element={<SellerManagementPage section="products" productFormOnly />}
+                element={<SellerProductEditorPage />}
             />
             <Route path="products/:productId" element={<SellerProductEditorRoute />} />
             <Route path="orders" element={<SellerOrderListPage />} />
@@ -159,7 +151,7 @@ function AdminPortalRoutes() {
     return (
         <Routes>
             <Route index element={withAdminPermission(
-                <AdminManagementPage section="dashboard" />,
+                <AdminManagementPage />,
                 'DASHBOARD_READ',
             )} />
             <Route path="members" element={withAdminPermission(
@@ -280,11 +272,7 @@ function SellerProductEditorRoute() {
     }
 
     return (
-        <SellerManagementPage
-            section="products"
-            productFormOnly
-            initialProductId={parsedProductId}
-        />
+        <SellerProductEditorPage initialProductId={parsedProductId} />
     )
 }
 

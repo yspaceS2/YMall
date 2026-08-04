@@ -1,101 +1,18 @@
 import {
     ArrowLeft,
     Bell,
-    BriefcaseBusiness,
-    ClipboardCheck,
-    Heart,
-    Headphones,
-    LayoutDashboard,
     LogOut,
-    Mail,
-    MapPin,
     Menu,
-    MessageSquareText,
-    PackageCheck,
-    PackageSearch,
-    ReceiptText,
-    Store,
-    Tags,
-    Undo2,
-    UserRound,
-    Users,
-    WalletCards,
     X,
-    type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import {
-    getUnreadNotificationCount,
-    NOTIFICATIONS_CHANGED_EVENT,
-} from '../../api/notifications'
-import {
-    getSellerPendingQuestionCount,
-    SELLER_QUESTION_COUNT_CHANGED_EVENT,
-} from '../../api/productQuestions'
-import {
-    getSellerPendingOrderCount,
-    SELLER_PENDING_ORDER_COUNT_CHANGED_EVENT,
-} from '../../api/seller'
 import ymallSymbolLight from '../../assets/brand/ymall-symbol-light.svg'
 import { useAuth } from '../../auth/useAuth'
 import { useOptionalAdminAuthorization } from '../../auth/useAdminAuthorization'
-import type { AdminPermission } from '../../types/admin'
 import { ThemeSelector } from '../ThemeSelector'
-import { getPendingSupportCount } from '../../api/support'
-import { REALTIME_EVENT } from '../../realtime/RealtimeProvider'
-
-type ManagementRole = 'member' | 'seller' | 'admin'
-
-interface NavigationItem {
-    label: string
-    href: string
-    icon: LucideIcon
-    permission?: AdminPermission
-}
-
-const memberNavigation: NavigationItem[] = [
-    { label: '대시보드', href: '/mypage', icon: LayoutDashboard },
-    { label: '회원정보', href: '/mypage/profile', icon: UserRound },
-    { label: '이메일 변경', href: '/mypage/email', icon: Mail },
-    { label: '소셜 계정', href: '/mypage/social', icon: Users },
-    { label: '찜한 상품', href: '/mypage/wishlist', icon: Heart },
-    { label: '배송지 관리', href: '/mypage/addresses', icon: MapPin },
-    { label: '주문·배송 조회', href: '/mypage/orders', icon: ReceiptText },
-    { label: '고객센터', href: '/mypage/support', icon: Headphones },
-    { label: '알림', href: '/mypage/notifications', icon: Bell },
-    { label: '판매자 신청', href: '/mypage/seller-application', icon: BriefcaseBusiness },
-]
-
-const sellerNavigation: NavigationItem[] = [
-    { label: '대시보드', href: '/seller', icon: LayoutDashboard },
-    { label: '판매자 정보', href: '/seller/profile', icon: Store },
-    { label: '상품 관리', href: '/seller/products', icon: PackageCheck },
-    { label: '주문·배송 관리', href: '/seller/orders', icon: ReceiptText },
-    { label: '반품 관리', href: '/seller/returns', icon: Undo2 },
-    { label: '상품 문의 관리', href: '/seller/questions', icon: MessageSquareText },
-    { label: '고객센터', href: '/seller/support', icon: Headphones },
-    { label: '알림', href: '/seller/notifications', icon: Bell },
-    { label: '정산 관리', href: '/seller/settlement', icon: WalletCards },
-]
-
-const adminNavigation: NavigationItem[] = [
-    { label: '대시보드', href: '/admin', icon: LayoutDashboard, permission: 'DASHBOARD_READ' },
-    { label: '회원 관리', href: '/admin/members', icon: Users, permission: 'MEMBER_READ' },
-    { label: '판매자 관리', href: '/admin/sellers', icon: Store, permission: 'SELLER_READ' },
-    {
-        label: '판매자 신청 관리',
-        href: '/admin/seller-applications',
-        icon: ClipboardCheck,
-        permission: 'SELLER_APPLICATION_REVIEW',
-    },
-    { label: '상품 승인 관리', href: '/admin/products', icon: PackageSearch, permission: 'PRODUCT_REVIEW' },
-    { label: '카테고리 관리', href: '/admin/categories', icon: Tags, permission: 'CATEGORY_READ' },
-    { label: '주문 관리', href: '/admin/orders', icon: ReceiptText, permission: 'REFUND_STANDARD' },
-    { label: '고객센터 관리', href: '/admin/support', icon: Headphones, permission: 'SUPPORT_REPLY' },
-    { label: '알림', href: '/admin/notifications', icon: Bell },
-    { label: '정산 관리', href: '/admin/settlement', icon: WalletCards, permission: 'SETTLEMENT_REVIEW' },
-]
+import { getManagementNavigation, type ManagementRole } from './managementNavigation'
+import { useManagementBadgeCounts } from './useManagementBadgeCounts'
 
 export function ManagementLayout({
     role,
@@ -107,18 +24,10 @@ export function ManagementLayout({
     const { logout, role: authenticatedRole } = useAuth()
     const adminAuthorization = useOptionalAdminAuthorization()
     const [isNavigationOpen, setIsNavigationOpen] = useState(false)
-    const [pendingQuestionCount, setPendingQuestionCount] = useState(0)
-    const [pendingOrderCount, setPendingOrderCount] = useState(0)
-    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
-    const [pendingSupportCount, setPendingSupportCount] = useState(0)
     const location = useLocation()
     const isAdmin = role === 'admin'
     const isMember = role === 'member'
-    const roleNavigation = isMember
-        ? memberNavigation
-        : isAdmin
-            ? adminNavigation
-            : sellerNavigation
+    const roleNavigation = getManagementNavigation(role)
     const navigation = isMember && authenticatedRole !== 'ROLE_USER'
         ? roleNavigation.filter((item) => item.href !== '/mypage/seller-application')
         : isAdmin && adminAuthorization
@@ -128,125 +37,15 @@ export function ManagementLayout({
     const roleRootPath = isMember ? '/mypage' : `/${role}`
     const notificationPath = `${roleRootPath}/notifications`
     const centerName = isMember ? '마이페이지' : isAdmin ? '관리자 센터' : '판매자 센터'
-
-    useEffect(() => {
-        let active = true
-        let controller: AbortController | null = null
-        const loadUnreadCount = () => {
-            controller?.abort()
-            controller = new AbortController()
-            getUnreadNotificationCount(controller.signal)
-                .then((response) => {
-                    if (active) setUnreadNotificationCount(response.unreadCount)
-                })
-                .catch((error: unknown) => {
-                    if (error instanceof Error && error.name === 'AbortError') return
-                    if (active) setUnreadNotificationCount(0)
-                })
-        }
-
-        loadUnreadCount()
-        const intervalId = window.setInterval(loadUnreadCount, 30_000)
-        window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount)
-        return () => {
-            active = false
-            controller?.abort()
-            window.clearInterval(intervalId)
-            window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount)
-        }
-    }, [])
-
-    useEffect(() => {
-        if (role !== 'admin'
-            || !adminAuthorization?.hasPermission('SUPPORT_REPLY')) return
-        let active = true
-        let controller: AbortController | null = null
-        const loadPendingSupportCount = () => {
-            controller?.abort()
-            controller = new AbortController()
-            getPendingSupportCount(controller.signal)
-                .then((response) => {
-                    if (active) setPendingSupportCount(response.count)
-                })
-                .catch((error: unknown) => {
-                    if (error instanceof Error && error.name === 'AbortError') return
-                    if (active) setPendingSupportCount(0)
-                })
-        }
-        loadPendingSupportCount()
-        const intervalId = window.setInterval(loadPendingSupportCount, 30_000)
-        window.addEventListener(REALTIME_EVENT, loadPendingSupportCount)
-        window.addEventListener('focus', loadPendingSupportCount)
-        return () => {
-            active = false
-            controller?.abort()
-            window.clearInterval(intervalId)
-            window.removeEventListener(REALTIME_EVENT, loadPendingSupportCount)
-            window.removeEventListener('focus', loadPendingSupportCount)
-        }
-    }, [adminAuthorization, role])
-
-    useEffect(() => {
-        if (role !== 'seller') return
-        let active = true
-        let controller: AbortController | null = null
-        const loadPendingCount = () => {
-            controller?.abort()
-            controller = new AbortController()
-            getSellerPendingQuestionCount(controller.signal)
-                .then((response) => {
-                    if (active) setPendingQuestionCount(response.count)
-                })
-                .catch((error: unknown) => {
-                    if (error instanceof Error && error.name === 'AbortError') return
-                    if (active) setPendingQuestionCount(0)
-                })
-        }
-
-        loadPendingCount()
-        const intervalId = window.setInterval(loadPendingCount, 30_000)
-        window.addEventListener(SELLER_QUESTION_COUNT_CHANGED_EVENT, loadPendingCount)
-        return () => {
-            active = false
-            controller?.abort()
-            window.clearInterval(intervalId)
-            window.removeEventListener(SELLER_QUESTION_COUNT_CHANGED_EVENT, loadPendingCount)
-        }
-    }, [role])
-
-    useEffect(() => {
-        if (role !== 'seller') return
-        let active = true
-        let controller: AbortController | null = null
-        const loadPendingOrderCount = () => {
-            controller?.abort()
-            controller = new AbortController()
-            getSellerPendingOrderCount(controller.signal)
-                .then((response) => {
-                    if (active) setPendingOrderCount(response.count)
-                })
-                .catch((error: unknown) => {
-                    if (error instanceof Error && error.name === 'AbortError') return
-                    if (active) setPendingOrderCount(0)
-                })
-        }
-
-        loadPendingOrderCount()
-        const intervalId = window.setInterval(loadPendingOrderCount, 30_000)
-        window.addEventListener(
-            SELLER_PENDING_ORDER_COUNT_CHANGED_EVENT,
-            loadPendingOrderCount,
-        )
-        return () => {
-            active = false
-            controller?.abort()
-            window.clearInterval(intervalId)
-            window.removeEventListener(
-                SELLER_PENDING_ORDER_COUNT_CHANGED_EVENT,
-                loadPendingOrderCount,
-            )
-        }
-    }, [role])
+    const {
+        pendingOrderCount,
+        pendingQuestionCount,
+        pendingSupportCount,
+        unreadNotificationCount,
+    } = useManagementBadgeCounts(
+        role,
+        adminAuthorization?.hasPermission('SUPPORT_REPLY') ?? false,
+    )
 
     return (
         <div className="min-h-screen bg-paper text-ink">
