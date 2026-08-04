@@ -72,4 +72,34 @@ describe('AdminSellerApplicationPanel', () => {
             .toBeInTheDocument()
         expect(screen.queryByText('member@example.com')).not.toBeInTheDocument()
     })
+
+    it('매니저는 승인·반려 없이 보완 요청만 처리한다', async () => {
+        const user = userEvent.setup()
+        render(
+            <AdminAuthorizationContext.Provider value={{
+                authorization: {
+                    memberId: 2,
+                    adminGrade: 'MANAGER',
+                    permissions: ['SELLER_APPLICATION_REVIEW'],
+                },
+                hasPermission: (...permissions) => permissions.includes('SELLER_APPLICATION_REVIEW'),
+            }}>
+                <AdminSellerApplicationPanel />
+            </AdminAuthorizationContext.Provider>,
+        )
+
+        expect(await screen.findByText('YMall Store')).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: '승인' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: '반려' })).not.toBeInTheDocument()
+        await user.type(screen.getByLabelText('보완 요청·반려 사유'), '서류 설명을 보완해 주세요.')
+        await user.click(screen.getByRole('button', { name: '보완 요청' }))
+
+        await waitFor(() => {
+            expect(mocks.reviewSellerApplication).toHaveBeenCalledWith(
+                1,
+                'NEEDS_REVISION',
+                '서류 설명을 보완해 주세요.',
+            )
+        })
+    })
 })

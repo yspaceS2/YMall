@@ -1,4 +1,4 @@
-import { Check, LoaderCircle, Store, X } from 'lucide-react'
+import { Check, FileWarning, LoaderCircle, Store, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
     getAdminSellerApplications,
@@ -40,11 +40,11 @@ export function AdminSellerApplicationPanel() {
 
     async function review(
         application: SellerApplication,
-        status: 'APPROVED' | 'REJECTED',
+        status: 'NEEDS_REVISION' | 'APPROVED' | 'REJECTED',
     ) {
         const rejectionReason = rejectionReasons[application.sellerApplicationId]?.trim()
-        if (status === 'REJECTED' && !rejectionReason) {
-            setErrorMessage('반려하려면 반려 사유를 입력해 주세요.')
+        if (status !== 'APPROVED' && !rejectionReason) {
+            setErrorMessage('보완 요청 또는 반려 사유를 입력해 주세요.')
             return
         }
 
@@ -61,7 +61,9 @@ export function AdminSellerApplicationPanel() {
                 (item) => item.sellerApplicationId !== application.sellerApplicationId,
             ))
             setMessage(
-                `'${application.storeName}' 판매자 신청을 ${status === 'APPROVED' ? '승인' : '반려'}했습니다.`,
+                `'${application.storeName}' 판매자 신청을 ${status === 'APPROVED'
+                    ? '승인'
+                    : status === 'NEEDS_REVISION' ? '보완 요청' : '반려'}했습니다.`,
             )
         } catch (error) {
             setErrorMessage(
@@ -96,9 +98,7 @@ export function AdminSellerApplicationPanel() {
                 <div className="grid gap-4">
                     {applications.map((application) => (
                         <article
-                            className={canDecide
-                                ? 'grid gap-5 border border-line bg-surface p-5 min-[901px]:grid-cols-[minmax(0,1fr)_minmax(280px,.55fr)]'
-                                : 'border border-line bg-surface p-5'}
+                            className="grid gap-5 border border-line bg-surface p-5 min-[901px]:grid-cols-[minmax(0,1fr)_minmax(280px,.55fr)]"
                             key={application.sellerApplicationId}
                         >
                             <div>
@@ -128,7 +128,8 @@ export function AdminSellerApplicationPanel() {
                                     </p>
                                 )}
                             </div>
-                            {canDecide && <div className="grid content-start gap-3">
+                            <div className="grid content-start gap-3">
+                                {canDecide && (
                                 <button
                                     className="flex h-11 items-center justify-center gap-2 bg-ink px-4 text-xs font-bold text-white disabled:opacity-50"
                                     type="button"
@@ -138,8 +139,9 @@ export function AdminSellerApplicationPanel() {
                                     <Check className="size-4" aria-hidden="true" />
                                     승인
                                 </button>
+                                )}
                                 <label className="grid gap-2 text-xs font-bold text-muted">
-                                    <span>반려 사유</span>
+                                    <span>보완 요청·반려 사유</span>
                                     <textarea
                                         className="min-h-20 resize-y border border-line bg-transparent p-3 text-sm font-normal text-ink outline-0 focus:border-ink"
                                         value={rejectionReasons[application.sellerApplicationId] ?? ''}
@@ -151,6 +153,16 @@ export function AdminSellerApplicationPanel() {
                                     />
                                 </label>
                                 <button
+                                    className="flex h-11 items-center justify-center gap-2 border border-ink px-4 text-xs font-bold disabled:opacity-50"
+                                    type="button"
+                                    disabled={processingId !== null}
+                                    onClick={() => void review(application, 'NEEDS_REVISION')}
+                                >
+                                    <FileWarning className="size-4" aria-hidden="true" />
+                                    보완 요청
+                                </button>
+                                {canDecide && (
+                                <button
                                     className="flex h-11 items-center justify-center gap-2 border border-danger px-4 text-xs font-bold text-danger disabled:opacity-50"
                                     type="button"
                                     disabled={processingId !== null}
@@ -159,7 +171,8 @@ export function AdminSellerApplicationPanel() {
                                     <X className="size-4" aria-hidden="true" />
                                     반려
                                 </button>
-                            </div>}
+                                )}
+                            </div>
                         </article>
                     ))}
                 </div>

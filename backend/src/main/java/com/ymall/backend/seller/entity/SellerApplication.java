@@ -101,6 +101,13 @@ public class SellerApplication {
         this.reviewedAt = LocalDateTime.now();
     }
 
+    public void requestRevision(Member reviewer, String reason) {
+        this.status = SellerApplicationStatus.NEEDS_REVISION;
+        this.rejectionReason = reason;
+        this.reviewedBy = reviewer;
+        this.reviewedAt = LocalDateTime.now();
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();

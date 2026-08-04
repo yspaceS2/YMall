@@ -8,6 +8,7 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.Set;
+import java.time.LocalDateTime;
 
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberAccessStatus;
 import com.ymall.backend.member.repository.MemberRepository;
 
 @Service
@@ -36,6 +38,9 @@ public class RefreshTokenService {
     private final MemberRepository memberRepository;
 
     public AuthenticationTokens issue(Member member) {
+        if (member.getAccessStatus() != MemberAccessStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.MEMBER_ACCESS_RESTRICTED);
+        }
         String refreshToken = generateToken();
         String tokenKey = key(refreshToken);
         String memberKey = memberKey(member.getId());
@@ -47,6 +52,11 @@ public class RefreshTokenService {
         redisTemplate.opsForSet().add(memberKey, tokenKey);
         redisTemplate.expire(memberKey, jwtProperties.getRefreshTokenExpiration());
         return new AuthenticationTokens(jwtTokenProvider.createAccessToken(member), refreshToken);
+    }
+
+    public AuthenticationTokens issueForLogin(Member member) {
+        memberRepository.updateLastLoginAt(member.getId(), LocalDateTime.now());
+        return issue(member);
     }
 
     public AuthenticationTokens rotate(String refreshToken) {

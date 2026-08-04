@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityManager;
 
 import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.admin.entity.AdminGrade;
 import com.ymall.backend.global.security.RefreshTokenService;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
@@ -118,6 +119,38 @@ class SellerApplicationApiIntegrationTest {
             .extracting(profile -> profile.getBusinessNumber())
             .isEqualTo("101-20-30001");
         verify(refreshTokenService).revokeAll(applicant.getId());
+    }
+
+    @Test
+    void managerRequestsRevisionAndApplicantResubmits() throws Exception {
+        apply(applicantToken, "Revision Store", "101-20-30101")
+            .andExpect(status().isCreated());
+        SellerApplication application = sellerApplicationRepository
+            .findByMemberId(applicant.getId())
+            .orElseThrow();
+        Member manager = saveMember("seller-review-manager@example.com", MemberRole.ROLE_ADMIN);
+        manager.changeAdminRole(MemberRole.ROLE_ADMIN, AdminGrade.MANAGER);
+        memberRepository.save(manager);
+
+        mockMvc.perform(patch(
+                "/api/admin/seller-applications/{applicationId}",
+                application.getId()
+            )
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(manager)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "status": "NEEDS_REVISION",
+                        "rejectionReason": "사업자 서류 설명을 보완해 주세요."
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("NEEDS_REVISION"));
+
+        apply(applicantToken, "Revised Store", "101-20-30101")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.data.status").value("PENDING"))
+            .andExpect(jsonPath("$.data.storeName").value("Revised Store"));
     }
 
     @Test

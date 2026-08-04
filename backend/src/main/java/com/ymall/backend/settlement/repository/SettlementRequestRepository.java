@@ -15,6 +15,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.repository.query.Param;
 
 import com.ymall.backend.settlement.entity.SettlementRequest;
+import com.ymall.backend.settlement.entity.SettlementRequestStatus;
 
 public interface SettlementRequestRepository extends
     JpaRepository<SettlementRequest, Long>,
@@ -35,6 +36,11 @@ public interface SettlementRequestRepository extends
     Optional<SettlementRequest> findByIdAndSellerProfileId(
         Long requestId,
         Long sellerProfileId
+    );
+
+    long countBySellerProfileIdAndStatus(
+        Long sellerProfileId,
+        SettlementRequestStatus status
     );
 
 }

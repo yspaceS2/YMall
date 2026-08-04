@@ -11,6 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.admin.entity.AdminAuditAction;
+import com.ymall.backend.admin.entity.AdminAuditTargetType;
+import com.ymall.backend.admin.entity.AdminPermission;
+import com.ymall.backend.admin.service.AdminAuditService;
 import com.ymall.backend.dashboard.service.DashboardRealtimePublisher;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
@@ -43,6 +47,7 @@ public class SellerApplicationService {
     private final MemberRepository memberRepository;
     private final RefreshTokenService refreshTokenService;
     private final DashboardRealtimePublisher dashboardRealtimePublisher;
+    private final AdminAuditService adminAuditService;
 
     public SellerApplicationResponse getMyApplication(Long memberId) {
         return toResponse(sellerApplicationRepository.findByMemberId(memberId)
@@ -63,7 +68,9 @@ public class SellerApplicationService {
 
         SellerApplication application = sellerApplicationRepository.findByMemberId(memberId)
             .orElse(null);
-        if (application != null && application.getStatus() != SellerApplicationStatus.REJECTED) {
+        if (application != null
+            && application.getStatus() != SellerApplicationStatus.REJECTED
+            && application.getStatus() != SellerApplicationStatus.NEEDS_REVISION) {
             throw new BusinessException(ErrorCode.SELLER_APPLICATION_ALREADY_EXISTS);
         }
         validateBusinessNumber(request.businessNumber(), application);
@@ -128,7 +135,8 @@ public class SellerApplicationService {
         SellerApplicationReviewRequest request
     ) {
         if (request.status() != SellerApplicationStatus.APPROVED
-            && request.status() != SellerApplicationStatus.REJECTED) {
+            && request.status() != SellerApplicationStatus.REJECTED
+            && request.status() != SellerApplicationStatus.NEEDS_REVISION) {
             throw new BusinessException(ErrorCode.SELLER_APPLICATION_STATUS_INVALID);
         }
         SellerApplication application = sellerApplicationRepository.findByIdForUpdate(applicationId)
@@ -138,12 +146,35 @@ public class SellerApplicationService {
         }
         Member reviewer = memberRepository.findById(reviewerId)
             .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        if (reviewer.getAdminGrade() == null
+            || !reviewer.getAdminGrade().hasPermission(AdminPermission.SELLER_APPLICATION_REVIEW)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+
+        String reason = request.rejectionReason() == null
+            ? ""
+            : request.rejectionReason().trim();
+        if (request.status() == SellerApplicationStatus.NEEDS_REVISION) {
+            if (reason.isBlank()) throw new BusinessException(ErrorCode.INVALID_REQUEST);
+            application.requestRevision(reviewer, reason);
+            recordReviewAudit(reviewer, application, "PENDING", "NEEDS_REVISION", reason);
+            dashboardRealtimePublisher.invalidateSellerAndAdmins(
+                application.getMember().getId(),
+                "sellerApplication",
+                applicationId
+            );
+            return toResponse(application);
+        }
+        if (!reviewer.getAdminGrade().hasPermission(AdminPermission.SELLER_APPLICATION_DECIDE)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
 
         if (request.status() == SellerApplicationStatus.REJECTED) {
-            if (request.rejectionReason() == null || request.rejectionReason().isBlank()) {
+            if (reason.isBlank()) {
                 throw new BusinessException(ErrorCode.INVALID_REQUEST);
             }
-            application.reject(reviewer, request.rejectionReason());
+            application.reject(reviewer, reason);
+            recordReviewAudit(reviewer, application, "PENDING", "REJECTED", reason);
             dashboardRealtimePublisher.invalidateSellerAndAdmins(
                 application.getMember().getId(),
                 "sellerApplication",
@@ -169,6 +200,7 @@ public class SellerApplicationService {
         ));
         applicant.promoteToSeller();
         application.approve(reviewer);
+        recordReviewAudit(reviewer, application, "PENDING", "APPROVED", "판매자 가입 승인");
         refreshTokenService.revokeAll(applicant.getId());
         dashboardRealtimePublisher.invalidateSellerAndAdmins(
             applicant.getId(),
@@ -176,6 +208,24 @@ public class SellerApplicationService {
             applicationId
         );
         return toResponse(application);
+    }
+
+    private void recordReviewAudit(
+        Member reviewer,
+        SellerApplication application,
+        String beforeValue,
+        String afterValue,
+        String reason
+    ) {
+        adminAuditService.record(
+            reviewer,
+            AdminAuditTargetType.SELLER_APPLICATION,
+            application.getId(),
+            AdminAuditAction.SELLER_APPLICATION_REVIEWED,
+            beforeValue,
+            afterValue,
+            reason
+        );
     }
 
     private void validateBusinessNumber(

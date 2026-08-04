@@ -1,6 +1,6 @@
 import { ArrowLeft, LoaderCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
     getAdminMember,
     getAdminMembers,
@@ -20,6 +20,7 @@ import {
 } from '../components/management/ManagementListUi'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { AdminMemberRolePanel } from '../components/admin/AdminMemberRolePanel'
+import { AdminMemberOperationsPanel } from '../components/admin/AdminMemberOperationsPanel'
 import {
     formatAdminGrade,
     formatMemberAuthority,
@@ -32,8 +33,11 @@ import type {
     AdminOrderPage,
     AdminSeller,
     AdminSellerPage,
+    AdminGrade,
+    MemberAccessStatus,
 } from '../types/admin'
 import { formatKoreanDateTime } from '../utils/dateTime'
+import { getOrderItemFulfillmentStatusLabel, getOrderStatusLabel } from '../utils/order'
 import { formatPrice } from '../utils/product'
 
 type AdminResource = 'members' | 'sellers' | 'orders'
@@ -81,11 +85,28 @@ export function AdminResourceListPage({ resource }: { resource: AdminResource })
     const workType = resource === 'orders'
         ? parseOrderWorkType(searchParams.get('workType'))
         : undefined
+    const memberStatus = resource === 'members'
+        ? parseMemberAccessStatus(searchParams.get('status'))
+        : undefined
+    const memberRole = resource === 'members'
+        ? parseMemberRole(searchParams.get('role'))
+        : undefined
+    const adminGrade = resource === 'members'
+        ? parseAdminGrade(searchParams.get('adminGrade'))
+        : undefined
+    const joinedFrom = resource === 'members' ? searchParams.get('joinedFrom') ?? '' : ''
+    const joinedTo = resource === 'members' ? searchParams.get('joinedTo') ?? '' : ''
     const meta = resourceMeta[resource]
 
     useEffect(() => {
         const controller = new AbortController()
-        loadList(resource, page, keyword, workType, controller.signal)
+        loadList(resource, page, keyword, workType, {
+            status: memberStatus,
+            role: memberRole,
+            adminGrade,
+            joinedFrom,
+            joinedTo,
+        }, controller.signal)
             .then(setPageData)
             .catch((error: unknown) => {
                 if (error instanceof Error && error.name === 'AbortError') return
@@ -99,7 +120,7 @@ export function AdminResourceListPage({ resource }: { resource: AdminResource })
                 if (!controller.signal.aborted) setIsLoading(false)
             })
         return () => controller.abort()
-    }, [keyword, page, resource, workType])
+    }, [adminGrade, joinedFrom, joinedTo, keyword, memberRole, memberStatus, page, resource, workType])
 
     const items = pageData?.content ?? []
 
@@ -131,6 +152,15 @@ export function AdminResourceListPage({ resource }: { resource: AdminResource })
                     </select>
                 </label>
             )}
+            {resource === 'members' && (
+                <MemberFilters
+                    adminGrade={adminGrade}
+                    joinedFrom={joinedFrom}
+                    joinedTo={joinedTo}
+                    role={memberRole}
+                    status={memberStatus}
+                />
+            )}
             <ManagementListSearch placeholder={meta.searchPlaceholder} />
             {errorMessage && <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>}
             {isLoading ? (
@@ -158,11 +188,15 @@ export function AdminResourceListPage({ resource }: { resource: AdminResource })
                                         key={id}
                                         tabIndex={0}
                                         role="link"
-                                        onClick={() => navigate(`/admin/${resource}/${id}`)}
+                                        onClick={() => navigate(`/admin/${resource}/${id}`, {
+                                            state: { returnTo: `/admin/${resource}?${searchParams.toString()}` },
+                                        })}
                                         onKeyDown={(event) => {
                                             if (event.key === 'Enter' || event.key === ' ') {
                                                 event.preventDefault()
-                                                navigate(`/admin/${resource}/${id}`)
+                                                navigate(`/admin/${resource}/${id}`, {
+                                                    state: { returnTo: `/admin/${resource}?${searchParams.toString()}` },
+                                                })
                                             }
                                         }}
                                     >
@@ -187,6 +221,7 @@ export function AdminResourceListPage({ resource }: { resource: AdminResource })
 }
 
 export function AdminResourceDetailPage({ resource }: { resource: AdminResource }) {
+    const location = useLocation()
     const { resourceId } = useParams()
     const id = Number(resourceId)
     const invalidId = !Number.isInteger(id) || id <= 0
@@ -194,6 +229,12 @@ export function AdminResourceDetailPage({ resource }: { resource: AdminResource 
     const [errorMessage, setErrorMessage] = useState('')
     const [isLoading, setIsLoading] = useState(true)
     const meta = resourceMeta[resource]
+    const returnTo = typeof location.state === 'object'
+        && location.state !== null
+        && 'returnTo' in location.state
+        && typeof location.state.returnTo === 'string'
+        ? location.state.returnTo
+        : `/admin/${resource}`
 
     useEffect(() => {
         if (invalidId) return
@@ -219,7 +260,7 @@ export function AdminResourceDetailPage({ resource }: { resource: AdminResource 
         <section className={managementPageClassName}>
             <Link
                 className="mb-6 inline-flex items-center gap-2 text-xs font-bold underline underline-offset-4"
-                to={`/admin/${resource}`}
+                to={returnTo}
             >
                 <ArrowLeft className="size-4" aria-hidden="true" />
                 {meta.title} 목록
@@ -249,6 +290,7 @@ export function AdminResourceDetailPage({ resource }: { resource: AdminResource 
                             adminGrade: response.adminGrade,
                         }
                     })}
+                    onMemberOperationsChanged={(member) => setItem(member)}
                 />
             )}
         </section>
@@ -259,10 +301,12 @@ function DetailContent({
     resource,
     item,
     onMemberChanged,
+    onMemberOperationsChanged,
 }: {
     resource: AdminResource
     item: AdminResourceItem
     onMemberChanged: Parameters<typeof AdminMemberRolePanel>[0]['onChanged']
+    onMemberOperationsChanged: Parameters<typeof AdminMemberOperationsPanel>[0]['onChanged']
 }) {
     if (resource === 'members') {
         const member = item as AdminMember
@@ -276,23 +320,64 @@ function DetailContent({
                     ...(member.role === 'ROLE_ADMIN'
                         ? [['관리자 등급', formatAdminGrade(member.adminGrade)] as [string, string]]
                         : []),
+                    ['이용 상태', member.accessStatus === 'ACTIVE' ? '정상' : '이용 제한'],
+                    ['최근 로그인', member.lastLoginAt ? formatKoreanDateTime(member.lastLoginAt) : '로그인 기록 없음'],
+                    ['주문 건수', `${member.orderCount}건`],
+                    ['누적 결제액', formatPrice(member.totalPaidAmount)],
                     ['가입일', formatKoreanDateTime(member.createdAt)],
                 ]} />
                 <AdminMemberRolePanel member={member} onChanged={onMemberChanged} />
+                <AdminMemberOperationsPanel
+                    member={member}
+                    onChanged={onMemberOperationsChanged}
+                />
             </div>
         )
     }
 
     if (resource === 'sellers') {
         const seller = item as AdminSeller
-        return <DetailGrid values={[
-            ['판매자번호', String(seller.sellerProfileId)],
-            ['상점명', seller.storeName],
-            ['회원명', seller.memberName],
-            ['이메일', seller.email],
-            ['사업자번호', seller.businessNumber],
-            ['등록일', formatKoreanDateTime(seller.createdAt)],
-        ]} />
+        return (
+            <div className="grid gap-8">
+                <DetailGrid columns={2} values={[
+                    ['판매자번호', String(seller.sellerProfileId)],
+                    ['상점명', seller.storeName],
+                    ['회원명', seller.memberName],
+                    ['이메일', seller.email],
+                    ['사업자번호', seller.businessNumber],
+                    ['등록일', formatKoreanDateTime(seller.createdAt)],
+                    ['전체 상품', `${seller.productCount}개`],
+                    ['승인 대기 상품', `${seller.pendingProductCount}개`],
+                    ['주문 건수', `${seller.orderCount}건`],
+                    ['거래액', formatPrice(seller.grossSalesAmount)],
+                    ['환불 수량', `${seller.refundedQuantity}개`],
+                    ['처리 대기 반품', `${seller.pendingReturnCount}건`],
+                    ['미처리 문의', `${seller.pendingSupportCount}건`],
+                    ['정산 검토 대기', `${seller.pendingSettlementCount}건`],
+                    ['가입 신청 상태', seller.applicationStatus ?? '-'],
+                    ['신청 검토일', seller.applicationReviewedAt
+                        ? formatKoreanDateTime(seller.applicationReviewedAt)
+                        : '-'],
+                ]} />
+                {seller.applicationReviewReason && (
+                    <FeedbackMessage tone="info">
+                        판매자 신청 검토 사유: {seller.applicationReviewReason}
+                    </FeedbackMessage>
+                )}
+                <section className="border-t-2 border-ink pt-5">
+                    <h2 className="mb-5 text-xl font-bold">관련 업무 바로가기</h2>
+                    <div className="flex flex-wrap gap-2">
+                        <RelatedLink to="/admin/products">상품 심사</RelatedLink>
+                        <RelatedLink to="/admin/orders">주문·환불</RelatedLink>
+                        <RelatedLink to="/admin/settlement">정산</RelatedLink>
+                        <RelatedLink to={`/admin/support?keyword=${encodeURIComponent(seller.memberName)}`}>
+                            고객센터
+                        </RelatedLink>
+                        <RelatedLink to="/admin/seller-applications">가입 신청</RelatedLink>
+                    </div>
+                </section>
+            </div>
+        )
     }
 
     const order = item as AdminOrder
@@ -302,7 +387,7 @@ function DetailContent({
                 ['주문번호', String(order.orderId)],
                 ['구매자', order.memberName],
                 ['이메일', order.memberEmail],
-                ['상태', order.status],
+                ['상태', getOrderStatusLabel(order.status)],
                 ['결제금액', formatPrice(order.totalAmount)],
                 ['주문일', formatKoreanDateTime(order.createdAt)],
             ]} />
@@ -326,7 +411,9 @@ function DetailContent({
                                     <td className="p-4">{formatPrice(orderItem.unitPrice)}</td>
                                     <td className="p-4">{orderItem.quantity}</td>
                                     <td className="p-4">{orderItem.refundedQuantity}</td>
-                                    <td className="p-4">{orderItem.fulfillmentStatus}</td>
+                                    <td className="p-4">
+                                        {getOrderItemFulfillmentStatusLabel(orderItem.fulfillmentStatus)}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -363,20 +450,130 @@ function DetailGrid({
     )
 }
 
+function RelatedLink({ to, children }: { to: string; children: string }) {
+    return (
+        <Link className="border border-line bg-surface px-4 py-3 text-xs font-bold hover:border-ink" to={to}>
+            {children}
+        </Link>
+    )
+}
+
+function MemberFilters({
+    status,
+    role,
+    adminGrade,
+    joinedFrom,
+    joinedTo,
+}: {
+    status?: MemberAccessStatus
+    role?: 'ROLE_USER' | 'ROLE_SELLER' | 'ROLE_ADMIN'
+    adminGrade?: AdminGrade
+    joinedFrom: string
+    joinedTo: string
+}) {
+    const [searchParams, setSearchParams] = useSearchParams()
+
+    function update(name: string, value: string) {
+        const next = new URLSearchParams(searchParams)
+        if (value) next.set(name, value)
+        else next.delete(name)
+        if (name === 'role' && value !== 'ROLE_ADMIN') next.delete('adminGrade')
+        next.set('page', '1')
+        setSearchParams(next)
+    }
+
+    const selectClassName = 'h-11 min-w-36 border border-line bg-surface px-3 text-sm text-ink'
+    return (
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+                이용 상태
+                <select className={selectClassName} value={status ?? ''} onChange={(event) => update('status', event.target.value)}>
+                    <option value="">전체</option>
+                    <option value="ACTIVE">정상</option>
+                    <option value="RESTRICTED">이용 제한</option>
+                </select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+                계정 역할
+                <select className={selectClassName} value={role ?? ''} onChange={(event) => update('role', event.target.value)}>
+                    <option value="">전체</option>
+                    <option value="ROLE_USER">회원</option>
+                    <option value="ROLE_SELLER">판매자</option>
+                    <option value="ROLE_ADMIN">관리자</option>
+                </select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+                관리자 등급
+                <select
+                    className={selectClassName}
+                    disabled={role !== 'ROLE_ADMIN'}
+                    value={adminGrade ?? ''}
+                    onChange={(event) => update('adminGrade', event.target.value)}
+                >
+                    <option value="">전체</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="SUPERVISOR">Supervisor</option>
+                    <option value="SUPER_ADMIN">Super Admin</option>
+                </select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+                가입 시작일
+                <input className={selectClassName} type="date" value={joinedFrom} onChange={(event) => update('joinedFrom', event.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+                가입 종료일
+                <input className={selectClassName} type="date" value={joinedTo} onChange={(event) => update('joinedTo', event.target.value)} />
+            </label>
+        </div>
+    )
+}
+
 function loadList(
     resource: AdminResource,
     page: number,
     keyword: string,
     workType: AdminOrderWorkType | undefined,
+    memberFilters: {
+        status?: MemberAccessStatus
+        role?: 'ROLE_USER' | 'ROLE_SELLER' | 'ROLE_ADMIN'
+        adminGrade?: AdminGrade
+        joinedFrom: string
+        joinedTo: string
+    },
     signal: AbortSignal,
 ): Promise<AdminResourcePage> {
-    if (resource === 'members') return getAdminMembers({ page, keyword, signal })
+    if (resource === 'members') return getAdminMembers({
+        page,
+        keyword,
+        signal,
+        status: memberFilters.status,
+        role: memberFilters.role,
+        adminGrade: memberFilters.adminGrade,
+        joinedFrom: memberFilters.joinedFrom || undefined,
+        joinedTo: memberFilters.joinedTo || undefined,
+    })
     if (resource === 'sellers') return getAdminSellers({ page, keyword, signal })
     return getAdminOrders({ page, keyword, workType, signal })
 }
 
 function parseOrderWorkType(value: string | null): AdminOrderWorkType | undefined {
     return value === 'PENDING_REFUND' || value === 'PENDING_RETURN' ? value : undefined
+}
+
+function parseMemberAccessStatus(value: string | null): MemberAccessStatus | undefined {
+    return value === 'ACTIVE' || value === 'RESTRICTED' ? value : undefined
+}
+
+function parseMemberRole(value: string | null) {
+    return value === 'ROLE_USER' || value === 'ROLE_SELLER' || value === 'ROLE_ADMIN'
+        ? value
+        : undefined
+}
+
+function parseAdminGrade(value: string | null): AdminGrade | undefined {
+    return value === 'MANAGER' || value === 'SUPERVISOR' || value === 'SUPER_ADMIN'
+        ? value
+        : undefined
 }
 
 function loadDetail(
@@ -390,7 +587,9 @@ function loadDetail(
 }
 
 function headers(resource: AdminResource) {
-    if (resource === 'members') return ['회원', '이메일', '권한', '가입일']
+    if (resource === 'members') {
+        return ['회원', '이메일', '권한', '상태', '주문', '누적 결제액', '최근 로그인']
+    }
     if (resource === 'sellers') return ['상점명', '회원', '이메일', '사업자번호']
     return ['주문번호', '구매자', '대표 상품', '결제금액', '상태', '주문일']
 }
@@ -402,7 +601,10 @@ function rowCells(resource: AdminResource, item: AdminResourceItem) {
             member.name,
             member.email,
             formatMemberAuthority(member),
-            formatKoreanDateTime(member.createdAt),
+            member.accessStatus === 'ACTIVE' ? '정상' : '이용 제한',
+            `${member.orderCount}건`,
+            formatPrice(member.totalPaidAmount),
+            member.lastLoginAt ? formatKoreanDateTime(member.lastLoginAt) : '-',
         ]
     }
     if (resource === 'sellers') {
@@ -419,7 +621,7 @@ function rowCells(resource: AdminResource, item: AdminResourceItem) {
         order.memberName,
         productLabel,
         formatPrice(order.totalAmount),
-        order.status,
+        getOrderStatusLabel(order.status),
         formatKoreanDateTime(order.createdAt),
     ]
 }

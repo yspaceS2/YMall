@@ -74,7 +74,7 @@ public class OAuthSignupController {
         );
         oAuthFlowContext.clear(servletRequest);
         refreshTokenService.revoke(refreshTokenCookieManager.read(servletRequest));
-        AuthenticationTokens tokens = refreshTokenService.issue(member);
+        AuthenticationTokens tokens = refreshTokenService.issueForLogin(member);
         refreshTokenCookieManager.write(servletResponse, tokens.refreshToken());
         return ApiResponse.success(tokens.accessToken(), "소셜 회원가입이 완료되었습니다.");
     }

@@ -9,6 +9,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -55,6 +58,21 @@ public class Member {
     @Column(length = 20)
     private AdminGrade adminGrade;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private MemberAccessStatus accessStatus;
+
+    private LocalDateTime lastLoginAt;
+
+    @Column(length = 500)
+    private String restrictionReason;
+
+    private LocalDateTime restrictedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "restricted_by")
+    private Member restrictedBy;
+
     @Column(nullable = false)
     private long authVersion;
 
@@ -76,6 +94,7 @@ public class Member {
         this.phone = phone;
         this.role = role;
         this.adminGrade = role == MemberRole.ROLE_ADMIN ? AdminGrade.SUPER_ADMIN : null;
+        this.accessStatus = MemberAccessStatus.ACTIVE;
         this.authVersion = 0L;
     }
 
@@ -108,6 +127,26 @@ public class Member {
         }
         this.role = targetRole;
         this.adminGrade = targetGrade;
+        incrementAuthVersion();
+    }
+
+    public void restrict(Member actor, String reason) {
+        this.accessStatus = MemberAccessStatus.RESTRICTED;
+        this.restrictionReason = reason;
+        this.restrictedAt = LocalDateTime.now();
+        this.restrictedBy = actor;
+        incrementAuthVersion();
+    }
+
+    public void restoreAccess() {
+        this.accessStatus = MemberAccessStatus.ACTIVE;
+        this.restrictionReason = null;
+        this.restrictedAt = null;
+        this.restrictedBy = null;
+        incrementAuthVersion();
+    }
+
+    public void revokeSessions() {
         incrementAuthVersion();
     }
 

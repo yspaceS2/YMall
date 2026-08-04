@@ -53,7 +53,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             return;
         }
         refreshTokenService.revoke(refreshTokenCookieManager.read(request));
-        AuthenticationTokens tokens = refreshTokenService.issue(principal.member());
+        AuthenticationTokens tokens = refreshTokenService.issueForLogin(principal.member());
         refreshTokenCookieManager.write(response, tokens.refreshToken());
         TokenResponse token = tokens.accessToken();
         String encodedToken = URLEncoder.encode(token.accessToken(), StandardCharsets.UTF_8);

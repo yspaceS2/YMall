@@ -51,7 +51,7 @@ class OAuth2AuthenticationSuccessHandlerTest {
         );
         Authentication authentication = mock(Authentication.class);
         given(authentication.getPrincipal()).willReturn(principal);
-        given(refreshTokenService.issue(member)).willReturn(new AuthenticationTokens(
+        given(refreshTokenService.issueForLogin(member)).willReturn(new AuthenticationTokens(
             new TokenResponse("ymall-token", "Bearer", 1800L),
             "refresh-token"
         ));
@@ -115,6 +115,6 @@ class OAuth2AuthenticationSuccessHandlerTest {
             "http://localhost:5173/oauth2/callback#emailChangeReauthenticated=true"
         );
         verify(emailChangeService).markOAuthReauthenticated(1L, "browser-session");
-        verify(refreshTokenService, never()).issue(member);
+        verify(refreshTokenService, never()).issueForLogin(member);
     }
 }

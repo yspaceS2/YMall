@@ -1,5 +1,9 @@
 package com.ymall.backend.admin.controller;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +18,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.admin.dto.AdminMemberResponse;
+import com.ymall.backend.admin.dto.AdminAuditLogResponse;
+import com.ymall.backend.admin.dto.AdminMemberRestrictionRequest;
+import com.ymall.backend.admin.dto.AdminSessionRevokeRequest;
+import com.ymall.backend.admin.entity.AdminGrade;
 import com.ymall.backend.admin.dto.AdminOrderResponse;
 import com.ymall.backend.admin.dto.AdminProductResponse;
 import com.ymall.backend.admin.dto.AdminProductStatusUpdateRequest;
@@ -26,6 +34,8 @@ import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.dto.ProductChangeRequestResponse;
 import com.ymall.backend.product.service.ProductChangeReviewService;
 import com.ymall.backend.global.security.MemberPrincipal;
+import com.ymall.backend.member.entity.MemberAccessStatus;
+import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.payment.refund.dto.PaymentRefundRequest;
 import com.ymall.backend.payment.refund.dto.PaymentRefundResponse;
 import com.ymall.backend.payment.refund.service.PaymentRefundService;
@@ -98,30 +108,82 @@ public class AdminController {
 
     @GetMapping("/members")
     public ApiResponse<PageResponse<AdminMemberResponse>> getMembers(
+        @AuthenticationPrincipal MemberPrincipal principal,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
-        @RequestParam(defaultValue = "") String keyword
+        @RequestParam(defaultValue = "") String keyword,
+        @RequestParam(required = false) MemberAccessStatus status,
+        @RequestParam(required = false) MemberRole role,
+        @RequestParam(required = false) AdminGrade adminGrade,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate joinedFrom,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate joinedTo
     ) {
-        return ApiResponse.success(adminService.getMembers(page, size, keyword));
+        return ApiResponse.success(adminService.getMembers(
+            principal.memberId(), page, size, keyword, status, role, adminGrade,
+            joinedFrom, joinedTo
+        ));
     }
 
     @GetMapping("/members/{memberId}")
-    public ApiResponse<AdminMemberResponse> getMember(@PathVariable Long memberId) {
-        return ApiResponse.success(adminService.getMember(memberId));
+    public ApiResponse<AdminMemberResponse> getMember(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long memberId
+    ) {
+        return ApiResponse.success(adminService.getMember(principal.memberId(), memberId));
+    }
+
+    @PatchMapping("/members/{memberId}/restriction")
+    public ApiResponse<AdminMemberResponse> changeMemberRestriction(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long memberId,
+        @Valid @RequestBody AdminMemberRestrictionRequest request
+    ) {
+        return ApiResponse.success(
+            adminService.changeMemberRestriction(principal.memberId(), memberId, request),
+            request.restricted() ? "회원 이용을 제한했습니다." : "회원 이용 제한을 해제했습니다."
+        );
+    }
+
+    @PostMapping("/members/{memberId}/sessions/revoke")
+    public ApiResponse<Void> revokeMemberSessions(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long memberId,
+        @Valid @RequestBody AdminSessionRevokeRequest request
+    ) {
+        adminService.revokeMemberSessions(principal.memberId(), memberId, request);
+        return ApiResponse.success(null, "회원의 모든 로그인 세션을 종료했습니다.");
+    }
+
+    @GetMapping("/members/{memberId}/audit-logs")
+    public ApiResponse<List<AdminAuditLogResponse>> getMemberAuditLogs(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long memberId
+    ) {
+        return ApiResponse.success(adminService.getMemberAuditLogs(
+            principal.memberId(), memberId
+        ));
     }
 
     @GetMapping("/sellers")
     public ApiResponse<PageResponse<AdminSellerResponse>> getSellers(
+        @AuthenticationPrincipal MemberPrincipal principal,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "") String keyword
     ) {
-        return ApiResponse.success(adminService.getSellers(page, size, keyword));
+        return ApiResponse.success(adminService.getSellers(
+            principal.memberId(), page, size, keyword
+        ));
     }
 
     @GetMapping("/sellers/{sellerId}")
-    public ApiResponse<AdminSellerResponse> getSeller(@PathVariable Long sellerId) {
-        return ApiResponse.success(adminService.getSeller(sellerId));
+    public ApiResponse<AdminSellerResponse> getSeller(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long sellerId
+    ) {
+        return ApiResponse.success(adminService.getSeller(principal.memberId(), sellerId));
     }
 
     @GetMapping("/orders")

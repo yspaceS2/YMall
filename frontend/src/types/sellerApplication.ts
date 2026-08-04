@@ -1,6 +1,6 @@
 import type { PageResponse } from './api'
 
-export type SellerApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type SellerApplicationStatus = 'PENDING' | 'NEEDS_REVISION' | 'APPROVED' | 'REJECTED'
 
 export interface SellerApplication {
     sellerApplicationId: number

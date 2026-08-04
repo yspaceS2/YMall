@@ -146,7 +146,7 @@ class MemberServiceTest {
         given(memberRepository.findByEmailIgnoreCase("user@example.com")).willReturn(java.util.Optional.of(member));
         given(passwordEncoder.matches("password123", "encoded-password")).willReturn(true);
         AuthenticationTokens tokens = new AuthenticationTokens(tokenResponse, "refresh-token");
-        given(refreshTokenService.issue(member)).willReturn(tokens);
+        given(refreshTokenService.issueForLogin(member)).willReturn(tokens);
 
         assertThat(memberService.login(request)).isEqualTo(tokens);
     }
