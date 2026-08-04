@@ -33,10 +33,8 @@ import { TossPaymentSuccessPage } from './pages/TossPaymentSuccessPage'
 import { OAuth2CallbackPage } from './pages/OAuth2CallbackPage'
 import { OAuthSignupPage } from './pages/OAuthSignupPage'
 import { AdminManagementPage } from './pages/AdminManagementPage'
-import {
-    AdminResourceDetailPage,
-    AdminResourceListPage,
-} from './pages/AdminResourcePages'
+import { AdminResourceDetailPage } from './pages/AdminResourceDetailPage'
+import { AdminResourceListPage } from './pages/AdminResourceListPage'
 import { AdminCategoryManagementPage } from './pages/AdminCategoryManagementPage'
 import {
     AdminProductReviewDetailPage,
