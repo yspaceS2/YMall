@@ -1,7 +1,7 @@
 import { LoaderCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ApiError } from '../api/client'
+import { getApiErrorMessage, isAbortError } from '../api/errors'
 import { getSellerOrders, type SellerOrderWorkType } from '../api/seller'
 import {
     ManagementListSearch,
@@ -11,6 +11,7 @@ import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import type { FulfillmentStatus, SellerOrder } from '../types/seller'
 import { formatKoreanDateTime } from '../utils/dateTime'
 import { formatPrice } from '../utils/product'
+import { parsePositiveInteger } from '../utils/searchParams'
 import {
     ManagementPage,
     ProductThumbnail,
@@ -37,7 +38,7 @@ export function SellerOrderListPage() {
     const [totalElements, setTotalElements] = useState(0)
     const [loadedQueryKey, setLoadedQueryKey] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
-    const page = positivePage(searchParams.get('page'))
+    const page = parsePositiveInteger(searchParams.get('page'), 1)
     const keyword = searchParams.get('keyword') ?? ''
     const workType = parseWorkType(searchParams.get('workType'))
     const status = workType ? '' : parseFulfillmentStatus(searchParams.get('fulfillmentStatus'))
@@ -59,10 +60,8 @@ export function SellerOrderListPage() {
             setTotalElements(response.totalElements)
             setErrorMessage('')
         }).catch((error: unknown) => {
-            if (error instanceof Error && error.name === 'AbortError') return
-            setErrorMessage(error instanceof ApiError
-                ? error.message
-                : '주문 목록을 불러오지 못했습니다.')
+            if (isAbortError(error)) return
+            setErrorMessage(getApiErrorMessage(error, '주문 목록을 불러오지 못했습니다.'))
         }).finally(() => {
             if (!controller.signal.aborted) setLoadedQueryKey(queryKey)
         })
@@ -200,11 +199,6 @@ export function SellerOrderListPage() {
             <ManagementPagination page={page} totalPages={totalPages} />
         </ManagementPage>
     )
-}
-
-function positivePage(value: string | null) {
-    const parsed = Number(value)
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : 1
 }
 
 function parseFulfillmentStatus(value: string | null): FulfillmentStatus | '' {
