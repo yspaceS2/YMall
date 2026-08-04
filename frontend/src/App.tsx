@@ -47,10 +47,8 @@ import {
 import { AccessDeniedPage } from './pages/AccessDeniedPage'
 import { SellerReturnRequestDetailPage } from './pages/SellerReturnRequestDetailPage'
 import { SellerReturnRequestsPage } from './pages/SellerReturnRequestsPage'
-import {
-    SellerProductQuestionDetailPage,
-    SellerProductQuestionListPage,
-} from './pages/SellerProductQuestionsPage'
+import { SellerProductQuestionDetailPage } from './pages/SellerProductQuestionDetailPage'
+import { SellerProductQuestionListPage } from './pages/SellerProductQuestionsPage'
 import { SettlementRequestDetailPage } from './pages/SettlementRequestDetailPage'
 import {
     SupportInquiryDetailPage,
