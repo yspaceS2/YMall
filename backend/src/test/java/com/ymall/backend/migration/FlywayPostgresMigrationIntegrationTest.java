@@ -33,14 +33,14 @@ class FlywayPostgresMigrationIntegrationTest {
             .load();
         MigrateResult result = flyway.migrate();
 
-        assertThat(result.migrationsExecuted).isEqualTo(8);
+        assertThat(result.migrationsExecuted).isEqualTo(10);
         flyway.validate();
 
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
             assertThat(queryForInt(
                 connection,
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = TRUE"
-            )).isEqualTo(8);
+            )).isEqualTo(10);
             assertThat(queryForString(
                 connection,
                 "SELECT version || ':' || type || ':' || success "
@@ -94,6 +94,26 @@ class FlywayPostgresMigrationIntegrationTest {
                     + "'idx_products_search_normalized_name_trgm', "
                     + "'idx_products_search_chosung_trgm')"
             )).isEqualTo(2);
+            assertThat(queryForInt(
+                connection,
+                "SELECT COUNT(*) FROM information_schema.columns "
+                    + "WHERE table_schema = 'public' "
+                    + "AND table_name = 'members' "
+                    + "AND column_name IN ("
+                    + "'access_status', 'last_login_at', 'restriction_reason', "
+                    + "'restricted_at', 'restricted_by')"
+            )).isEqualTo(5);
+            assertThat(queryForInt(
+                connection,
+                "SELECT COUNT(*) FROM pg_indexes "
+                    + "WHERE schemaname = 'public' "
+                    + "AND indexname = 'idx_members_admin_operations'"
+            )).isEqualTo(1);
+            assertThat(queryForString(
+                connection,
+                "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+                    + "WHERE conname = 'seller_applications_status_check'"
+            )).contains("NEEDS_REVISION");
         }
     }
 
