@@ -30,11 +30,12 @@ import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.testsupport.PostgresIntegrationTestSupport;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class HomeMerchandisingQueryIntegrationTest {
+class HomeMerchandisingQueryIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Autowired private HomeMerchandisingQueryRepository queryRepository;
     @Autowired private CategoryRepository categoryRepository;

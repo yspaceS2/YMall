@@ -35,10 +35,11 @@ import com.ymall.backend.global.messaging.outbox.OrderOutboxProperties;
 import com.ymall.backend.global.messaging.outbox.OrderOutboxRelay;
 import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.global.messaging.outbox.OutboxEventStatus;
+import com.ymall.backend.testsupport.PostgresIntegrationTestSupport;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class OrderOutboxIntegrationTest {
+class OrderOutboxIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Autowired private OrderOutboxService outboxService;
     @Autowired private OrderOutboxEventRepository outboxEventRepository;

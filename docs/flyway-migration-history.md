@@ -54,13 +54,20 @@ credentials, personal information, or `flyway_schema_history`.
 
 ### Automated
 
-The GitHub Actions backend job starts a dedicated empty PostgreSQL service.
+The GitHub Actions backend job starts a dedicated PostgreSQL 16 Testcontainer.
 `FlywayPostgresMigrationIntegrationTest` verifies that:
 
 1. the database starts empty;
 2. Flyway applies B32 as one `SQL_BASELINE` migration;
 3. Flyway validation succeeds;
 4. the expected application tables and fulfillment columns exist.
+
+Run the same migration verification locally without external database settings:
+
+```shell
+cd backend
+./gradlew postgresTest --tests "com.ymall.backend.migration.FlywayPostgresMigrationIntegrationTest"
+```
 
 ### Existing database
 

@@ -42,8 +42,8 @@ public interface SettlementLedgerRepository extends JpaRepository<SettlementLedg
         select entry from SettlementLedgerEntry entry
         where entry.sellerProfile.id = :sellerProfileId
           and (:status is null or entry.status = :status)
-          and (:from is null or entry.occurredAt >= :from)
-          and (:to is null or entry.occurredAt < :to)
+          and entry.occurredAt >= :from
+          and entry.occurredAt < :to
         order by entry.occurredAt desc, entry.id desc
         """)
     Page<SettlementLedgerEntry> findSellerLedger(

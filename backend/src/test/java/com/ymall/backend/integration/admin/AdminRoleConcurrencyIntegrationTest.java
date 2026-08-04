@@ -27,10 +27,11 @@ import com.ymall.backend.global.security.RefreshTokenService;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.testsupport.PostgresIntegrationTestSupport;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class AdminRoleConcurrencyIntegrationTest {
+class AdminRoleConcurrencyIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Autowired private AdminRoleService adminRoleService;
     @Autowired private MemberRepository memberRepository;

@@ -14,8 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
 import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
@@ -33,10 +31,11 @@ import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.testsupport.PostgresIntegrationTestSupport;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class OrderConcurrencyIntegrationTest {
+class OrderConcurrencyIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Autowired
     private OrderService orderService;
@@ -58,15 +57,6 @@ class OrderConcurrencyIntegrationTest {
 
     @Autowired
     private OrderRepository orderRepository;
-
-    @DynamicPropertySource
-    static void registerDataSourceProperties(DynamicPropertyRegistry registry) {
-        registry.add(
-            "spring.datasource.url",
-            () -> "jdbc:h2:mem:ymall-order-concurrency;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE"
-        );
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-    }
 
     @Test
     void createsSingleOrderForConcurrentRequestsWithSameIdempotencyKey() throws Exception {

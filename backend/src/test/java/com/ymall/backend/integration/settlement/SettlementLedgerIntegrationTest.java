@@ -47,12 +47,13 @@ import com.ymall.backend.settlement.entity.SettlementEntryType;
 import com.ymall.backend.settlement.entity.SettlementStatus;
 import com.ymall.backend.settlement.repository.SettlementLedgerRepository;
 import com.ymall.backend.settlement.service.SettlementLedgerProcessor;
+import com.ymall.backend.testsupport.PostgresIntegrationTestSupport;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-class SettlementLedgerIntegrationTest {
+class SettlementLedgerIntegrationTest extends PostgresIntegrationTestSupport {
 
     private static final Instant OCCURRED_AT = Instant.parse("2026-07-27T01:00:00Z");
 

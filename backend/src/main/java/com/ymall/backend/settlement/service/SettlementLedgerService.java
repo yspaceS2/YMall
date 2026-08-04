@@ -24,6 +24,12 @@ import com.ymall.backend.settlement.repository.SettlementLedgerRepository;
 public class SettlementLedgerService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final Instant EARLIEST_LEDGER_INSTANT = Instant.parse(
+        "0001-01-01T00:00:00Z"
+    );
+    private static final Instant LATEST_LEDGER_INSTANT = Instant.parse(
+        "9999-12-31T23:59:59Z"
+    );
 
     private final SettlementLedgerRepository ledgerRepository;
     private final SellerProfileService sellerProfileService;
@@ -47,8 +53,8 @@ public class SettlementLedgerService {
         return PageResponse.from(ledgerRepository.findSellerLedger(
             sellerProfile.getId(),
             status,
-            from,
-            to,
+            from == null ? EARLIEST_LEDGER_INSTANT : from,
+            to == null ? LATEST_LEDGER_INSTANT : to,
             pageable
         ).map(this::toResponse));
     }
