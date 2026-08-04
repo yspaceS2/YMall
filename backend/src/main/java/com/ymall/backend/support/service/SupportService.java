@@ -237,7 +237,7 @@ public class SupportService {
     public SupportInquiryDetailResponse requestLive(MemberPrincipal principal, Long inquiryId) {
         SupportInquiry inquiry = getOwnedInquiry(principal.memberId(), inquiryId);
         validateCanStartLive(inquiry);
-        SupportChatSession session = renewSession(
+        renewSession(
             inquiry,
             null,
             SupportChatInitiator.USER_REQUEST
@@ -251,7 +251,7 @@ public class SupportService {
             "고객센터 문의 #%d의 상담 요청을 확인해 주세요.".formatted(inquiryId)
         );
         publishChanged(inquiry, "SUPPORT_LIVE_REQUESTED");
-        realtimePublisher.publishInquiry(inquiryId, SupportChatSessionResponse.from(session));
+        realtimePublisher.publishInquiry(inquiryId);
         return toDetail(inquiry);
     }
 
@@ -262,7 +262,7 @@ public class SupportService {
         validateCanStartLive(inquiry);
         Member admin = getMember(principal.memberId());
         inquiry.assign(admin);
-        SupportChatSession session = renewSession(
+        renewSession(
             inquiry,
             admin,
             SupportChatInitiator.ADMIN_OFFER
@@ -276,7 +276,7 @@ public class SupportService {
             "문의 #%d에서 관리자가 실시간 상담을 제안했습니다.".formatted(inquiryId)
         );
         publishChanged(inquiry, "SUPPORT_LIVE_OFFERED");
-        realtimePublisher.publishInquiry(inquiryId, SupportChatSessionResponse.from(session));
+        realtimePublisher.publishInquiry(inquiryId);
         return toDetail(inquiry);
     }
 
@@ -306,7 +306,7 @@ public class SupportService {
             "문의 #%d의 상담 화면을 확인해 주세요.".formatted(inquiryId)
         );
         publishChanged(inquiry, "SUPPORT_LIVE_ACTIVE");
-        realtimePublisher.publishInquiry(inquiryId, SupportChatSessionResponse.from(session));
+        realtimePublisher.publishInquiry(inquiryId);
         return toDetail(inquiry);
     }
 
@@ -326,7 +326,7 @@ public class SupportService {
         inquiry.resumeGeneralInquiry();
         addSystemMessage(inquiry, getMember(principal.memberId()), "실시간 상담 요청이 거절되었습니다.");
         publishChanged(inquiry, "SUPPORT_LIVE_REJECTED");
-        realtimePublisher.publishInquiry(inquiryId, SupportChatSessionResponse.from(session));
+        realtimePublisher.publishInquiry(inquiryId);
         return toDetail(inquiry);
     }
 
@@ -346,7 +346,7 @@ public class SupportService {
         inquiry.resumeGeneralInquiry();
         addSystemMessage(inquiry, getMember(principal.memberId()), "실시간 상담 요청이 취소되었습니다.");
         publishChanged(inquiry, "SUPPORT_LIVE_CANCELED");
-        realtimePublisher.publishInquiry(inquiryId, SupportChatSessionResponse.from(session));
+        realtimePublisher.publishInquiry(inquiryId);
         return toDetail(inquiry);
     }
 
@@ -362,10 +362,7 @@ public class SupportService {
             inquiry.resumeGeneralInquiry();
             addSystemMessage(inquiry, inquiry.getMember(), "실시간 상담 요청이 만료되었습니다.");
             publishChanged(inquiry, "SUPPORT_LIVE_EXPIRED");
-            realtimePublisher.publishInquiry(
-                inquiry.getId(),
-                SupportChatSessionResponse.from(session)
-            );
+            realtimePublisher.publishInquiry(inquiry.getId());
         });
         return sessions.size();
     }
@@ -380,7 +377,7 @@ public class SupportService {
         inquiry.resumeGeneralInquiry();
         addSystemMessage(inquiry, getMember(principal.memberId()), "실시간 상담이 종료되었습니다.");
         publishChanged(inquiry, "SUPPORT_LIVE_ENDED");
-        realtimePublisher.publishInquiry(inquiryId, SupportChatSessionResponse.from(session));
+        realtimePublisher.publishInquiry(inquiryId);
         return toDetail(inquiry);
     }
 
@@ -458,7 +455,7 @@ public class SupportService {
             }
         }
         SupportMessageResponse response = SupportMessageResponse.from(message);
-        realtimePublisher.publishInquiry(inquiry.getId(), response);
+        realtimePublisher.publishInquiry(inquiry.getId());
         publishChanged(inquiry, liveMessage ? "SUPPORT_LIVE_MESSAGE" : "SUPPORT_MESSAGE_CREATED");
         return response;
     }
@@ -513,7 +510,7 @@ public class SupportService {
             }
         }
         SupportMessageResponse response = SupportMessageResponse.from(message);
-        realtimePublisher.publishInquiry(inquiry.getId(), response);
+        realtimePublisher.publishInquiry(inquiry.getId());
         publishChanged(inquiry, liveMessage ? "SUPPORT_LIVE_MESSAGE" : "SUPPORT_MESSAGE_CREATED");
         return response;
     }

@@ -44,6 +44,8 @@ public class RealtimeInboundChannelInterceptor implements ChannelInterceptor {
             authenticate(accessor);
         } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
             authorizeSubscription(accessor);
+        } else if (StompCommand.SEND.equals(accessor.getCommand())) {
+            refreshAuthentication(accessor);
         }
         return message;
     }
@@ -96,12 +98,21 @@ public class RealtimeInboundChannelInterceptor implements ChannelInterceptor {
         throw new BusinessException(ErrorCode.ACCESS_DENIED);
     }
 
+    private void refreshAuthentication(StompHeaderAccessor accessor) {
+        MemberPrincipal principal = principal(accessor);
+        accessor.setUser(UsernamePasswordAuthenticationToken.authenticated(
+            principal,
+            null,
+            principal.authorities()
+        ));
+    }
+
     private MemberPrincipal principal(StompHeaderAccessor accessor) {
         if (!(accessor.getUser() instanceof UsernamePasswordAuthenticationToken authentication)
             || !(authentication.getPrincipal() instanceof MemberPrincipal principal)) {
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
-        return principal;
+        return principalResolver.resolve(principal);
     }
 
     private Long parseId(String destination, String prefix) {

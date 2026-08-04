@@ -25,7 +25,12 @@ public class RealtimePublisher {
         afterCommit(() -> messagingTemplate.convertAndSend("/topic/realtime/admin", event));
     }
 
-    public void publishInquiry(Long inquiryId, Object event) {
+    public void publishInquiry(Long inquiryId) {
+        RealtimeEvent event = RealtimeEvent.of(
+            "SUPPORT_INQUIRY_CHANGED",
+            "supportInquiry",
+            inquiryId
+        );
         afterCommit(() -> messagingTemplate.convertAndSend(
             "/topic/support/inquiries/" + inquiryId,
             event

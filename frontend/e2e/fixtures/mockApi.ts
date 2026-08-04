@@ -1,4 +1,5 @@
 import type { Page, Route } from '@playwright/test'
+import type { AdminGrade, AdminPermission } from '../../src/types/admin'
 
 type Role = 'ROLE_USER' | 'ROLE_SELLER' | 'ROLE_ADMIN'
 type DashboardMode = 'normal' | 'empty' | 'error'
@@ -30,8 +31,72 @@ interface MockSupportInquiry {
 
 interface MockApiOptions {
     role?: Role
+    adminGrade?: AdminGrade
+    adminPermissions?: AdminPermission[]
     sellerDashboardMode?: DashboardMode
     adminDashboardMode?: DashboardMode
+}
+
+const adminPermissions: Record<AdminGrade, AdminPermission[]> = {
+    MANAGER: [
+        'DASHBOARD_READ',
+        'MEMBER_READ',
+        'MEMBER_RESTRICT_LIMITED',
+        'SELLER_READ',
+        'SELLER_APPLICATION_REVIEW',
+        'SUPPORT_REPLY',
+        'PRODUCT_REVIEW',
+        'REFUND_STANDARD',
+        'SETTLEMENT_REVIEW',
+        'TASK_SELF',
+        'CATEGORY_READ',
+        'AUDIT_OWN_READ',
+    ],
+    SUPERVISOR: [
+        'DASHBOARD_READ',
+        'MEMBER_READ',
+        'MEMBER_RESTRICT_LIMITED',
+        'MEMBER_RESTRICT_ALL',
+        'SELLER_READ',
+        'SELLER_APPLICATION_REVIEW',
+        'SELLER_APPLICATION_DECIDE',
+        'SUPPORT_REPLY',
+        'PRODUCT_REVIEW',
+        'REFUND_STANDARD',
+        'REFUND_ALL',
+        'SETTLEMENT_REVIEW',
+        'SETTLEMENT_APPROVE',
+        'TASK_SELF',
+        'CATEGORY_READ',
+        'CATEGORY_MANAGE_PARTIAL',
+        'ADMIN_MANAGER_MANAGE',
+        'AUDIT_OWN_READ',
+        'AUDIT_ALL_READ',
+    ],
+    SUPER_ADMIN: [
+        'DASHBOARD_READ',
+        'MEMBER_READ',
+        'MEMBER_RESTRICT_LIMITED',
+        'MEMBER_RESTRICT_ALL',
+        'SELLER_READ',
+        'SELLER_APPLICATION_REVIEW',
+        'SELLER_APPLICATION_DECIDE',
+        'SUPPORT_REPLY',
+        'PRODUCT_REVIEW',
+        'REFUND_STANDARD',
+        'REFUND_ALL',
+        'SETTLEMENT_REVIEW',
+        'SETTLEMENT_APPROVE',
+        'TASK_SELF',
+        'TASK_ASSIGN',
+        'CATEGORY_READ',
+        'CATEGORY_MANAGE_PARTIAL',
+        'CATEGORY_MANAGE_ALL',
+        'ADMIN_MANAGER_MANAGE',
+        'ADMIN_ALL_MANAGE',
+        'AUDIT_OWN_READ',
+        'AUDIT_ALL_READ',
+    ],
 }
 
 const product = {
@@ -312,6 +377,7 @@ const initialNotifications = [
 
 export async function installMockApi(page: Page, options: MockApiOptions = {}) {
     const defaultRole = options.role ?? 'ROLE_USER'
+    const defaultAdminGrade = options.adminGrade ?? 'SUPER_ADMIN'
     const state = {
         cartItems: [] as typeof cartItem[],
         notifications: initialNotifications.map((notification) => ({ ...notification })),
@@ -395,31 +461,8 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
         if (path === '/admin/authorization' && method === 'GET') {
             return ok(route, {
                 memberId: 101,
-                adminGrade: 'SUPER_ADMIN',
-                permissions: [
-                    'DASHBOARD_READ',
-                    'MEMBER_READ',
-                    'MEMBER_RESTRICT_LIMITED',
-                    'MEMBER_RESTRICT_ALL',
-                    'SELLER_READ',
-                    'SELLER_APPLICATION_REVIEW',
-                    'SELLER_APPLICATION_DECIDE',
-                    'SUPPORT_REPLY',
-                    'PRODUCT_REVIEW',
-                    'REFUND_STANDARD',
-                    'REFUND_ALL',
-                    'SETTLEMENT_REVIEW',
-                    'SETTLEMENT_APPROVE',
-                    'TASK_SELF',
-                    'TASK_ASSIGN',
-                    'CATEGORY_READ',
-                    'CATEGORY_MANAGE_PARTIAL',
-                    'CATEGORY_MANAGE_ALL',
-                    'ADMIN_MANAGER_MANAGE',
-                    'ADMIN_ALL_MANAGE',
-                    'AUDIT_OWN_READ',
-                    'AUDIT_ALL_READ',
-                ],
+                adminGrade: defaultAdminGrade,
+                permissions: options.adminPermissions ?? adminPermissions[defaultAdminGrade],
             })
         }
         if (path === '/members/me/oauth-accounts' && method === 'GET') {
