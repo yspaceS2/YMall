@@ -12,6 +12,7 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ymall.backend.dashboard.dto.AdminDashboardStatisticsResponse;
+import com.ymall.backend.admin.entity.AdminPermission;
 import com.ymall.backend.dashboard.dto.DashboardPeriodResponse;
 import com.ymall.backend.dashboard.dto.DashboardStatusCountResponse;
 import com.ymall.backend.dashboard.dto.DashboardTopProductResponse;
@@ -111,7 +113,10 @@ public class DashboardStatisticsService {
         );
     }
 
-    public AdminDashboardStatisticsResponse getAdminStatistics(String periodValue) {
+    public AdminDashboardStatisticsResponse getAdminStatistics(
+        Set<AdminPermission> permissions,
+        String periodValue
+    ) {
         PeriodRange range = periodRange(periodValue);
         List<DashboardTrendPointResponse> trend = fillTrend(
             range,
@@ -166,15 +171,31 @@ public class DashboardStatisticsService {
                 row.netSalesAmount()
             )).toList(),
             new AdminDashboardStatisticsResponse.PendingTaskSummary(
-                pending.products(),
-                pending.sellers(),
-                pending.refunds(),
-                pending.returns(),
-                pending.settlements(),
-                pending.support()
+                permitted(permissions, AdminPermission.PRODUCT_REVIEW, pending.products()),
+                permitted(
+                    permissions,
+                    AdminPermission.SELLER_APPLICATION_DECIDE,
+                    pending.sellers()
+                ),
+                permitted(permissions, AdminPermission.REFUND_STANDARD, pending.refunds()),
+                permitted(permissions, AdminPermission.REFUND_STANDARD, pending.returns()),
+                permitted(
+                    permissions,
+                    AdminPermission.SETTLEMENT_APPROVE,
+                    pending.settlements()
+                ),
+                permitted(permissions, AdminPermission.SUPPORT_REPLY, pending.support())
             ),
             generatedAt()
         );
+    }
+
+    private long permitted(
+        Set<AdminPermission> permissions,
+        AdminPermission permission,
+        long value
+    ) {
+        return permissions.contains(permission) ? value : 0L;
     }
 
     private PeriodRange periodRange(String value) {

@@ -40,6 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [])
 
     useEffect(() => {
+        if (!isLoggingOut || location.pathname !== '/') {
+            return
+        }
+        const frame = window.requestAnimationFrame(() => setIsLoggingOut(false))
+        return () => window.cancelAnimationFrame(frame)
+    }, [isLoggingOut, location.pathname])
+
+    useEffect(() => {
         let expirationTimer: number | undefined
 
         const scheduleExpiration = (token: string | null) => {
@@ -123,14 +131,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             await logoutMember()
         } finally {
-            navigate('/', { replace: true, state: null })
+            navigate('/', { replace: true, state: null, flushSync: true })
             clearAccessToken()
             setIsAuthenticated(false)
             setRole(null)
             window.dispatchEvent(new Event(AUTH_LOGOUT_COMPLETED_EVENT))
-            window.requestAnimationFrame(() => {
-                window.requestAnimationFrame(() => setIsLoggingOut(false))
-            })
         }
     }, [navigate])
 

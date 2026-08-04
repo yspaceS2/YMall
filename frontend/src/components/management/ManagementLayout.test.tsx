@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AuthContextValue } from '../../auth/AuthContext'
+import { AdminAuthorizationContext } from '../../auth/AdminAuthorizationContext'
+import type { AdminPermission } from '../../types/admin'
 import { ThemeProvider } from '../../theme/ThemeProvider'
 import { ManagementLayout } from './ManagementLayout'
 
@@ -29,6 +31,7 @@ vi.mock('../../api/seller', () => ({
 function renderManagementLayout(
     role: 'member' | 'seller' | 'admin',
     initialPath?: string,
+    permissions?: AdminPermission[],
 ) {
     const logout = vi.fn()
     const auth: AuthContextValue = {
@@ -54,9 +57,25 @@ function renderManagementLayout(
                                 ? '/seller'
                                 : '/admin'),
                 ]}>
-                    <ManagementLayout role={role}>
-                        <p>관리 콘텐츠</p>
-                    </ManagementLayout>
+                    {role === 'admin' && permissions ? (
+                        <AdminAuthorizationContext.Provider value={{
+                            authorization: {
+                                memberId: 1,
+                                adminGrade: 'MANAGER',
+                                permissions,
+                            },
+                            hasPermission: (...required) =>
+                                required.some((permission) => permissions.includes(permission)),
+                        }}>
+                            <ManagementLayout role={role}>
+                                <p>관리 콘텐츠</p>
+                            </ManagementLayout>
+                        </AdminAuthorizationContext.Provider>
+                    ) : (
+                        <ManagementLayout role={role}>
+                            <p>관리 콘텐츠</p>
+                        </ManagementLayout>
+                    )}
                 </MemoryRouter>
             </AuthContext.Provider>
         </ThemeProvider>,
@@ -187,6 +206,15 @@ describe('ManagementLayout', () => {
             .toHaveAttribute('href', '/admin/sellers')
         expect(screen.getByRole('link', { name: '주문 관리' }))
             .toHaveAttribute('href', '/admin/orders')
+    })
+
+    it('관리자 권한이 없는 메뉴는 표시하지 않는다', () => {
+        renderManagementLayout('admin', '/admin', ['DASHBOARD_READ', 'MEMBER_READ'])
+
+        expect(screen.getByRole('link', { name: '회원 관리' })).toBeInTheDocument()
+        expect(screen.queryByRole('link', { name: '판매자 관리' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('link', { name: '정산 관리' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('link', { name: '고객센터 관리' })).not.toBeInTheDocument()
     })
 
     it.each([

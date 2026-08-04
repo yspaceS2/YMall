@@ -392,6 +392,36 @@ export async function installMockApi(page: Page, options: MockApiOptions = {}) {
                 createdAt: '2026-07-26T12:00:00+09:00',
             })
         }
+        if (path === '/admin/authorization' && method === 'GET') {
+            return ok(route, {
+                memberId: 101,
+                adminGrade: 'SUPER_ADMIN',
+                permissions: [
+                    'DASHBOARD_READ',
+                    'MEMBER_READ',
+                    'MEMBER_RESTRICT_LIMITED',
+                    'MEMBER_RESTRICT_ALL',
+                    'SELLER_READ',
+                    'SELLER_APPLICATION_REVIEW',
+                    'SELLER_APPLICATION_DECIDE',
+                    'SUPPORT_REPLY',
+                    'PRODUCT_REVIEW',
+                    'REFUND_STANDARD',
+                    'REFUND_ALL',
+                    'SETTLEMENT_REVIEW',
+                    'SETTLEMENT_APPROVE',
+                    'TASK_SELF',
+                    'TASK_ASSIGN',
+                    'CATEGORY_READ',
+                    'CATEGORY_MANAGE_PARTIAL',
+                    'CATEGORY_MANAGE_ALL',
+                    'ADMIN_MANAGER_MANAGE',
+                    'ADMIN_ALL_MANAGE',
+                    'AUDIT_OWN_READ',
+                    'AUDIT_ALL_READ',
+                ],
+            })
+        }
         if (path === '/members/me/oauth-accounts' && method === 'GET') {
             return ok(route, [])
         }

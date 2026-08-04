@@ -16,8 +16,12 @@ import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import type { SettlementRequest, SettlementRequestHistory } from '../types/seller'
 import { formatKoreanDateTime } from '../utils/dateTime'
 import { formatPrice } from '../utils/product'
+import { useOptionalAdminAuthorization } from '../auth/useAdminAuthorization'
 
 export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin' }) {
+    const adminAuthorization = useOptionalAdminAuthorization()
+    const canApprove = role === 'admin'
+        && adminAuthorization?.hasPermission('SETTLEMENT_APPROVE') === true
     const { settlementRequestId: idParam } = useParams()
     const settlementRequestId = Number(idParam)
     const hasInvalidRequestId = !Number.isSafeInteger(settlementRequestId)
@@ -204,7 +208,7 @@ export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin'
                         </section>
                     )}
 
-                    {role === 'admin' && request.status === 'REQUESTED' && (
+                    {canApprove && request.status === 'REQUESTED' && (
                         <section className="mt-8 border-t-2 border-ink pt-5">
                             <h2 className="text-lg font-bold">정산 검토</h2>
                             {isRejecting && (
@@ -256,7 +260,7 @@ export function SettlementRequestDetailPage({ role }: { role: 'seller' | 'admin'
                         </section>
                     )}
 
-                    {role === 'admin' && request.status === 'APPROVED' && (
+                    {canApprove && request.status === 'APPROVED' && (
                         <button
                             className="mt-8 h-11 bg-accent px-5 text-xs font-bold text-paper disabled:opacity-50"
                             type="button"

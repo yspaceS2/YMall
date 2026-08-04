@@ -321,6 +321,16 @@ class AdminManagementApiIntegrationTest {
     }
 
     @Test
+    void invalidCategoryRequestReturnsBadRequestForAuthorizedAdmin() throws Exception {
+        mockMvc.perform(post("/api/admin/categories")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
     void adminCannotCreateCategoryBeyondThirdDepth() throws Exception {
         Category secondDepth = categoryRepository.save(new Category(
             "모바일",

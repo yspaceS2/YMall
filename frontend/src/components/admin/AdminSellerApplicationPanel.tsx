@@ -8,8 +8,11 @@ import { ApiError } from '../../api/client'
 import type { SellerApplication } from '../../types/sellerApplication'
 import { formatKoreanDateTime } from '../../utils/dateTime'
 import { FeedbackMessage } from '../ui/FeedbackMessage'
+import { useAdminAuthorization } from '../../auth/useAdminAuthorization'
 
 export function AdminSellerApplicationPanel() {
+    const { hasPermission } = useAdminAuthorization()
+    const canDecide = hasPermission('SELLER_APPLICATION_DECIDE')
     const [applications, setApplications] = useState<SellerApplication[]>([])
     const [rejectionReasons, setRejectionReasons] = useState<Record<number, string>>({})
     const [processingId, setProcessingId] = useState<number | null>(null)
@@ -93,7 +96,9 @@ export function AdminSellerApplicationPanel() {
                 <div className="grid gap-4">
                     {applications.map((application) => (
                         <article
-                            className="grid gap-5 border border-line bg-surface p-5 min-[901px]:grid-cols-[minmax(0,1fr)_minmax(280px,.55fr)]"
+                            className={canDecide
+                                ? 'grid gap-5 border border-line bg-surface p-5 min-[901px]:grid-cols-[minmax(0,1fr)_minmax(280px,.55fr)]'
+                                : 'border border-line bg-surface p-5'}
                             key={application.sellerApplicationId}
                         >
                             <div>
@@ -123,7 +128,7 @@ export function AdminSellerApplicationPanel() {
                                     </p>
                                 )}
                             </div>
-                            <div className="grid content-start gap-3">
+                            {canDecide && <div className="grid content-start gap-3">
                                 <button
                                     className="flex h-11 items-center justify-center gap-2 bg-ink px-4 text-xs font-bold text-white disabled:opacity-50"
                                     type="button"
@@ -154,7 +159,7 @@ export function AdminSellerApplicationPanel() {
                                     <X className="size-4" aria-hidden="true" />
                                     반려
                                 </button>
-                            </div>
+                            </div>}
                         </article>
                     ))}
                 </div>

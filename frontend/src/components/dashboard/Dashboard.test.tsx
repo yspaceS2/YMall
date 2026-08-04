@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
+import { AdminAuthorizationContext } from '../../auth/AdminAuthorizationContext'
 import {
     getAdminDashboardStatistics,
     getSellerDashboardStatistics,
@@ -9,6 +10,7 @@ import type {
     AdminDashboardStatistics,
     SellerDashboardStatistics,
 } from '../../types/dashboard'
+import type { AdminPermission } from '../../types/admin'
 import { AdminDashboard } from './AdminDashboard'
 import { SellerDashboard } from './SellerDashboard'
 
@@ -63,6 +65,28 @@ const adminStatistics: AdminDashboardStatistics = {
     generatedAt: '2026-08-02T14:00:00+09:00',
 }
 
+const adminPermissions: AdminPermission[] = [
+    'DASHBOARD_READ',
+    'PRODUCT_REVIEW',
+    'SELLER_APPLICATION_DECIDE',
+    'REFUND_STANDARD',
+    'SETTLEMENT_APPROVE',
+    'SUPPORT_REPLY',
+]
+
+const renderAdminDashboard = (permissions: AdminPermission[] = adminPermissions) => render(
+    <AdminAuthorizationContext.Provider value={{
+        authorization: {
+            memberId: 1,
+            adminGrade: 'SUPER_ADMIN',
+            permissions,
+        },
+        hasPermission: (...requiredPermissions) => requiredPermissions.some((permission) => permissions.includes(permission)),
+    }}>
+        <MemoryRouter><AdminDashboard /></MemoryRouter>
+    </AdminAuthorizationContext.Provider>,
+)
+
 describe('dashboard visualization', () => {
     beforeEach(() => {
         vi.mocked(getSellerDashboardStatistics).mockResolvedValue(sellerStatistics)
@@ -89,7 +113,7 @@ describe('dashboard visualization', () => {
     })
 
     it('관리자 거래·가입·대기 업무를 시각화한다', async () => {
-        render(<MemoryRouter><AdminDashboard /></MemoryRouter>)
+        renderAdminDashboard()
 
         expect(await screen.findByText('840,000원')).toBeInTheDocument()
         expect(screen.getByText('신규 회원·판매자')).toBeInTheDocument()
@@ -106,5 +130,14 @@ describe('dashboard visualization', () => {
         expect(screen.getByRole('link', { name: '반품 처리 3건 관리 페이지로 이동' })).toHaveAttribute('href', '/admin/orders?workType=PENDING_RETURN')
         expect(screen.getByRole('link', { name: '정산 처리 2건 관리 페이지로 이동' })).toHaveAttribute('href', '/admin/settlement?workType=ACTION_REQUIRED')
         expect(screen.getByRole('link', { name: '고객센터 문의 5건 관리 페이지로 이동' })).toHaveAttribute('href', '/admin/support?status=WAITING')
+    })
+
+    it('현재 관리자가 처리할 권한이 있는 업무만 표시한다', async () => {
+        renderAdminDashboard(['DASHBOARD_READ', 'PRODUCT_REVIEW'])
+
+        expect(await screen.findByText('상품 승인')).toBeInTheDocument()
+        expect(screen.queryByText('판매자 승인')).not.toBeInTheDocument()
+        expect(screen.queryByText('정산 처리')).not.toBeInTheDocument()
+        expect(screen.queryByText('고객센터 문의')).not.toBeInTheDocument()
     })
 })

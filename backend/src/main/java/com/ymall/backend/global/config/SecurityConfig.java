@@ -2,6 +2,7 @@ package com.ymall.backend.global.config;
 
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.PATCH;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpMethod.PUT;
 
@@ -107,6 +108,41 @@ public class SecurityConfig {
                     "/images/**"
                 ).permitAll()
                 .requestMatchers(POST, "/api/products/*/questions").authenticated()
+                .requestMatchers(GET, "/api/admin/dashboard/**")
+                    .hasAuthority("DASHBOARD_READ")
+                .requestMatchers(GET, "/api/admin/members", "/api/admin/members/*")
+                    .hasAuthority("MEMBER_READ")
+                .requestMatchers(PATCH, "/api/admin/members/*/admin-role")
+                    .hasRole("ADMIN")
+                .requestMatchers(GET, "/api/admin/sellers", "/api/admin/sellers/*")
+                    .hasAuthority("SELLER_READ")
+                .requestMatchers(GET, "/api/admin/seller-applications/**")
+                    .hasAuthority("SELLER_APPLICATION_REVIEW")
+                .requestMatchers(PATCH, "/api/admin/seller-applications/*")
+                    .hasAuthority("SELLER_APPLICATION_DECIDE")
+                .requestMatchers("/api/admin/products/**", "/api/admin/product-change-requests/**")
+                    .hasAuthority("PRODUCT_REVIEW")
+                .requestMatchers(GET, "/api/admin/categories/**")
+                    .hasAuthority("CATEGORY_READ")
+                .requestMatchers(POST, "/api/admin/categories")
+                    .hasAuthority("CATEGORY_MANAGE_ALL")
+                .requestMatchers(PUT, "/api/admin/categories/*")
+                    .hasAnyAuthority("CATEGORY_MANAGE_PARTIAL", "CATEGORY_MANAGE_ALL")
+                .requestMatchers(DELETE, "/api/admin/categories/*")
+                    .hasAuthority("CATEGORY_MANAGE_ALL")
+                .requestMatchers(GET, "/api/admin/orders/**")
+                    .hasAuthority("REFUND_STANDARD")
+                .requestMatchers(POST, "/api/admin/orders/*/refunds")
+                    .hasAuthority("REFUND_STANDARD")
+                .requestMatchers(GET, "/api/admin/settlement-requests/**")
+                    .hasAuthority("SETTLEMENT_REVIEW")
+                .requestMatchers(PATCH, "/api/admin/settlement-requests/*/approval")
+                    .hasAuthority("SETTLEMENT_APPROVE")
+                .requestMatchers(PATCH, "/api/admin/settlement-requests/*/rejection")
+                    .hasAuthority("SETTLEMENT_APPROVE")
+                .requestMatchers(POST, "/api/admin/settlement-requests/*/mock-payments")
+                    .hasAuthority("SETTLEMENT_APPROVE")
+                .requestMatchers("/api/admin/support/**").hasAuthority("SUPPORT_REPLY")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/seller/**").hasAnyRole("SELLER", "ADMIN")
                 .requestMatchers(POST, "/api/files/images").hasAnyRole("SELLER", "ADMIN")

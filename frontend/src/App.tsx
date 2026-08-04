@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireRole } from './auth/RequireRole'
+import { AdminAuthorizationProvider } from './auth/AdminAuthorizationProvider'
+import { RequireAdminPermission } from './auth/RequireAdminPermission'
 import { Layout } from './components/Layout'
 import { ManagementLayout } from './components/management/ManagementLayout'
 import { AdminSellerApplicationPanel } from './components/admin/AdminSellerApplicationPanel'
@@ -58,6 +60,7 @@ import {
     SupportInquiryDetailPage,
     SupportInquiryListPage,
 } from './pages/SupportInquiryPages'
+import type { AdminPermission } from './types/admin'
 
 function App() {
     return (
@@ -86,9 +89,11 @@ function App() {
                 path="/admin/*"
                 element={
                     <RequireRole roles={['ROLE_ADMIN']}>
-                        <ManagementLayout role="admin">
-                            <AdminPortalRoutes />
-                        </ManagementLayout>
+                        <AdminAuthorizationProvider>
+                            <ManagementLayout role="admin">
+                                <AdminPortalRoutes />
+                            </ManagementLayout>
+                        </AdminAuthorizationProvider>
                     </RequireRole>
                 }
             />
@@ -153,53 +158,116 @@ function SellerPortalRoutes() {
 function AdminPortalRoutes() {
     return (
         <Routes>
-            <Route index element={<AdminManagementPage section="dashboard" />} />
-            <Route path="members" element={<AdminResourceListPage resource="members" />} />
+            <Route index element={withAdminPermission(
+                <AdminManagementPage section="dashboard" />,
+                'DASHBOARD_READ',
+            )} />
+            <Route path="members" element={withAdminPermission(
+                <AdminResourceListPage resource="members" />,
+                'MEMBER_READ',
+            )} />
             <Route
                 path="members/:resourceId"
-                element={<AdminResourceDetailPage resource="members" />}
+                element={withAdminPermission(
+                    <AdminResourceDetailPage resource="members" />,
+                    'MEMBER_READ',
+                )}
             />
-            <Route path="sellers" element={<AdminResourceListPage resource="sellers" />} />
+            <Route path="sellers" element={withAdminPermission(
+                <AdminResourceListPage resource="sellers" />,
+                'SELLER_READ',
+            )} />
             <Route
                 path="sellers/:resourceId"
-                element={<AdminResourceDetailPage resource="sellers" />}
+                element={withAdminPermission(
+                    <AdminResourceDetailPage resource="sellers" />,
+                    'SELLER_READ',
+                )}
             />
             <Route
                 path="seller-applications"
-                element={
+                element={withAdminPermission(
                     <PortalPage>
                         <AdminSellerApplicationPanel />
-                    </PortalPage>
-                }
+                    </PortalPage>,
+                    'SELLER_APPLICATION_REVIEW',
+                )}
             />
-            <Route path="categories" element={<AdminCategoryManagementPage mode="list" />} />
-            <Route path="categories/new" element={<AdminCategoryManagementPage mode="new" />} />
+            <Route path="categories" element={withAdminPermission(
+                <AdminCategoryManagementPage mode="list" />,
+                'CATEGORY_READ',
+            )} />
+            <Route path="categories/new" element={withAdminPermission(
+                <AdminCategoryManagementPage mode="new" />,
+                'CATEGORY_MANAGE_ALL',
+            )} />
             <Route
                 path="categories/:categoryId"
-                element={<AdminCategoryManagementPage mode="detail" />}
+                element={withAdminPermission(
+                    <AdminCategoryManagementPage mode="detail" />,
+                    'CATEGORY_READ',
+                )}
             />
-            <Route path="products" element={<AdminProductReviewListPage />} />
-            <Route path="products/:productId" element={<AdminProductReviewDetailPage />} />
-            <Route path="product-change-requests" element={<AdminProductChangeReviewListPage />} />
-            <Route path="product-change-requests/:requestId" element={<AdminProductChangeReviewDetailPage />} />
-            <Route path="orders" element={<AdminResourceListPage resource="orders" />} />
+            <Route path="products" element={withAdminPermission(
+                <AdminProductReviewListPage />,
+                'PRODUCT_REVIEW',
+            )} />
+            <Route path="products/:productId" element={withAdminPermission(
+                <AdminProductReviewDetailPage />,
+                'PRODUCT_REVIEW',
+            )} />
+            <Route path="product-change-requests" element={withAdminPermission(
+                <AdminProductChangeReviewListPage />,
+                'PRODUCT_REVIEW',
+            )} />
+            <Route path="product-change-requests/:requestId" element={withAdminPermission(
+                <AdminProductChangeReviewDetailPage />,
+                'PRODUCT_REVIEW',
+            )} />
+            <Route path="orders" element={withAdminPermission(
+                <AdminResourceListPage resource="orders" />,
+                'REFUND_STANDARD',
+            )} />
             <Route
                 path="orders/:resourceId"
-                element={<AdminResourceDetailPage resource="orders" />}
+                element={withAdminPermission(
+                    <AdminResourceDetailPage resource="orders" />,
+                    'REFUND_STANDARD',
+                )}
             />
             <Route path="notifications" element={<NotificationPage />} />
-            <Route path="support" element={<SupportInquiryListPage admin />} />
-            <Route path="support/:inquiryId" element={<SupportInquiryDetailPage admin />} />
+            <Route path="support" element={withAdminPermission(
+                <SupportInquiryListPage admin />,
+                'SUPPORT_REPLY',
+            )} />
+            <Route path="support/:inquiryId" element={withAdminPermission(
+                <SupportInquiryDetailPage admin />,
+                'SUPPORT_REPLY',
+            )} />
             <Route
                 path="settlement"
-                element={<PortalPage><AdminSettlementRequestList /></PortalPage>}
+                element={withAdminPermission(
+                    <PortalPage><AdminSettlementRequestList /></PortalPage>,
+                    'SETTLEMENT_REVIEW',
+                )}
             />
             <Route
                 path="settlement/:settlementRequestId"
-                element={<SettlementRequestDetailPage role="admin" />}
+                element={withAdminPermission(
+                    <SettlementRequestDetailPage role="admin" />,
+                    'SETTLEMENT_REVIEW',
+                )}
             />
             <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
+    )
+}
+
+function withAdminPermission(element: ReactNode, ...permissions: AdminPermission[]) {
+    return (
+        <RequireAdminPermission permissions={permissions}>
+            {element}
+        </RequireAdminPermission>
     )
 }
 

@@ -3,6 +3,7 @@ package com.ymall.backend.global.exception;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -42,6 +43,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(ErrorCode.INVALID_REQUEST.getStatus())
             .body(ErrorResponse.of(ErrorCode.INVALID_REQUEST, message));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableMessageException() {
+        return ResponseEntity
+            .status(ErrorCode.INVALID_REQUEST.getStatus())
+            .body(ErrorResponse.from(ErrorCode.INVALID_REQUEST));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)

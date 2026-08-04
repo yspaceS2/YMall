@@ -20,6 +20,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.ymall.backend.global.exception.BusinessException;
+import com.ymall.backend.admin.entity.AdminGrade;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.global.security.MemberPrincipal;
 import com.ymall.backend.global.security.MemberPrincipalResolver;
@@ -91,6 +92,38 @@ class RealtimeInboundChannelInterceptorTest {
         assertThat(interceptor.preSend(message(accessor), channel)).isNotNull();
     }
 
+    @Test
+    void managerCanSubscribeToAdminAndSupportTopicsButNotAnotherMemberTopic() {
+        MemberPrincipal manager = adminPrincipal(7L, AdminGrade.MANAGER);
+
+        StompHeaderAccessor adminAccessor = accessor(StompCommand.SUBSCRIBE);
+        adminAccessor.setDestination("/topic/realtime/admin");
+        adminAccessor.setUser(authentication(manager));
+        assertThat(interceptor.preSend(message(adminAccessor), channel)).isNotNull();
+
+        StompHeaderAccessor inquiryAccessor = accessor(StompCommand.SUBSCRIBE);
+        inquiryAccessor.setDestination("/topic/support/inquiries/31");
+        inquiryAccessor.setUser(authentication(manager));
+        when(inquiryRepository.existsById(31L)).thenReturn(true);
+        assertThat(interceptor.preSend(message(inquiryAccessor), channel)).isNotNull();
+
+        StompHeaderAccessor memberAccessor = accessor(StompCommand.SUBSCRIBE);
+        memberAccessor.setDestination("/topic/realtime/members/8");
+        memberAccessor.setUser(authentication(manager));
+        assertThatThrownBy(() -> interceptor.preSend(message(memberAccessor), channel))
+            .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void superAdminCanSubscribeToAnotherMemberTopic() {
+        MemberPrincipal superAdmin = adminPrincipal(7L, AdminGrade.SUPER_ADMIN);
+        StompHeaderAccessor accessor = accessor(StompCommand.SUBSCRIBE);
+        accessor.setDestination("/topic/realtime/members/8");
+        accessor.setUser(authentication(superAdmin));
+
+        assertThat(interceptor.preSend(message(accessor), channel)).isNotNull();
+    }
+
     private StompHeaderAccessor accessor(StompCommand command) {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(command);
         accessor.setLeaveMutable(true);
@@ -111,5 +144,16 @@ class RealtimeInboundChannelInterceptorTest {
 
     private MemberPrincipal principal(Long memberId, MemberRole role) {
         return new MemberPrincipal(memberId, "member@example.test", role);
+    }
+
+    private MemberPrincipal adminPrincipal(Long memberId, AdminGrade grade) {
+        return new MemberPrincipal(
+            memberId,
+            "admin@example.test",
+            MemberRole.ROLE_ADMIN,
+            0L,
+            grade,
+            grade.permissions()
+        );
     }
 }

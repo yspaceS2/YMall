@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AdminAuthorizationContext } from '../../auth/AdminAuthorizationContext'
 import { AdminSellerApplicationPanel } from './AdminSellerApplicationPanel'
 
 const mocks = vi.hoisted(() => ({
@@ -48,7 +49,18 @@ describe('AdminSellerApplicationPanel', () => {
 
     it('관리자가 대기 중인 판매자 신청을 승인한다', async () => {
         const user = userEvent.setup()
-        render(<AdminSellerApplicationPanel />)
+        render(
+            <AdminAuthorizationContext.Provider value={{
+                authorization: {
+                    memberId: 1,
+                    adminGrade: 'SUPERVISOR',
+                    permissions: ['SELLER_APPLICATION_REVIEW', 'SELLER_APPLICATION_DECIDE'],
+                },
+                hasPermission: (...permissions) => permissions.includes('SELLER_APPLICATION_DECIDE'),
+            }}>
+                <AdminSellerApplicationPanel />
+            </AdminAuthorizationContext.Provider>,
+        )
 
         expect(await screen.findByText('YMall Store')).toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: '승인' }))

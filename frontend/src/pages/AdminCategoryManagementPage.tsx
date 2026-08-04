@@ -11,6 +11,7 @@ import { ApiError } from '../api/client'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import type { AdminCategory, AdminCategoryRequest } from '../types/admin'
+import { useAdminAuthorization } from '../auth/useAdminAuthorization'
 
 const emptyForm: AdminCategoryRequest = {
     name: '',
@@ -21,6 +22,12 @@ const emptyForm: AdminCategoryRequest = {
 }
 
 export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | 'detail' }) {
+    const { hasPermission } = useAdminAuthorization()
+    const canCreate = hasPermission('CATEGORY_MANAGE_ALL')
+    const canEdit = mode === 'new'
+        ? canCreate
+        : hasPermission('CATEGORY_MANAGE_PARTIAL', 'CATEGORY_MANAGE_ALL')
+    const canDelete = hasPermission('CATEGORY_MANAGE_ALL')
     const { categoryId } = useParams()
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
@@ -156,12 +163,12 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                         최대 3단계 카테고리를 구성하고 쇼핑몰 노출 순서를 관리합니다.
                     </p>
                 </div>
-                <Link
+                {canCreate && <Link
                     className="flex h-11 items-center gap-2 bg-ink px-5 text-xs font-bold text-white"
                     to="/admin/categories/new"
                 >
                     <Plus className="size-4" />카테고리 등록
-                </Link>
+                </Link>}
             </header>
 
             {message && (
@@ -253,6 +260,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                 <input
                                     className={inputClassName}
                                     value={form.name}
+                                    readOnly={!canEdit}
                                     onChange={(event) =>
                                         setForm({ ...form, name: event.target.value })}
                                     maxLength={100}
@@ -263,6 +271,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                 <input
                                     className={inputClassName}
                                     value={form.slug}
+                                    readOnly={!canEdit}
                                     onChange={(event) => setForm({
                                         ...form,
                                         slug: normalizeSlug(event.target.value),
@@ -277,6 +286,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                 <select
                                     className={inputClassName}
                                     value={form.parentId ?? ''}
+                                    disabled={!canEdit}
                                     onChange={(event) => setForm({
                                         ...form,
                                         parentId: event.target.value
@@ -302,6 +312,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                     min={0}
                                     max={9999}
                                     value={form.displayOrder}
+                                    readOnly={!canEdit}
                                     onChange={(event) => setForm({
                                         ...form,
                                         displayOrder: Number(event.target.value),
@@ -314,6 +325,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                     <input
                                         type="checkbox"
                                         checked={form.active}
+                                        disabled={!canEdit}
                                         onChange={(event) => setForm({
                                             ...form,
                                             active: event.target.checked,
@@ -337,7 +349,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                     </p>
                                 </CategoryField>
                             )}
-                            <div className="flex flex-wrap gap-2 px-4 py-4 min-[701px]:pl-[180px]">
+                            {canEdit && <div className="flex flex-wrap gap-2 px-4 py-4 min-[701px]:pl-[180px]">
                                 <button
                                     className="flex h-11 items-center gap-2 bg-ink px-5 text-xs font-bold text-white disabled:opacity-50"
                                     type="submit"
@@ -350,7 +362,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                             ? '카테고리 등록'
                                             : '변경 저장'}
                                 </button>
-                                {selected && (
+                                {selected && canDelete && (
                                     <button
                                         className="flex h-11 items-center gap-2 border border-danger px-5 text-xs font-bold text-danger disabled:opacity-40"
                                         type="button"
@@ -360,7 +372,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                         <Trash2 className="size-4" />삭제
                                     </button>
                                 )}
-                            </div>
+                            </div>}
                         </form>
                     )}
                 </div>

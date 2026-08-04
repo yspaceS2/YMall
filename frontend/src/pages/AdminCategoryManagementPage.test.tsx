@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AdminAuthorizationContext } from '../auth/AdminAuthorizationContext'
 import {
     createAdminCategory,
     deleteAdminCategory,
@@ -50,22 +51,32 @@ const categories: AdminCategory[] = [
 
 function renderPage(path = '/admin/categories/2') {
     return render(
-        <MemoryRouter initialEntries={[path]}>
-            <Routes>
-                <Route
-                    path="/admin/categories/:categoryId"
-                    element={<AdminCategoryManagementPage mode="detail" />}
-                />
-                <Route
-                    path="/admin/categories/new"
-                    element={<AdminCategoryManagementPage mode="new" />}
-                />
-                <Route
-                    path="/admin/categories"
-                    element={<AdminCategoryManagementPage mode="list" />}
-                />
-            </Routes>
-        </MemoryRouter>,
+        <AdminAuthorizationContext.Provider value={{
+            authorization: {
+                memberId: 1,
+                adminGrade: 'SUPER_ADMIN',
+                permissions: ['CATEGORY_READ', 'CATEGORY_MANAGE_ALL'],
+            },
+            hasPermission: (...permissions) => permissions.some((permission) =>
+                permission === 'CATEGORY_READ' || permission === 'CATEGORY_MANAGE_ALL'),
+        }}>
+            <MemoryRouter initialEntries={[path]}>
+                <Routes>
+                    <Route
+                        path="/admin/categories/:categoryId"
+                        element={<AdminCategoryManagementPage mode="detail" />}
+                    />
+                    <Route
+                        path="/admin/categories/new"
+                        element={<AdminCategoryManagementPage mode="new" />}
+                    />
+                    <Route
+                        path="/admin/categories"
+                        element={<AdminCategoryManagementPage mode="list" />}
+                    />
+                </Routes>
+            </MemoryRouter>
+        </AdminAuthorizationContext.Provider>,
     )
 }
 
