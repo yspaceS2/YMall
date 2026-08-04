@@ -24,10 +24,8 @@ import { ProductListPage } from './pages/ProductListPage'
 import { SellerDashboardPage } from './pages/SellerDashboardPage'
 import { SellerProductEditorPage } from './pages/SellerProductEditorPage'
 import { SellerProfilePage } from './pages/SellerProfilePage'
-import {
-    SellerOrderDetailPage,
-    SellerOrderListPage,
-} from './pages/SellerOrderManagementPage'
+import { SellerOrderDetailPage } from './pages/SellerOrderDetailPage'
+import { SellerOrderListPage } from './pages/SellerOrderListPage'
 import { SellerProductListPage } from './pages/SellerResourcePages'
 import { SignupPage } from './pages/SignupPage'
 import { TossPaymentFailPage } from './pages/TossPaymentFailPage'
