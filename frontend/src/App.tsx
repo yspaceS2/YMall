@@ -21,7 +21,9 @@ import { PaymentPage } from './pages/PaymentPage'
 import { PasswordResetPage } from './pages/PasswordResetPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ProductListPage } from './pages/ProductListPage'
-import { SellerManagementPage } from './pages/SellerManagementPage'
+import { SellerDashboardPage } from './pages/SellerDashboardPage'
+import { SellerProductEditorPage } from './pages/SellerProductEditorPage'
+import { SellerProfilePage } from './pages/SellerProfilePage'
 import {
     SellerOrderDetailPage,
     SellerOrderListPage,
@@ -125,12 +127,12 @@ function MemberPortalRoutes() {
 function SellerPortalRoutes() {
     return (
         <Routes>
-            <Route index element={<SellerManagementPage section="dashboard" />} />
-            <Route path="profile" element={<SellerManagementPage section="profile" />} />
+            <Route index element={<SellerDashboardPage />} />
+            <Route path="profile" element={<SellerProfilePage />} />
             <Route path="products" element={<SellerProductListPage />} />
             <Route
                 path="products/new"
-                element={<SellerManagementPage section="products" />}
+                element={<SellerProductEditorPage />}
             />
             <Route path="products/:productId" element={<SellerProductEditorRoute />} />
             <Route path="orders" element={<SellerOrderListPage />} />
@@ -280,10 +282,7 @@ function SellerProductEditorRoute() {
     }
 
     return (
-        <SellerManagementPage
-            section="products"
-            initialProductId={parsedProductId}
-        />
+        <SellerProductEditorPage initialProductId={parsedProductId} />
     )
 }
 

@@ -1,24 +1,21 @@
-import { LoaderCircle, PackageCheck, Store } from 'lucide-react'
+import { LoaderCircle, PackageCheck } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { ApiError } from '../api/client'
 import { uploadProductImage } from '../api/files'
 import { getCategories } from '../api/products'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { ProductImageUploadField } from '../components/seller/ProductImageUploadField'
-import { SellerDashboard } from '../components/dashboard/SellerDashboard'
 import {
     ProductCategorySelector,
 } from '../components/seller/ProductCategorySelector'
 import {
     createSellerProduct,
-    createSellerProfile,
     getSellerProduct,
     getSellerProfile,
     updateSellerProduct,
-    updateSellerProfile,
 } from '../api/seller'
 import type { Category } from '../types/product'
-import type { SellerProductRequest, SellerProfile } from '../types/seller'
+import type { SellerProductRequest } from '../types/seller'
 import { findFirstLeafCategoryId } from '../utils/productCategory'
 import { useToast } from '../toast/useToast'
 
@@ -40,19 +37,13 @@ const emptyProduct: SellerProductRequest = {
     detailImages: [],
 }
 
-type SellerSection = 'dashboard' | 'profile' | 'products'
-
-export function SellerManagementPage({
-    section = 'dashboard',
+export function SellerProductEditorPage({
     initialProductId,
 }: {
-    section?: SellerSection
     initialProductId?: number
 } = {}) {
     const { showToast } = useToast()
-    const activeSection = section
-    const [profile, setProfile] = useState<SellerProfile | null>(null)
-    const [profileForm, setProfileForm] = useState({ storeName: '', businessNumber: '', description: '' })
+    const [hasProfile, setHasProfile] = useState(false)
     const [categories, setCategories] = useState<Category[]>([])
     const [productForm, setProductForm] = useState<SellerProductRequest>(emptyProduct)
     const [thumbnailFiles, setThumbnailFiles] = useState<File[]>([])
@@ -78,14 +69,7 @@ export function SellerManagementPage({
                 throw error
             })
             if (!profileResponse) return
-            setProfile(profileResponse)
-            setProfileForm({
-                storeName: profileResponse.storeName,
-                businessNumber: profileResponse.businessNumber,
-                description: profileResponse.description ?? '',
-            })
-
-            if (activeSection !== 'products') return
+            setHasProfile(true)
             const categoryResponse = await getCategories(controller.signal)
             setCategories(categoryResponse)
             setProductForm((current) => ({
@@ -101,30 +85,7 @@ export function SellerManagementPage({
             if (!controller.signal.aborted) setIsLoading(false)
         })
         return () => controller.abort()
-    }, [activeSection])
-
-    async function saveProfile(event: FormEvent) {
-        event.preventDefault()
-        setIsSaving(true)
-        setErrorMessage('')
-        try {
-            const saved = profile
-                ? await updateSellerProfile({
-                    storeName: profileForm.storeName,
-                    description: profileForm.description,
-                })
-                : await createSellerProfile(profileForm)
-            setProfile(saved)
-            showToast(
-                profile ? '판매자 정보가 수정되었습니다.' : '판매자 등록이 완료되었습니다.',
-                'success',
-            )
-        } catch (error) {
-            setErrorMessage(error instanceof ApiError ? error.message : '판매자 정보를 저장하지 못했습니다.')
-        } finally {
-            setIsSaving(false)
-        }
-    }
+    }, [])
 
     async function uploadImages(files: File[]) {
         const uploads = []
@@ -236,42 +197,23 @@ export function SellerManagementPage({
 
     return (
         <section
-            className={`mx-auto max-w-350 px-4 min-[601px]:px-8 ${
-                activeSection === 'dashboard' ? 'py-3' : 'py-10 min-[601px]:py-14'
-            }`}
+            className="mx-auto max-w-350 px-4 py-10 min-[601px]:px-8 min-[601px]:py-14"
             id="management-overview"
         >
-            {activeSection !== 'dashboard' && <>
+            <>
                 <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">SELLER CENTER</p>
                 <h1 className="mb-8 font-serif text-[clamp(40px,6vw,64px)] leading-none tracking-tighter">판매자 관리</h1>
-            </>}
+            </>
             {errorMessage && <FeedbackMessage className="mb-5" tone="error">{errorMessage}</FeedbackMessage>}
 
             <div className="grid gap-8">
-                {activeSection === 'dashboard' && (
-                    profile
-                        ? <SellerDashboard />
-                        : <FeedbackMessage tone="error">판매자 정보를 등록하면 통계를 확인할 수 있습니다.</FeedbackMessage>
-                )}
-
-                {activeSection === 'profile' && (
-                <Panel icon={<Store />} title="판매자 정보">
-                    <form className="grid gap-4 min-[701px]:grid-cols-2" onSubmit={saveProfile}>
-                        <Field label="상점명" value={profileForm.storeName} onChange={(value) => setProfileForm({ ...profileForm, storeName: value })} required />
-                        <Field label="사업자 번호" value={profileForm.businessNumber} onChange={(value) => setProfileForm({ ...profileForm, businessNumber: value })} required disabled={profile !== null} />
-                        <label className="grid gap-2 text-xs font-bold min-[701px]:col-span-2">소개<textarea className="min-h-24 border border-line p-3 font-normal" value={profileForm.description} onChange={(event) => setProfileForm({ ...profileForm, description: event.target.value })} /></label>
-                        <button className="h-11 bg-ink px-6 text-xs font-bold text-white disabled:opacity-50 min-[701px]:w-fit" disabled={isSaving} type="submit">{profile ? '정보 수정' : '판매자 등록'}</button>
-                    </form>
-                </Panel>
-                )}
-
-                {!profile && activeSection === 'products' && (
+                {!hasProfile && (
                     <FeedbackMessage tone="error">
                         판매자 정보를 먼저 등록해야 이 관리 기능을 사용할 수 있습니다.
                     </FeedbackMessage>
                 )}
 
-                {profile && activeSection === 'products' && (
+                {hasProfile && (
                     <Panel icon={<PackageCheck />} title="상품 관리">
                         <form className="mb-8 grid grid-cols-1 overflow-hidden border-y-2 border-ink min-[701px]:grid-cols-2" onSubmit={saveProduct}>
                             <div className={`${productFormRowClassName} min-[701px]:col-span-2`}>

@@ -8,7 +8,9 @@ import {
 } from '../api/seller'
 import type { SellerProfile } from '../types/seller'
 import { AdminManagementPage } from './AdminManagementPage'
-import { SellerManagementPage } from './SellerManagementPage'
+import { SellerDashboardPage } from './SellerDashboardPage'
+import { SellerProductEditorPage } from './SellerProductEditorPage'
+import { SellerProfilePage } from './SellerProfilePage'
 
 vi.mock('../api/products', () => ({
     getCategories: vi.fn(),
@@ -75,7 +77,7 @@ describe('management pages', () => {
     })
 
     it('판매자 대시보드에서는 프로필 외 관리 목록을 조회하지 않는다', async () => {
-        render(<SellerManagementPage section="dashboard" />)
+        render(<SellerDashboardPage />)
 
         expect(await screen.findByText('판매자 통계 대시보드')).toBeInTheDocument()
         expect(getSellerProfile).toHaveBeenCalledOnce()
@@ -85,12 +87,21 @@ describe('management pages', () => {
     })
 
     it('상품 편집 화면에서는 프로필과 카테고리만 준비한다', async () => {
-        render(<SellerManagementPage section="products" />)
+        render(<SellerProductEditorPage />)
 
         expect(await screen.findByText('상품 관리')).toBeInTheDocument()
         await waitFor(() => expect(getCategories).toHaveBeenCalledOnce())
         expect(screen.getByLabelText('할인 시작일')).toBeDisabled()
         expect(screen.getByLabelText('할인 종료일')).toBeDisabled()
+        expect(getSellerProducts).not.toHaveBeenCalled()
+        expect(getSellerOrders).not.toHaveBeenCalled()
+    })
+
+    it('판매자 정보 화면에서는 상품 관리 데이터를 조회하지 않는다', async () => {
+        render(<SellerProfilePage />)
+
+        expect(await screen.findByDisplayValue('테스트 상점')).toBeInTheDocument()
+        expect(getCategories).not.toHaveBeenCalled()
         expect(getSellerProducts).not.toHaveBeenCalled()
         expect(getSellerOrders).not.toHaveBeenCalled()
     })
