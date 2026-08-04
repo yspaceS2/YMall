@@ -1,7 +1,7 @@
 import { LoaderCircle } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ApiError } from '../api/client'
+import { getApiErrorMessage, isAbortError } from '../api/errors'
 import { getSellerReturnRequests } from '../api/seller'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import { PageState } from '../components/ui/PageState'
@@ -44,12 +44,8 @@ export function SellerReturnRequestsPage() {
                 setErrorMessage('')
             })
             .catch((error: unknown) => {
-                if (error instanceof Error && error.name === 'AbortError') return
-                setErrorMessage(
-                    error instanceof ApiError
-                        ? error.message
-                        : '반품 요청을 불러오지 못했습니다.',
-                )
+                if (isAbortError(error)) return
+                setErrorMessage(getApiErrorMessage(error, '반품 요청을 불러오지 못했습니다.'))
             })
             .finally(() => {
                 if (!controller.signal.aborted) setIsLoading(false)

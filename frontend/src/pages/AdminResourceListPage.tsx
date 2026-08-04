@@ -7,7 +7,7 @@ import {
     getAdminSellers,
     type AdminOrderWorkType,
 } from '../api/admin'
-import { ApiError } from '../api/client'
+import { getApiErrorMessage, isAbortError } from '../api/errors'
 import { formatMemberAuthority } from '../components/admin/adminRolePresentation'
 import {
     ManagementEmpty,
@@ -31,6 +31,7 @@ import type {
 import { formatKoreanDateTime } from '../utils/dateTime'
 import { getOrderStatusLabel } from '../utils/order'
 import { formatPrice } from '../utils/product'
+import { parsePositiveInteger } from '../utils/searchParams'
 import { adminResourceMeta, type AdminResource } from './adminResourceConfig'
 
 type AdminResourceItem = AdminMember | AdminSeller | AdminOrder
@@ -42,7 +43,7 @@ export function AdminResourceListPage({ resource }: { resource: AdminResource })
     const [pageData, setPageData] = useState<AdminResourcePage | null>(null)
     const [errorMessage, setErrorMessage] = useState('')
     const [isLoading, setIsLoading] = useState(true)
-    const page = positiveNumber(searchParams.get('page'), 1)
+    const page = parsePositiveInteger(searchParams.get('page'), 1)
     const keyword = searchParams.get('keyword')?.trim() ?? ''
     const workType = resource === 'orders'
         ? parseOrderWorkType(searchParams.get('workType'))
@@ -71,12 +72,8 @@ export function AdminResourceListPage({ resource }: { resource: AdminResource })
         }, controller.signal)
             .then(setPageData)
             .catch((error: unknown) => {
-                if (error instanceof Error && error.name === 'AbortError') return
-                setErrorMessage(
-                    error instanceof ApiError
-                        ? error.message
-                        : '관리 목록을 불러오지 못했습니다.',
-                )
+                if (isAbortError(error)) return
+                setErrorMessage(getApiErrorMessage(error, '관리 목록을 불러오지 못했습니다.'))
             })
             .finally(() => {
                 if (!controller.signal.aborted) setIsLoading(false)
@@ -356,9 +353,4 @@ function itemId(resource: AdminResource, item: AdminResourceItem) {
     if (resource === 'members') return (item as AdminMember).memberId
     if (resource === 'sellers') return (item as AdminSeller).sellerProfileId
     return (item as AdminOrder).orderId
-}
-
-function positiveNumber(value: string | null, fallback: number) {
-    const parsed = Number(value)
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }

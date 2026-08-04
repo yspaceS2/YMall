@@ -22,6 +22,7 @@ import type {
     SupportInquirySummary,
 } from '../types/support'
 import { formatKoreanDateTime } from '../utils/dateTime'
+import { parsePositiveInteger } from '../utils/searchParams'
 import { InquiryCreateForm } from './SupportCenterPage'
 import { supportBasePath } from './supportInquiryRouting'
 import { CATEGORY_LABELS, STATUS_LABELS } from './supportPresentation'
@@ -46,7 +47,7 @@ export function SupportInquiryListPage({ admin = false }: { admin?: boolean }) {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const [submitting, setSubmitting] = useState(false)
-    const page = positiveNumber(searchParams.get('page'), 1)
+    const page = parsePositiveInteger(searchParams.get('page'), 1)
     const keyword = searchParams.get('keyword')?.trim() ?? ''
     const status = parseStatus(searchParams.get('status'))
     const creating = searchParams.get('create') === 'true'
@@ -217,9 +218,4 @@ function parseStatus(value: string | null): SupportInquiryStatus | '' {
     return value && SUPPORT_STATUSES.has(value as SupportInquiryStatus)
         ? value as SupportInquiryStatus
         : ''
-}
-
-function positiveNumber(value: string | null, fallback: number) {
-    const parsed = Number(value)
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { getAdminSettlementRequests } from '../../api/admin'
-import { ApiError } from '../../api/client'
+import { getApiErrorMessage, isAbortError } from '../../api/errors'
 import { getSettlementRequests } from '../../api/seller'
 import type {
     SettlementRequest,
@@ -84,10 +84,8 @@ function SettlementRequestList({ role }: { role: 'seller' | 'admin' }) {
                 })
             })
             .catch((error: unknown) => {
-                if (error instanceof Error && error.name === 'AbortError') return
-                setErrorMessage(error instanceof ApiError
-                    ? error.message
-                    : '정산 신청 목록을 불러오지 못했습니다.')
+                if (isAbortError(error)) return
+                setErrorMessage(getApiErrorMessage(error, '정산 신청 목록을 불러오지 못했습니다.'))
             })
             .finally(() => {
                 if (!controller.signal.aborted) setIsLoading(false)

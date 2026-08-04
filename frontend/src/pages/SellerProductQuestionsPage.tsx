@@ -1,7 +1,7 @@
 import { LockKeyhole } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ApiError } from '../api/client'
+import { getApiErrorMessage, isAbortError } from '../api/errors'
 import { getSellerProductQuestions } from '../api/productQuestions'
 import {
     ManagementEmpty,
@@ -58,12 +58,8 @@ export function SellerProductQuestionListPage() {
                 setErrorMessage('')
             })
             .catch((error: unknown) => {
-                if (error instanceof Error && error.name === 'AbortError') return
-                setErrorMessage(
-                    error instanceof ApiError
-                        ? error.message
-                        : '상품 문의 목록을 불러오지 못했습니다.',
-                )
+                if (isAbortError(error)) return
+                setErrorMessage(getApiErrorMessage(error, '상품 문의 목록을 불러오지 못했습니다.'))
             })
             .finally(() => {
                 if (!controller.signal.aborted) setIsLoading(false)

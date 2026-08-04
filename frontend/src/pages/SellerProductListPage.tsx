@@ -1,7 +1,7 @@
 import { LoaderCircle, PackagePlus, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ApiError } from '../api/client'
+import { getApiErrorMessage, isAbortError } from '../api/errors'
 import {
     deleteSellerProduct,
     getSellerProducts,
@@ -21,6 +21,7 @@ import type { Category, ProductStatus, ProductSummary } from '../types/product'
 import type { SellerProductStockCondition } from '../types/seller'
 import { formatPrice, getProductStatusLabel, resolveImageUrl } from '../utils/product'
 import { getCategoryChildren } from '../utils/productCategory'
+import { parsePositiveInteger } from '../utils/searchParams'
 
 const PAGE_SIZE = 20
 
@@ -43,11 +44,11 @@ export function SellerProductListPage() {
     const [errorMessage, setErrorMessage] = useState('')
     const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
-    const page = positiveNumber(searchParams.get('page'), 1)
+    const page = parsePositiveInteger(searchParams.get('page'), 1)
     const keyword = searchParams.get('keyword') ?? ''
-    const rootCategoryId = positiveNumber(searchParams.get('rootCategoryId'), 0) || undefined
-    const middleCategoryId = positiveNumber(searchParams.get('middleCategoryId'), 0) || undefined
-    const leafCategoryId = positiveNumber(searchParams.get('categoryId'), 0) || undefined
+    const rootCategoryId = parsePositiveInteger(searchParams.get('rootCategoryId'), 0) || undefined
+    const middleCategoryId = parsePositiveInteger(searchParams.get('middleCategoryId'), 0) || undefined
+    const leafCategoryId = parsePositiveInteger(searchParams.get('categoryId'), 0) || undefined
     const selectedCategoryId = leafCategoryId ?? middleCategoryId ?? rootCategoryId
     const stockCondition = parseProductStockCondition(searchParams.get('stockCondition'))
     const stockQuantity = nonNegativeNumber(searchParams.get('stockQuantity'))
@@ -64,12 +65,8 @@ export function SellerProductListPage() {
         getCategories(controller.signal)
             .then(setCategories)
             .catch((error: unknown) => {
-                if (error instanceof Error && error.name === 'AbortError') return
-                setErrorMessage(
-                    error instanceof ApiError
-                        ? error.message
-                        : '카테고리를 불러오지 못했습니다.',
-                )
+                if (isAbortError(error)) return
+                setErrorMessage(getApiErrorMessage(error, '카테고리를 불러오지 못했습니다.'))
             })
         return () => controller.abort()
     }, [])
@@ -95,8 +92,8 @@ export function SellerProductListPage() {
                 setErrorMessage('')
             })
             .catch((error: unknown) => {
-                if (error instanceof Error && error.name === 'AbortError') return
-                setErrorMessage(error instanceof ApiError ? error.message : '상품 목록을 불러오지 못했습니다.')
+                if (isAbortError(error)) return
+                setErrorMessage(getApiErrorMessage(error, '상품 목록을 불러오지 못했습니다.'))
             })
             .finally(() => {
                 if (!controller.signal.aborted) setIsLoading(false)
@@ -145,7 +142,7 @@ export function SellerProductListPage() {
             }))
             setProductToDelete(null)
         } catch (error) {
-            setErrorMessage(error instanceof ApiError ? error.message : '상품을 삭제하지 못했습니다.')
+            setErrorMessage(getApiErrorMessage(error, '상품을 삭제하지 못했습니다.'))
         } finally {
             setIsDeleting(false)
         }
@@ -357,11 +354,6 @@ export function SellerProductListPage() {
             />
         </section>
     )
-}
-
-function positiveNumber(value: string | null, fallback: number) {
-    const parsed = Number(value)
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
 function Loading() {
