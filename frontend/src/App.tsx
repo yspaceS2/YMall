@@ -50,10 +50,8 @@ import { SellerReturnRequestsPage } from './pages/SellerReturnRequestsPage'
 import { SellerProductQuestionDetailPage } from './pages/SellerProductQuestionDetailPage'
 import { SellerProductQuestionListPage } from './pages/SellerProductQuestionsPage'
 import { SettlementRequestDetailPage } from './pages/SettlementRequestDetailPage'
-import {
-    SupportInquiryDetailPage,
-    SupportInquiryListPage,
-} from './pages/SupportInquiryPages'
+import { SupportInquiryDetailPage } from './pages/SupportInquiryDetailPage'
+import { SupportInquiryListPage } from './pages/SupportInquiryListPage'
 import type { AdminPermission } from './types/admin'
 
 function App() {
