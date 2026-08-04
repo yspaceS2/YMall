@@ -3,6 +3,7 @@ package com.ymall.backend.realtime.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.ymall.backend.global.exception.BusinessException;
+import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.admin.entity.AdminGrade;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.global.security.MemberPrincipal;
@@ -49,6 +51,8 @@ class RealtimeInboundChannelInterceptorTest {
             principalResolver,
             provider
         );
+        when(principalResolver.resolve(any(MemberPrincipal.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
         channel = mock(MessageChannel.class);
     }
 
@@ -122,6 +126,36 @@ class RealtimeInboundChannelInterceptorTest {
         accessor.setUser(authentication(superAdmin));
 
         assertThat(interceptor.preSend(message(accessor), channel)).isNotNull();
+    }
+
+    @Test
+    void subscriptionRejectsConnectionPrincipalInvalidatedAfterRoleChange() {
+        MemberPrincipal stalePrincipal = adminPrincipal(7L, AdminGrade.SUPER_ADMIN);
+        StompHeaderAccessor accessor = accessor(StompCommand.SUBSCRIBE);
+        accessor.setDestination("/topic/realtime/admin");
+        accessor.setUser(authentication(stalePrincipal));
+        when(principalResolver.resolve(stalePrincipal))
+            .thenThrow(new BusinessException(ErrorCode.INVALID_TOKEN));
+
+        assertThatThrownBy(() -> interceptor.preSend(message(accessor), channel))
+            .isInstanceOf(BusinessException.class)
+            .extracting(exception -> ((BusinessException) exception).getErrorCode())
+            .isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    void sendRejectsConnectionPrincipalInvalidatedAfterRoleChange() {
+        MemberPrincipal stalePrincipal = adminPrincipal(7L, AdminGrade.MANAGER);
+        StompHeaderAccessor accessor = accessor(StompCommand.SEND);
+        accessor.setDestination("/app/support/inquiries/31/messages");
+        accessor.setUser(authentication(stalePrincipal));
+        when(principalResolver.resolve(stalePrincipal))
+            .thenThrow(new BusinessException(ErrorCode.INVALID_TOKEN));
+
+        assertThatThrownBy(() -> interceptor.preSend(message(accessor), channel))
+            .isInstanceOf(BusinessException.class)
+            .extracting(exception -> ((BusinessException) exception).getErrorCode())
+            .isEqualTo(ErrorCode.INVALID_TOKEN);
     }
 
     private StompHeaderAccessor accessor(StompCommand command) {

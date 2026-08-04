@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -199,6 +200,43 @@ class AdminRoleApiIntegrationTest {
         mockMvc.perform(patch("/api/admin/settlement-requests/{requestId}/approval", 1L)
                 .header(HttpHeaders.AUTHORIZATION, authorization))
             .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void categoryCreationAndSettlementApprovalFollowAdminGradeMatrix() throws Exception {
+        Member manager = adminWithGrade("matrix-manager@example.test", AdminGrade.MANAGER);
+        Member supervisor = adminWithGrade("matrix-supervisor@example.test", AdminGrade.SUPERVISOR);
+        String categoryRequest = """
+            {
+              "name":"Security Matrix Category",
+              "slug":"security-matrix-category",
+              "parentId":null,
+              "displayOrder":10,
+              "active":true
+            }
+            """;
+
+        for (Member actor : java.util.List.of(manager, supervisor)) {
+            mockMvc.perform(post("/api/admin/categories")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token(actor)))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(categoryRequest))
+                .andExpect(status().isForbidden());
+        }
+
+        mockMvc.perform(post("/api/admin/categories")
+                .header(HttpHeaders.AUTHORIZATION, bearer(superAdminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(categoryRequest))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/admin/settlement-requests/{requestId}/approval", 999_999L)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(manager))))
+            .andExpect(status().isForbidden());
+
+        mockMvc.perform(patch("/api/admin/settlement-requests/{requestId}/approval", 999_999L)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(supervisor))))
+            .andExpect(status().isNotFound());
     }
 
     @Test

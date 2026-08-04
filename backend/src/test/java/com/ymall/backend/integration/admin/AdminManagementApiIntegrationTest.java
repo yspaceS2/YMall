@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.admin.entity.AdminAuditAction;
+import com.ymall.backend.admin.entity.AdminAuditLog;
+import com.ymall.backend.admin.entity.AdminAuditTargetType;
 import com.ymall.backend.admin.entity.AdminGrade;
 import com.ymall.backend.admin.repository.AdminAuditLogRepository;
 import com.ymall.backend.member.entity.Member;
@@ -311,6 +313,56 @@ class AdminManagementApiIntegrationTest {
                     """))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.error.code").value("MEMBER_OPERATION_FORBIDDEN"));
+    }
+
+    @Test
+    void auditLogScopeFollowsAdminGradeAndDoesNotExposeActorEmail() throws Exception {
+        Member manager = saveMember(
+            "audit-manager@example.com",
+            "Audit Manager",
+            MemberRole.ROLE_ADMIN
+        );
+        manager.changeAdminRole(MemberRole.ROLE_ADMIN, AdminGrade.MANAGER);
+        memberRepository.save(manager);
+        Member supervisor = saveMember(
+            "audit-supervisor@example.com",
+            "Audit Supervisor",
+            MemberRole.ROLE_ADMIN
+        );
+        supervisor.changeAdminRole(MemberRole.ROLE_ADMIN, AdminGrade.SUPERVISOR);
+        memberRepository.save(supervisor);
+        adminAuditLogRepository.save(new AdminAuditLog(
+            manager,
+            AdminAuditTargetType.MEMBER,
+            buyer.getId(),
+            AdminAuditAction.MEMBER_SESSIONS_REVOKED,
+            null,
+            null,
+            "Manager audit scope"
+        ));
+        adminAuditLogRepository.save(new AdminAuditLog(
+            supervisor,
+            AdminAuditTargetType.MEMBER,
+            buyer.getId(),
+            AdminAuditAction.MEMBER_SESSIONS_REVOKED,
+            null,
+            null,
+            "Supervisor audit scope"
+        ));
+        adminAuditLogRepository.flush();
+
+        mockMvc.perform(get("/api/admin/members/{memberId}/audit-logs", buyer.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(manager))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].actorMemberId").value(manager.getId()))
+            .andExpect(jsonPath("$.data[0].actorEmail").doesNotExist());
+
+        mockMvc.perform(get("/api/admin/members/{memberId}/audit-logs", buyer.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(supervisor))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.length()").value(2))
+            .andExpect(jsonPath("$.data[0].actorEmail").doesNotExist());
     }
 
     @Test
