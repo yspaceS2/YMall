@@ -10,20 +10,30 @@ import java.sql.Statement;
 
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
-@EnabledIfEnvironmentVariable(named = "MIGRATION_TEST_DATABASE_URL", matches = ".+")
+@Tag("postgres")
+@Testcontainers
 class FlywayPostgresMigrationIntegrationTest {
+
+    @Container
+    private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
+        DockerImageName.parse("postgres:16-alpine")
+    )
+        .withDatabaseName("ymall_migration_test")
+        .withUsername("ymall_test")
+        .withPassword("ymall_test");
 
     @Test
     void migratesEmptyPostgresFromLatestBaseline() throws SQLException {
-        String url = System.getenv("MIGRATION_TEST_DATABASE_URL");
-        String username = System.getenv("MIGRATION_TEST_DATABASE_USERNAME");
-        String password = System.getenv().getOrDefault(
-            "MIGRATION_TEST_DATABASE_PASSWORD",
-            ""
-        );
+        String url = POSTGRES.getJdbcUrl();
+        String username = POSTGRES.getUsername();
+        String password = POSTGRES.getPassword();
 
         assertDatabaseIsEmpty(url, username, password);
 

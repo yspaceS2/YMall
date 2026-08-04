@@ -18,8 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.ymall.backend.cart.entity.CartItem;
@@ -46,10 +44,11 @@ import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.testsupport.PostgresIntegrationTestSupport;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class PaymentConcurrencyIntegrationTest {
+class PaymentConcurrencyIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Autowired
     private PaymentService paymentService;
@@ -80,15 +79,6 @@ class PaymentConcurrencyIntegrationTest {
 
     @MockitoBean
     private PaymentGateway paymentGateway;
-
-    @DynamicPropertySource
-    static void registerDataSourceProperties(DynamicPropertyRegistry registry) {
-        registry.add(
-            "spring.datasource.url",
-            () -> "jdbc:h2:mem:ymall-payment-concurrency;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE"
-        );
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-    }
 
     @Test
     void confirmsPaymentOnceForConcurrentRequestsWithSameIdempotencyKey() throws Exception {

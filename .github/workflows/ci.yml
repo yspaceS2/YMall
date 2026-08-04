@@ -31,22 +31,6 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: ymall_migration_test
-          POSTGRES_USER: ymall_test
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U ymall_test -d ymall_migration_test"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-    env:
-      MIGRATION_TEST_DATABASE_URL: jdbc:postgresql://localhost:5432/ymall_migration_test
-      MIGRATION_TEST_DATABASE_USERNAME: ymall_test
     defaults:
       run:
         working-directory: backend
@@ -69,7 +53,18 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run backend tests
-        run: ./gradlew test --no-daemon
+        run: ./gradlew test postgresTest --no-daemon
+
+      - name: Upload backend failure reports
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-test-failure-reports
+          path: |
+            backend/build/reports/tests
+            backend/build/test-results
+          if-no-files-found: ignore
+          retention-days: 7
 
   frontend-check:
     name: Frontend Unit Test, Lint and Build

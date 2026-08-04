@@ -47,7 +47,7 @@ Outbox Relay는 **at-least-once** 방식으로 동작한다. Kafka 발행은 성
 
 ```shell
 cd backend
-./gradlew test --tests "com.ymall.backend.integration.kafka.OrderOutboxIntegrationTest"
+./gradlew postgresTest --tests "com.ymall.backend.integration.kafka.OrderOutboxIntegrationTest"
 ./gradlew test --tests "com.ymall.backend.integration.order.OrderApiIntegrationTest"
 ```
 

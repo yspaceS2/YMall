@@ -50,12 +50,13 @@ import com.ymall.backend.settlement.repository.SettlementLedgerRepository;
 import com.ymall.backend.settlement.repository.SettlementRequestHistoryRepository;
 import com.ymall.backend.settlement.repository.SettlementRequestRepository;
 import com.ymall.backend.settlement.service.SettlementLedgerProcessor;
+import com.ymall.backend.testsupport.PostgresIntegrationTestSupport;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-class SettlementRequestIntegrationTest {
+class SettlementRequestIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;

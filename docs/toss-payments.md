@@ -71,7 +71,7 @@ Backend 전체 검증:
 
 ```powershell
 cd backend
-.\gradlew.bat test
+.\gradlew.bat test postgresTest --no-daemon
 ```
 
 결제 관련 테스트만 실행:
@@ -79,6 +79,7 @@ cd backend
 ```powershell
 cd backend
 .\gradlew.bat test --tests "*Payment*Test"
+.\gradlew.bat postgresTest --tests "*Payment*Test"
 ```
 
 자동화 테스트에서는 실제 API 키를 사용하지 않는다. Toss HTTP 요청은 `MockRestServiceServer`로,
