@@ -83,8 +83,8 @@ export function LoginPage() {
     return (
         <AuthPageLayout
             eyebrow="MEMBER ACCESS"
-            title="다시 만나 반갑습니다."
-            description="로그인하고 장바구니와 주문 내역을 이어서 확인하세요."
+            title="로그인"
+            description="회원 로그인"
             asideEyebrow="YMALL MEMBERS"
             asideTitle={<>YOUR TASTE,<br />STILL HERE.</>}
             contentClassName="max-w-115"
@@ -121,7 +121,7 @@ export function LoginPage() {
                     <AuthField id="login-password" label="비밀번호" type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={cancelGoogleOneTap} autoComplete="current-password" placeholder="비밀번호를 입력하세요" required />
                     <div className="-mt-2 text-right">
                         <Link className="text-sm font-bold text-muted underline underline-offset-4" to="/password-reset">
-                            비밀번호를 잊으셨나요?
+                            비밀번호 찾기
                         </Link>
                     </div>
                     <button className="mt-2 h-13.5 border border-ink bg-ink font-extrabold text-white disabled:cursor-wait disabled:opacity-60" type="submit" disabled={isSubmitting}>
@@ -148,7 +148,7 @@ export function LoginPage() {
                     </a>
                 </div>
                 <p className="mt-7 text-sm text-muted">
-                    아직 회원이 아니신가요?{' '}
+                    회원이 아니신가요?{' '}
                     <Link className="font-bold text-ink underline underline-offset-4" to="/signup">
                         회원가입
                     </Link>

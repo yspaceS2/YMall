@@ -92,7 +92,7 @@ export function PasswordResetPage() {
     return (
         <AuthPageLayout
             eyebrow="PASSWORD RECOVERY"
-            title="다시 시작할 수 있어요."
+            title="비밀번호 찾기"
             description="가입한 이메일을 인증하고 새로운 비밀번호를 설정해 주세요."
             asideEyebrow="YMALL SECURITY"
             asideTitle={<>SAFE ACCESS,<br />SIMPLE RESET.</>}
@@ -230,7 +230,7 @@ export function PasswordResetPage() {
 
             {step !== 'complete' && (
                 <p className="mt-7 text-sm text-muted">
-                    비밀번호가 기억났나요?{' '}
+                    로그인 페이지로 돌아가기 {' '}
                     <Link className="font-bold text-ink underline underline-offset-4" to="/login">
                         로그인
                     </Link>
