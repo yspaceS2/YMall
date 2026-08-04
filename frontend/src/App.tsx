@@ -45,10 +45,8 @@ import {
     AdminProductChangeReviewListPage,
 } from './pages/AdminProductChangeReviewPage'
 import { AccessDeniedPage } from './pages/AccessDeniedPage'
-import {
-    SellerReturnRequestDetailPage,
-    SellerReturnRequestsPage,
-} from './pages/SellerReturnRequestsPage'
+import { SellerReturnRequestDetailPage } from './pages/SellerReturnRequestDetailPage'
+import { SellerReturnRequestsPage } from './pages/SellerReturnRequestsPage'
 import {
     SellerProductQuestionDetailPage,
     SellerProductQuestionListPage,
