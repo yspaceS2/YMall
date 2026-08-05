@@ -30,13 +30,9 @@ import com.ymall.backend.support.entity.SupportChatSession;
 import com.ymall.backend.support.entity.SupportChatStatus;
 import com.ymall.backend.support.entity.SupportInquiry;
 import com.ymall.backend.support.entity.SupportInquiryStatus;
-import com.ymall.backend.support.entity.SupportMessage;
-import com.ymall.backend.support.entity.SupportMessageType;
 import com.ymall.backend.support.entity.SupportRequesterType;
 import com.ymall.backend.support.repository.SupportChatSessionRepository;
-import com.ymall.backend.support.repository.SupportAttachmentRepository;
 import com.ymall.backend.support.repository.SupportInquiryRepository;
-import com.ymall.backend.support.repository.SupportMessageRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -45,9 +41,8 @@ public class SupportService {
 
     private static final int MAX_PAGE_SIZE = 100;
     private final SupportInquiryRepository inquiryRepository;
-    private final SupportMessageRepository messageRepository;
-    private final SupportAttachmentRepository attachmentRepository;
-    private final SupportAttachmentStorageService attachmentStorageService;
+    private final SupportMessageService messageService;
+    private final SupportAttachmentService attachmentService;
     private final SupportChatSessionRepository chatSessionRepository;
     private final SupportInquiryAccessService inquiryAccessService;
     private final SupportEventService eventService;
@@ -115,13 +110,7 @@ public class SupportService {
             request.relatedProductId(),
             request.relatedSettlementId()
         ));
-        messageRepository.save(new SupportMessage(
-            inquiry,
-            member,
-            SupportMessageType.INQUIRY,
-            request.content().trim(),
-            UUID.randomUUID()
-        ));
+        messageService.createInitialMessage(inquiry, member, request.content());
         eventService.notifyAdmins(
             inquiry,
             NotificationType.SUPPORT_INQUIRY_CREATED,
@@ -139,27 +128,7 @@ public class SupportService {
         SupportMessageCreateRequest request,
         boolean liveMessage
     ) {
-        SupportInquiry inquiry = inquiryAccessService.getAccessibleInquiryForUpdate(principal, inquiryId);
-        inquiryAccessService.validateWritable(inquiry);
-        if (liveMessage && inquiry.getStatus() != SupportInquiryStatus.LIVE_ACTIVE) {
-            throw new BusinessException(ErrorCode.SUPPORT_CHAT_STATUS_INVALID);
-        }
-        if (!liveMessage && (
-            inquiry.getStatus() == SupportInquiryStatus.LIVE_REQUESTED
-                || inquiry.getStatus() == SupportInquiryStatus.LIVE_OFFERED
-                || inquiry.getStatus() == SupportInquiryStatus.LIVE_ACTIVE
-        )) {
-            throw new BusinessException(ErrorCode.SUPPORT_INQUIRY_STATUS_INVALID);
-        }
-        return messageRepository.findByInquiryIdAndClientMessageId(
-            inquiryId,
-            request.clientMessageId()
-        ).map(SupportMessageResponse::from).orElseGet(() -> saveMessage(
-            principal,
-            inquiry,
-            request,
-            liveMessage
-        ));
+        return messageService.addMessage(principal, inquiryId, request, liveMessage);
     }
 
     @Transactional
@@ -170,57 +139,21 @@ public class SupportService {
         String content,
         List<MultipartFile> files
     ) {
-        List<MultipartFile> safeFiles = files == null ? List.of() : files;
-        if (safeFiles.isEmpty() || safeFiles.size() > SupportAttachmentStorageService.MAX_FILES_PER_MESSAGE) {
-            throw new BusinessException(
-                safeFiles.isEmpty()
-                    ? ErrorCode.FILE_EMPTY
-                    : ErrorCode.SUPPORT_ATTACHMENT_COUNT_EXCEEDED
-            );
-        }
-        if (safeFiles.stream().mapToLong(MultipartFile::getSize).sum()
-            > SupportAttachmentStorageService.MAX_TOTAL_SIZE) {
-            throw new BusinessException(ErrorCode.FILE_SIZE_EXCEEDED);
-        }
-        attachmentStorageService.validateAll(safeFiles);
-        String normalizedContent = content == null ? "" : content.trim();
-        if (normalizedContent.length() > 2000) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST);
-        }
-        SupportInquiry inquiry = inquiryAccessService.getAccessibleInquiryForUpdate(principal, inquiryId);
-        inquiryAccessService.validateWritable(inquiry);
-        boolean liveMessage = inquiry.getStatus() == SupportInquiryStatus.LIVE_ACTIVE;
-        if (!liveMessage && (
-            inquiry.getStatus() == SupportInquiryStatus.LIVE_REQUESTED
-                || inquiry.getStatus() == SupportInquiryStatus.LIVE_OFFERED
-        )) {
-            throw new BusinessException(ErrorCode.SUPPORT_INQUIRY_STATUS_INVALID);
-        }
-        return messageRepository.findByInquiryIdAndClientMessageId(inquiryId, clientMessageId)
-            .map(SupportMessageResponse::from)
-            .orElseGet(() -> saveMessageWithAttachments(
-                principal,
-                inquiry,
-                clientMessageId,
-                normalizedContent,
-                safeFiles,
-                liveMessage
-            ));
+        return messageService.addMessageWithAttachments(
+            principal,
+            inquiryId,
+            clientMessageId,
+            content,
+            files
+        );
     }
 
     public SupportAttachment getAttachment(MemberPrincipal principal, Long attachmentId) {
-        SupportAttachment attachment = attachmentRepository.findById(attachmentId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.SUPPORT_ATTACHMENT_NOT_FOUND));
-        SupportInquiry inquiry = attachment.getMessage().getInquiry();
-        if (principal.role() != MemberRole.ROLE_ADMIN
-            && !inquiry.getMember().getId().equals(principal.memberId())) {
-            throw new BusinessException(ErrorCode.SUPPORT_ATTACHMENT_NOT_FOUND);
-        }
-        return attachment;
+        return attachmentService.getAccessibleAttachment(principal, attachmentId);
     }
 
     public Resource loadAttachment(SupportAttachment attachment) {
-        return attachmentStorageService.load(attachment.getStoredPath());
+        return attachmentService.load(attachment);
     }
 
     @Transactional
@@ -272,13 +205,7 @@ public class SupportService {
         chatSessionRepository.findByInquiryId(inquiryId)
             .filter(session -> session.getStatus() == SupportChatStatus.ACTIVE)
             .ifPresent(SupportChatSession::end);
-        messageRepository.save(new SupportMessage(
-            inquiry,
-            admin,
-            SupportMessageType.RESOLUTION,
-            request.content().trim(),
-            UUID.randomUUID()
-        ));
+        messageService.createResolutionMessage(inquiry, admin, request.content());
         inquiry.close();
         eventService.notifyRequester(
             inquiry,
@@ -292,110 +219,6 @@ public class SupportService {
 
     public void validateSubscription(MemberPrincipal principal, Long inquiryId) {
         inquiryAccessService.getAccessibleInquiry(principal, inquiryId);
-    }
-
-    private SupportMessageResponse saveMessage(
-        MemberPrincipal principal,
-        SupportInquiry inquiry,
-        SupportMessageCreateRequest request,
-        boolean liveMessage
-    ) {
-        Member author = inquiryAccessService.getMember(principal.memberId());
-        boolean admin = principal.role() == MemberRole.ROLE_ADMIN;
-        SupportMessage message = messageRepository.save(new SupportMessage(
-            inquiry,
-            author,
-            liveMessage
-                ? SupportMessageType.LIVE_CHAT
-                : admin ? SupportMessageType.REPLY : SupportMessageType.INQUIRY,
-            request.content().trim(),
-            request.clientMessageId()
-        ));
-        if (!liveMessage) {
-            if (admin) {
-                inquiry.assign(author);
-                inquiry.markAnswered();
-                eventService.notifyRequester(
-                    inquiry,
-                    NotificationType.SUPPORT_REPLY,
-                    "고객센터 답변이 등록되었습니다",
-                    "문의 #%d에 관리자 답변이 등록되었습니다.".formatted(inquiry.getId())
-                );
-            } else {
-                inquiry.markWaiting();
-                eventService.notifyAdmins(
-                    inquiry,
-                    NotificationType.SUPPORT_INQUIRY_CREATED,
-                    "고객센터 추가 문의가 등록되었습니다",
-                    "문의 #%d의 추가 내용을 확인해 주세요.".formatted(inquiry.getId())
-                );
-            }
-        }
-        SupportMessageResponse response = SupportMessageResponse.from(message);
-        eventService.publishInquiry(inquiry.getId());
-        eventService.publishChanged(
-            inquiry,
-            liveMessage ? "SUPPORT_LIVE_MESSAGE" : "SUPPORT_MESSAGE_CREATED"
-        );
-        return response;
-    }
-
-    private SupportMessageResponse saveMessageWithAttachments(
-        MemberPrincipal principal,
-        SupportInquiry inquiry,
-        UUID clientMessageId,
-        String content,
-        List<MultipartFile> files,
-        boolean liveMessage
-    ) {
-        Member author = inquiryAccessService.getMember(principal.memberId());
-        boolean admin = principal.role() == MemberRole.ROLE_ADMIN;
-        SupportMessage message = messageRepository.save(new SupportMessage(
-            inquiry,
-            author,
-            liveMessage
-                ? SupportMessageType.LIVE_CHAT
-                : admin ? SupportMessageType.REPLY : SupportMessageType.INQUIRY,
-            content,
-            clientMessageId
-        ));
-        files.stream()
-            .map(attachmentStorageService::store)
-            .map(stored -> attachmentRepository.save(new SupportAttachment(
-                message,
-                stored.originalFileName(),
-                stored.storedPath(),
-                stored.contentType(),
-                stored.fileSize()
-            )))
-            .forEach(message.getAttachments()::add);
-        if (!liveMessage) {
-            if (admin) {
-                inquiry.assign(author);
-                inquiry.markAnswered();
-                eventService.notifyRequester(
-                    inquiry,
-                    NotificationType.SUPPORT_REPLY,
-                    "고객센터 답변이 등록되었습니다",
-                    "문의 #%d의 관리자 답변이 등록되었습니다.".formatted(inquiry.getId())
-                );
-            } else {
-                inquiry.markWaiting();
-                eventService.notifyAdmins(
-                    inquiry,
-                    NotificationType.SUPPORT_INQUIRY_CREATED,
-                    "고객센터 추가 문의가 등록되었습니다",
-                    "문의 #%d의 추가 내용을 확인해 주세요.".formatted(inquiry.getId())
-                );
-            }
-        }
-        SupportMessageResponse response = SupportMessageResponse.from(message);
-        eventService.publishInquiry(inquiry.getId());
-        eventService.publishChanged(
-            inquiry,
-            liveMessage ? "SUPPORT_LIVE_MESSAGE" : "SUPPORT_MESSAGE_CREATED"
-        );
-        return response;
     }
 
     private SupportInquiryDetailResponse toDetail(SupportInquiry inquiry) {
@@ -414,12 +237,7 @@ public class SupportService {
             chatSessionRepository.findByInquiryId(inquiry.getId())
                 .map(SupportChatSessionResponse::from)
                 .orElse(null),
-            messageRepository.findByInquiryIdOrderByCreatedAtAscIdAsc(inquiry.getId())
-                .stream()
-                .filter(message -> includeResolution
-                    || message.getType() != SupportMessageType.RESOLUTION)
-                .map(SupportMessageResponse::from)
-                .toList()
+            messageService.getMessages(inquiry.getId(), includeResolution)
         );
     }
 
