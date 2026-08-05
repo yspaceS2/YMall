@@ -1,6 +1,5 @@
 package com.ymall.backend.seller.service;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -27,11 +26,11 @@ import com.ymall.backend.product.entity.ProductRevisionDetailImage;
 import com.ymall.backend.product.entity.ProductRevisionImage;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.mapper.ProductMapper;
-import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
 import com.ymall.backend.product.repository.ProductRevisionRepository;
 import com.ymall.backend.product.search.KoreanSearchNormalizer;
 import com.ymall.backend.product.service.ProductCacheInvalidator;
+import com.ymall.backend.product.service.ProductCategoryPolicy;
 import com.ymall.backend.seller.entity.SellerProfile;
 import com.ymall.backend.seller.dto.SellerProductResponse;
 import com.ymall.backend.seller.dto.SellerProductStockCondition;
@@ -45,7 +44,7 @@ public class SellerProductService {
 
     private final SellerProfileService sellerProfileService;
     private final ProductRepository productRepository;
-    private final CategoryRepository categoryRepository;
+    private final ProductCategoryPolicy productCategoryPolicy;
     private final ProductMapper productMapper;
     private final ProductCacheInvalidator productCacheInvalidator;
     private final DashboardRealtimePublisher dashboardRealtimePublisher;
@@ -72,7 +71,7 @@ public class SellerProductService {
             : "";
         boolean filterCategory = categoryId != null;
         Set<Long> categoryIds = filterCategory
-            ? getActiveCategoryTreeIds(categoryId)
+            ? productCategoryPolicy.getActiveTreeIds(categoryId)
             : Set.of(-1L);
         SellerProductStockCondition normalizedStockCondition = stockCondition == null
             ? SellerProductStockCondition.GTE
@@ -106,7 +105,7 @@ public class SellerProductService {
     @Transactional
     public ProductDetailResponse createProduct(Long memberId, ProductCreateRequest request) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
-        Category category = getCategory(request.categoryId());
+        Category category = productCategoryPolicy.getSelectableCategory(request.categoryId());
         Product product = productMapper.toEntity(request, category, ProductStatus.PENDING);
         product.assignSellerProfile(profile);
         Product savedProduct = productRepository.save(product);
@@ -126,7 +125,7 @@ public class SellerProductService {
     ) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         Product product = getOwnedProduct(profile.getId(), productId);
-        Category category = getCategory(request.categoryId());
+        Category category = productCategoryPolicy.getSelectableCategory(request.categoryId());
         if (product.getStatus() == ProductStatus.PENDING
             || product.getStatus() == ProductStatus.REJECTED) {
             product.update(
@@ -253,48 +252,4 @@ public class SellerProductService {
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_PRODUCT_NOT_FOUND));
     }
 
-    private Category getCategory(Long categoryId) {
-        Category category = categoryRepository.findById(categoryId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
-        if (!isCategoryPathActive(category)
-            || categoryRepository.existsByParentId(category.getId())) {
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_SELECTABLE);
-        }
-        return category;
-    }
-
-    private boolean isCategoryPathActive(Category category) {
-        Category cursor = category;
-        while (cursor != null) {
-            if (!cursor.isActive()) {
-                return false;
-            }
-            cursor = cursor.getParent();
-        }
-        return true;
-    }
-
-    private Set<Long> getActiveCategoryTreeIds(Long rootCategoryId) {
-        Category rootCategory = categoryRepository.findById(rootCategoryId)
-            .filter(Category::isActive)
-            .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
-        List<Category> activeCategories = categoryRepository.findByActiveTrue(Sort.unsorted());
-        Set<Long> categoryIds = new HashSet<>();
-        categoryIds.add(rootCategory.getId());
-
-        boolean categoryAdded;
-        do {
-            categoryAdded = false;
-            for (Category category : activeCategories) {
-                Category parent = category.getParent();
-                if (parent != null
-                    && categoryIds.contains(parent.getId())
-                    && categoryIds.add(category.getId())) {
-                    categoryAdded = true;
-                }
-            }
-        } while (categoryAdded);
-
-        return categoryIds;
-    }
 }

@@ -28,10 +28,10 @@ import com.ymall.backend.product.entity.ProductImage;
 import com.ymall.backend.product.entity.ProductRevision;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.mapper.ProductMapper;
-import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
 import com.ymall.backend.product.repository.ProductRevisionRepository;
 import com.ymall.backend.product.service.ProductCacheInvalidator;
+import com.ymall.backend.product.service.ProductCategoryPolicy;
 import com.ymall.backend.seller.entity.SellerProfile;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,7 +42,7 @@ class SellerProductServiceTest {
     @Mock
     private ProductRepository productRepository;
     @Mock
-    private CategoryRepository categoryRepository;
+    private ProductCategoryPolicy productCategoryPolicy;
     @Mock
     private ProductMapper productMapper;
     @Mock
@@ -133,8 +133,7 @@ class SellerProductServiceTest {
             ProductStatus.DELETED
         )).willReturn(Optional.of(product));
         given(product.getStatus()).willReturn(status);
-        given(categoryRepository.findById(2L)).willReturn(Optional.of(category));
-        given(category.isActive()).willReturn(true);
+        given(productCategoryPolicy.getSelectableCategory(2L)).willReturn(category);
     }
 
     private ProductUpdateRequest request(

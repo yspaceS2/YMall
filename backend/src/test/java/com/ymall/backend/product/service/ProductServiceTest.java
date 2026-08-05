@@ -54,6 +54,9 @@ class ProductServiceTest {
     private CategoryRepository categoryRepository;
 
     @Mock
+    private ProductCategoryPolicy productCategoryPolicy;
+
+    @Mock
     private ProductMapper productMapper;
 
     @Mock
@@ -80,7 +83,7 @@ class ProductServiceTest {
         Product product = createProduct(category);
         ProductDetailResponse response = createDetailResponse();
 
-        given(categoryRepository.findById(1L)).willReturn(Optional.of(category));
+        given(productCategoryPolicy.getSelectableCategory(1L)).willReturn(category);
         given(productMapper.toEntity(request, category, ProductStatus.APPROVED)).willReturn(product);
         given(productRepository.save(product)).willReturn(product);
         given(productMapper.toProductDetailResponse(product)).willReturn(response);
@@ -105,7 +108,8 @@ class ProductServiceTest {
     void createProductWithMissingCategory() {
         ProductCreateRequest request = createRequest();
 
-        given(categoryRepository.findById(1L)).willReturn(Optional.empty());
+        given(productCategoryPolicy.getSelectableCategory(1L))
+            .willThrow(new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         assertThatThrownBy(() -> productService.createProduct(request))
             .isInstanceOf(BusinessException.class)
@@ -139,7 +143,7 @@ class ProductServiceTest {
         ProductDetailResponse response = createUpdatedDetailResponse();
 
         given(productRepository.findWithCategoryAndImagesById(1L)).willReturn(Optional.of(product));
-        given(categoryRepository.findById(2L)).willReturn(Optional.of(newCategory));
+        given(productCategoryPolicy.getSelectableCategory(2L)).willReturn(newCategory);
         given(productMapper.toImageEntities(request)).willReturn(List.of(newImage));
         given(productMapper.toDetailImageEntities(request)).willReturn(List.of(newDetailImage));
         given(productMapper.toProductDetailResponse(product)).willReturn(response);
@@ -197,9 +201,7 @@ class ProductServiceTest {
     @Test
     @DisplayName("카테고리 추천 검색은 선택한 카테고리 범위로 제한한다")
     void getProductSuggestionsWithinCategory() {
-        Category category = new Category("패션", "fashion");
-        given(categoryRepository.findById(2L)).willReturn(Optional.of(category));
-        given(categoryRepository.findByActiveTrue(any())).willReturn(List.of());
+        given(productCategoryPolicy.getPublicTreeIds(2L)).willReturn(Set.of(2L));
         given(productSuggestionFinder.findMatches(eq("ㄴㅌㅂ"), eq(Set.of(2L)), eq(8)))
             .willReturn(List.of(new ProductSearchMatch(
                 1L,

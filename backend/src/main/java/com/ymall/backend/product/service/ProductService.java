@@ -1,6 +1,5 @@
 package com.ymall.backend.product.service;
 
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +47,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ProductSuggestionFinder productSuggestionFinder;
     private final CategoryRepository categoryRepository;
+    private final ProductCategoryPolicy productCategoryPolicy;
     private final ProductMapper productMapper;
     private final ProductCacheInvalidator productCacheInvalidator;
 
@@ -195,18 +195,13 @@ public class ProductService {
                 )
             )
             .stream()
-            .filter(this::isCategoryPathActive)
+            .filter(productCategoryPolicy::isPathActive)
             .map(productMapper::toCategoryResponse)
             .toList();
     }
 
     public PageResponse<ProductListResponse> getProductsByCategory(Long categoryId, int page, int size) {
-        Category category = categoryRepository.findById(categoryId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
-        if (!isCategoryPathActive(category)) {
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
-        }
-        Set<Long> categoryIds = getActiveCategoryTreeIds(categoryId);
+        Set<Long> categoryIds = productCategoryPolicy.getPublicTreeIds(categoryId);
 
         return PageResponse.from(
             productRepository.findByCategoryIdInAndStatus(
@@ -220,7 +215,7 @@ public class ProductService {
 
     @Transactional
     public ProductDetailResponse createProduct(ProductCreateRequest request) {
-        Category category = getCategory(request.categoryId());
+        Category category = productCategoryPolicy.getSelectableCategory(request.categoryId());
         Product product = productMapper.toEntity(request, category, ProductStatus.APPROVED);
         Product savedProduct = productRepository.save(product);
 
@@ -234,7 +229,7 @@ public class ProductService {
     @Transactional
     public ProductDetailResponse updateProduct(Long productId, ProductUpdateRequest request) {
         Product product = getProductEntity(productId);
-        Category category = getCategory(request.categoryId());
+        Category category = productCategoryPolicy.getSelectableCategory(request.categoryId());
 
         product.update(
             category,
@@ -283,59 +278,8 @@ public class ProductService {
         return PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 
-    private Category getCategory(Long categoryId) {
-        Category category = categoryRepository.findById(categoryId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
-        validateSelectableCategory(category);
-        return category;
-    }
-
-    private Set<Long> getActiveCategoryTreeIds(Long rootCategoryId) {
-        List<Category> activeCategories = categoryRepository.findByActiveTrue(Sort.unsorted());
-        Set<Long> categoryIds = new HashSet<>();
-        categoryIds.add(rootCategoryId);
-
-        boolean categoryAdded;
-        do {
-            categoryAdded = false;
-            for (Category category : activeCategories) {
-                Category parent = category.getParent();
-                if (parent != null
-                    && categoryIds.contains(parent.getId())
-                    && categoryIds.add(category.getId())) {
-                    categoryAdded = true;
-                }
-            }
-        } while (categoryAdded);
-
-        return categoryIds;
-    }
-
     private Set<Long> getSearchCategoryIds(Long categoryId) {
-        Category category = categoryRepository.findById(categoryId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
-        if (!isCategoryPathActive(category)) {
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
-        }
-        return getActiveCategoryTreeIds(categoryId);
-    }
-
-    private void validateSelectableCategory(Category category) {
-        if (!isCategoryPathActive(category)
-            || categoryRepository.existsByParentId(category.getId())) {
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_SELECTABLE);
-        }
-    }
-
-    private boolean isCategoryPathActive(Category category) {
-        Category cursor = category;
-        while (cursor != null) {
-            if (!cursor.isActive()) {
-                return false;
-            }
-            cursor = cursor.getParent();
-        }
-        return true;
+        return productCategoryPolicy.getPublicTreeIds(categoryId);
     }
 
     /**
