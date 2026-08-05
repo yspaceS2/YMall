@@ -1,23 +1,13 @@
 package com.ymall.backend.member.service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,19 +17,20 @@ import lombok.RequiredArgsConstructor;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.security.RefreshTokenService;
+import com.ymall.backend.global.util.SecurityTokenUtils;
 import com.ymall.backend.member.config.PasswordResetProperties;
 import com.ymall.backend.member.dto.PasswordResetConfirmRequest;
 import com.ymall.backend.member.dto.PasswordResetRequestResponse;
 import com.ymall.backend.member.dto.PasswordResetVerificationResponse;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.member.util.EmailAddressNormalizer;
 
 @Service
 @RequiredArgsConstructor
 public class PasswordResetService {
 
     private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String CHALLENGE_KEY_PREFIX = "password-reset:challenge:";
     private static final String TOKEN_KEY_PREFIX = "password-reset:token:";
     private static final String RATE_KEY_PREFIX = "password-reset:rate:";
@@ -74,23 +65,20 @@ public class PasswordResetService {
     );
 
     private final StringRedisTemplate redisTemplate;
-    private final JavaMailSender mailSender;
+    private final MemberMailSender memberMailSender;
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
     private final PasswordResetProperties properties;
 
-    @Value("${ymall.mail.from}")
-    private String from;
-
     public PasswordResetRequestResponse request(String requestedEmail) {
-        String email = normalize(requestedEmail);
-        String emailHash = digest(email);
+        String email = EmailAddressNormalizer.normalize(requestedEmail);
+        String emailHash = SecurityTokenUtils.sha256(email);
         enforceRequestLimits(emailHash);
 
-        String requestId = generateToken();
-        String code = generateCode();
-        String challengeKey = CHALLENGE_KEY_PREFIX + digest(requestId);
+        String requestId = SecurityTokenUtils.generateUrlSafeToken();
+        String code = SecurityTokenUtils.generateSixDigitCode();
+        String challengeKey = CHALLENGE_KEY_PREFIX + SecurityTokenUtils.sha256(requestId);
         String memberId = memberRepository.findByEmailIgnoreCase(email)
             .filter(Member::hasPassword)
             .map(member -> member.getId().toString())
@@ -98,7 +86,7 @@ public class PasswordResetService {
 
         redisTemplate.opsForHash().putAll(challengeKey, Map.of(
             "memberId", memberId,
-            "codeDigest", digest(requestId + ":" + code),
+            "codeDigest", SecurityTokenUtils.sha256(requestId + ":" + code),
             "attempts", "0"
         ));
         redisTemplate.expire(challengeKey, properties.getCodeTtl());
@@ -110,14 +98,14 @@ public class PasswordResetService {
     }
 
     public PasswordResetVerificationResponse verify(String requestId, String code) {
-        String resetToken = generateToken();
+        String resetToken = SecurityTokenUtils.generateUrlSafeToken();
         String memberId = redisTemplate.execute(
             VERIFY_SCRIPT,
             List.of(
-                CHALLENGE_KEY_PREFIX + digest(requestId),
-                TOKEN_KEY_PREFIX + digest(resetToken)
+                CHALLENGE_KEY_PREFIX + SecurityTokenUtils.sha256(requestId),
+                TOKEN_KEY_PREFIX + SecurityTokenUtils.sha256(resetToken)
             ),
-            digest(requestId + ":" + code),
+            SecurityTokenUtils.sha256(requestId + ":" + code),
             Integer.toString(properties.getMaxAttempts()),
             Long.toString(properties.getResetTokenTtl().toSeconds())
         );
@@ -133,7 +121,7 @@ public class PasswordResetService {
     @Transactional
     public void reset(PasswordResetConfirmRequest request) {
         String memberId = redisTemplate.opsForValue().getAndDelete(
-            TOKEN_KEY_PREFIX + digest(request.resetToken())
+            TOKEN_KEY_PREFIX + SecurityTokenUtils.sha256(request.resetToken())
         );
         if (memberId == null) {
             throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID);
@@ -172,13 +160,12 @@ public class PasswordResetService {
     }
 
     private boolean sendEmail(String email, String code) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(from);
-        message.setTo(email);
-        message.setSubject("[YMall] 비밀번호 재설정 인증번호");
-        message.setText("YMall 비밀번호 재설정 인증번호는 " + code + "입니다. 유효 시간 안에 입력해 주세요.");
         try {
-            mailSender.send(message);
+            memberMailSender.send(
+                email,
+                "[YMall] 비밀번호 재설정 인증번호",
+                "YMall 비밀번호 재설정 인증번호는 " + code + "입니다. 유효 시간 안에 입력해 주세요."
+            );
             return true;
         } catch (MailException exception) {
             log.warn("Password reset email delivery failed");
@@ -186,27 +173,4 @@ public class PasswordResetService {
         }
     }
 
-    private String normalize(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String generateCode() {
-        return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
-    }
-
-    private String generateToken() {
-        byte[] bytes = new byte[32];
-        SECURE_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private String digest(String value) {
-        try {
-            byte[] bytes = MessageDigest.getInstance("SHA-256")
-                .digest(value.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(bytes);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
-    }
 }

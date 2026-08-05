@@ -1,23 +1,13 @@
 package com.ymall.backend.member.service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,18 +17,19 @@ import lombok.RequiredArgsConstructor;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.security.RefreshTokenService;
+import com.ymall.backend.global.util.SecurityTokenUtils;
 import com.ymall.backend.member.config.EmailChangeProperties;
 import com.ymall.backend.member.dto.EmailChangeReauthenticationResponse;
 import com.ymall.backend.member.dto.EmailChangeVerificationResponse;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.event.MemberEmailChangedEvent;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.member.util.EmailAddressNormalizer;
 
 @Service
 @RequiredArgsConstructor
 public class MemberEmailChangeService {
 
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String NEW_CHALLENGE_PREFIX = "email-change:new:";
     private static final String REAUTHENTICATION_PREFIX = "email-change:reauthenticated:";
     private static final String RATE_PREFIX = "email-change:rate:";
@@ -80,15 +71,12 @@ public class MemberEmailChangeService {
     );
 
     private final StringRedisTemplate redisTemplate;
-    private final JavaMailSender mailSender;
+    private final MemberMailSender memberMailSender;
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
     private final EmailChangeProperties properties;
     private final ApplicationEventPublisher eventPublisher;
-
-    @Value("${ymall.mail.from}")
-    private String from;
 
     public EmailChangeReauthenticationResponse reauthenticate(
         Long memberId,
@@ -132,17 +120,17 @@ public class MemberEmailChangeService {
     ) {
         Member member = findMember(memberId);
         requireReauthentication(member, sessionBinding);
-        String email = normalize(requestedEmail);
+        String email = EmailAddressNormalizer.normalize(requestedEmail);
         validateNewEmail(member, email);
-        enforceEmailRequestLimits("new", memberId, digest(email));
+        enforceEmailRequestLimits("new", memberId, SecurityTokenUtils.sha256(email));
 
-        String requestId = generateToken();
-        String code = generateCode();
-        String challengeKey = NEW_CHALLENGE_PREFIX + digest(requestId);
+        String requestId = SecurityTokenUtils.generateUrlSafeToken();
+        String code = SecurityTokenUtils.generateSixDigitCode();
+        String challengeKey = NEW_CHALLENGE_PREFIX + SecurityTokenUtils.sha256(requestId);
         redisTemplate.opsForHash().putAll(challengeKey, Map.of(
             "memberId", memberId.toString(),
-            "emailDigest", digest(email),
-            "codeDigest", digest(requestId + ":" + code),
+            "emailDigest", SecurityTokenUtils.sha256(email),
+            "codeDigest", SecurityTokenUtils.sha256(requestId + ":" + code),
             "attempts", "0"
         ));
         redisTemplate.expire(challengeKey, properties.getCodeTtl());
@@ -166,20 +154,20 @@ public class MemberEmailChangeService {
         String code,
         String sessionBinding
     ) {
-        String email = normalize(requestedEmail);
+        String email = EmailAddressNormalizer.normalize(requestedEmail);
         Member member = memberRepository.findByIdForUpdate(memberId)
             .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
         String verificationResult = redisTemplate.execute(
             VERIFY_AND_CONSUME_SCRIPT,
             List.of(
-                NEW_CHALLENGE_PREFIX + digest(requestId),
+                NEW_CHALLENGE_PREFIX + SecurityTokenUtils.sha256(requestId),
                 reauthenticationKey(memberId, sessionBinding)
             ),
-            digest(requestId + ":" + code),
+            SecurityTokenUtils.sha256(requestId + ":" + code),
             memberId.toString(),
-            digest(email),
+            SecurityTokenUtils.sha256(email),
             Integer.toString(properties.getMaxAttempts()),
-            digest(member.getEmail())
+            SecurityTokenUtils.sha256(member.getEmail())
         );
         if (REAUTHENTICATION_REQUIRED.equals(verificationResult)) {
             throw new BusinessException(ErrorCode.EMAIL_CHANGE_REAUTHENTICATION_REQUIRED);
@@ -204,7 +192,7 @@ public class MemberEmailChangeService {
     private void markReauthenticated(Member member, String sessionBinding) {
         redisTemplate.opsForValue().set(
             reauthenticationKey(member.getId(), sessionBinding),
-            digest(member.getEmail()),
+            SecurityTokenUtils.sha256(member.getEmail()),
             properties.getReauthenticationTtl()
         );
     }
@@ -212,7 +200,7 @@ public class MemberEmailChangeService {
     private void requireReauthentication(Member member, String sessionBinding) {
         String emailDigest = redisTemplate.opsForValue()
             .get(reauthenticationKey(member.getId(), sessionBinding));
-        if (!digest(member.getEmail()).equals(emailDigest)) {
+        if (!SecurityTokenUtils.sha256(member.getEmail()).equals(emailDigest)) {
             throw new BusinessException(ErrorCode.EMAIL_CHANGE_REAUTHENTICATION_REQUIRED);
         }
     }
@@ -262,39 +250,14 @@ public class MemberEmailChangeService {
     }
 
     private void sendCode(String email, String code, String purpose) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(from);
-        message.setTo(email);
-        message.setSubject("[YMall] 이메일 변경 " + purpose + " 인증번호");
-        message.setText("YMall 이메일 변경 인증번호는 " + code + "입니다. 유효 시간 안에 입력해 주세요.");
         try {
-            mailSender.send(message);
+            memberMailSender.send(
+                email,
+                "[YMall] 이메일 변경 " + purpose + " 인증번호",
+                "YMall 이메일 변경 인증번호는 " + code + "입니다. 유효 시간 안에 입력해 주세요."
+            );
         } catch (MailException exception) {
             throw new BusinessException(ErrorCode.EMAIL_CHANGE_DELIVERY_FAILED);
-        }
-    }
-
-    private String normalize(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String generateCode() {
-        return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
-    }
-
-    private String generateToken() {
-        byte[] bytes = new byte[32];
-        SECURE_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private String digest(String value) {
-        try {
-            byte[] bytes = MessageDigest.getInstance("SHA-256")
-                .digest(value.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(bytes);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
     }
 
@@ -302,6 +265,7 @@ public class MemberEmailChangeService {
         if (sessionBinding == null || sessionBinding.isBlank()) {
             throw new BusinessException(ErrorCode.EMAIL_CHANGE_REAUTHENTICATION_REQUIRED);
         }
-        return REAUTHENTICATION_PREFIX + memberId + ":" + digest(sessionBinding);
+        return REAUTHENTICATION_PREFIX + memberId + ":"
+            + SecurityTokenUtils.sha256(sessionBinding);
     }
 }

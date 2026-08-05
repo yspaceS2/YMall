@@ -1,37 +1,28 @@
 package com.ymall.backend.member.service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.util.SecurityTokenUtils;
 import com.ymall.backend.member.config.SignupEmailVerificationProperties;
 import com.ymall.backend.member.dto.SignupEmailVerificationConfirmResponse;
 import com.ymall.backend.member.dto.SignupEmailVerificationResponse;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.member.util.EmailAddressNormalizer;
 
 @Service
 @RequiredArgsConstructor
 public class SignupEmailVerificationService {
 
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String CHALLENGE_PREFIX = "signup-email:challenge:";
     private static final String TOKEN_PREFIX = "signup-email:token:";
     private static final String RATE_PREFIX = "signup-email:rate:";
@@ -73,27 +64,24 @@ public class SignupEmailVerificationService {
     );
 
     private final StringRedisTemplate redisTemplate;
-    private final JavaMailSender mailSender;
+    private final MemberMailSender memberMailSender;
     private final MemberRepository memberRepository;
     private final SignupEmailVerificationProperties properties;
 
-    @Value("${ymall.mail.from}")
-    private String from;
-
     public SignupEmailVerificationResponse send(String requestedEmail) {
-        String email = normalize(requestedEmail);
+        String email = EmailAddressNormalizer.normalize(requestedEmail);
         if (memberRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException(ErrorCode.MEMBER_EMAIL_DUPLICATED);
         }
-        String emailDigest = digest(email);
+        String emailDigest = SecurityTokenUtils.sha256(email);
         enforceRequestLimits(emailDigest);
 
-        String requestId = generateToken();
-        String code = generateCode();
-        String challengeKey = CHALLENGE_PREFIX + digest(requestId);
+        String requestId = SecurityTokenUtils.generateUrlSafeToken();
+        String code = SecurityTokenUtils.generateSixDigitCode();
+        String challengeKey = CHALLENGE_PREFIX + SecurityTokenUtils.sha256(requestId);
         redisTemplate.opsForHash().putAll(challengeKey, Map.of(
             "emailDigest", emailDigest,
-            "codeDigest", digest(requestId + ":" + code),
+            "codeDigest", SecurityTokenUtils.sha256(requestId + ":" + code),
             "attempts", "0"
         ));
         redisTemplate.expire(challengeKey, properties.getCodeTtl());
@@ -115,16 +103,16 @@ public class SignupEmailVerificationService {
         String requestedEmail,
         String code
     ) {
-        String email = normalize(requestedEmail);
-        String emailDigest = digest(email);
-        String verificationToken = generateToken();
+        String email = EmailAddressNormalizer.normalize(requestedEmail);
+        String emailDigest = SecurityTokenUtils.sha256(email);
+        String verificationToken = SecurityTokenUtils.generateUrlSafeToken();
         String verified = redisTemplate.execute(
             VERIFY_SCRIPT,
             List.of(
-                CHALLENGE_PREFIX + digest(requestId),
-                TOKEN_PREFIX + digest(verificationToken)
+                CHALLENGE_PREFIX + SecurityTokenUtils.sha256(requestId),
+                TOKEN_PREFIX + SecurityTokenUtils.sha256(verificationToken)
             ),
-            digest(requestId + ":" + code),
+            SecurityTokenUtils.sha256(requestId + ":" + code),
             emailDigest,
             Integer.toString(properties.getMaxAttempts()),
             Long.toString(properties.getTokenTtl().toSeconds())
@@ -139,11 +127,11 @@ public class SignupEmailVerificationService {
     }
 
     public void consume(String verificationToken, String requestedEmail) {
-        String email = normalize(requestedEmail);
+        String email = EmailAddressNormalizer.normalize(requestedEmail);
         Long consumed = redisTemplate.execute(
             CONSUME_SCRIPT,
-            List.of(TOKEN_PREFIX + digest(verificationToken)),
-            digest(email)
+            List.of(TOKEN_PREFIX + SecurityTokenUtils.sha256(verificationToken)),
+            SecurityTokenUtils.sha256(email)
         );
         if (consumed == null || consumed != 1L) {
             throw new BusinessException(ErrorCode.SIGNUP_EMAIL_VERIFICATION_REQUIRED);
@@ -169,39 +157,14 @@ public class SignupEmailVerificationService {
     }
 
     private void sendEmail(String email, String code) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(from);
-        message.setTo(email);
-        message.setSubject("[YMall] 회원가입 이메일 인증번호");
-        message.setText("YMall 회원가입 이메일 인증번호는 " + code + "입니다. 유효 시간 안에 입력해 주세요.");
         try {
-            mailSender.send(message);
+            memberMailSender.send(
+                email,
+                "[YMall] 회원가입 이메일 인증번호",
+                "YMall 회원가입 이메일 인증번호는 " + code + "입니다. 유효 시간 안에 입력해 주세요."
+            );
         } catch (MailException exception) {
             throw new BusinessException(ErrorCode.SIGNUP_EMAIL_DELIVERY_FAILED);
-        }
-    }
-
-    private String normalize(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String generateCode() {
-        return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
-    }
-
-    private String generateToken() {
-        byte[] bytes = new byte[32];
-        SECURE_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private String digest(String value) {
-        try {
-            byte[] bytes = MessageDigest.getInstance("SHA-256")
-                .digest(value.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(bytes);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
     }
 }
