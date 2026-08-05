@@ -2,16 +2,12 @@ package com.ymall.backend.file.service;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -25,6 +21,7 @@ import com.ymall.backend.file.dto.FileUploadResponse;
 import com.ymall.backend.global.config.FileStorageProperties;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.util.MultipartFileUtils;
 
 @Service
 public class LocalFileStorageService implements FileStorageService {
@@ -33,12 +30,6 @@ public class LocalFileStorageService implements FileStorageService {
         "image/jpeg",
         "image/png",
         "image/webp"
-    );
-    private static final Map<String, byte[]> FILE_SIGNATURES = Map.of(
-        "image/jpeg", new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF},
-        "image/png", new byte[] {
-            (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
-        }
     );
     private static final String THUMBNAIL_PREFIX = "thumb-";
     private static final String THUMBNAIL_EXTENSION = "jpg";
@@ -61,7 +52,10 @@ public class LocalFileStorageService implements FileStorageService {
 
         try {
             LocalDate uploadDate = LocalDate.now(ZoneOffset.UTC);
-            String originalFileName = cleanFileName(file.getOriginalFilename());
+            String originalFileName = MultipartFileUtils.sanitizeOriginalFileName(
+                file.getOriginalFilename(),
+                "image"
+            );
             String extension = extensionFor(contentType);
             String storedFileName = UUID.randomUUID() + "." + extension;
             String thumbnailExtension = "image/webp".equals(contentType)
@@ -110,43 +104,11 @@ public class LocalFileStorageService implements FileStorageService {
     }
 
     private String validateImage(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.FILE_EMPTY);
-        }
-
-        String contentType = file.getContentType();
-        if (contentType == null) {
-            throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
-        }
-        String normalizedContentType = contentType.toLowerCase(Locale.ROOT);
-        if (!ALLOWED_CONTENT_TYPES.contains(normalizedContentType)
-            || !hasExpectedSignature(file, normalizedContentType)) {
-            throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
-        }
-        return normalizedContentType;
-    }
-
-    private boolean hasExpectedSignature(MultipartFile file, String contentType) {
-        try (InputStream inputStream = file.getInputStream()) {
-            byte[] header = inputStream.readNBytes(12);
-            if ("image/webp".equals(contentType)) {
-                return header.length >= 12
-                    && Arrays.equals(
-                        Arrays.copyOfRange(header, 0, 4),
-                        "RIFF".getBytes(StandardCharsets.US_ASCII)
-                    )
-                    && Arrays.equals(
-                        Arrays.copyOfRange(header, 8, 12),
-                        "WEBP".getBytes(StandardCharsets.US_ASCII)
-                    );
-            }
-            byte[] signature = FILE_SIGNATURES.get(contentType);
-            return signature != null
-                && header.length >= signature.length
-                && Arrays.equals(Arrays.copyOf(header, signature.length), signature);
-        } catch (IOException exception) {
-            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, exception);
-        }
+        return MultipartFileUtils.validateContentType(
+            file,
+            ALLOWED_CONTENT_TYPES,
+            ErrorCode.INVALID_IMAGE_TYPE
+        );
     }
 
     private Path createImageDirectory(FilePurpose purpose, LocalDate uploadDate) throws IOException {
@@ -161,14 +123,6 @@ public class LocalFileStorageService implements FileStorageService {
         Files.createDirectories(imageDirectory);
 
         return imageDirectory;
-    }
-
-    private String cleanFileName(String originalFileName) {
-        if (originalFileName == null || originalFileName.isBlank()) {
-            return "image";
-        }
-
-        return Path.of(originalFileName).getFileName().toString();
     }
 
     private String extensionFor(String contentType) {
