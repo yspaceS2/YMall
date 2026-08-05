@@ -2,17 +2,13 @@ package com.ymall.backend.support.service;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -25,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.ymall.backend.global.config.FileStorageProperties;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.util.MultipartFileUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -36,13 +33,6 @@ public class SupportAttachmentStorageService {
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
         "image/jpeg", "image/png", "image/webp", "application/pdf"
-    );
-    private static final Map<String, byte[]> FILE_SIGNATURES = Map.of(
-        "image/jpeg", new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF},
-        "image/png", new byte[] {
-            (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
-        },
-        "application/pdf", "%PDF-".getBytes(StandardCharsets.US_ASCII)
     );
     private static final DateTimeFormatter DATE_DIRECTORY_FORMAT =
         DateTimeFormatter.ofPattern("uuuu/MM/dd");
@@ -69,7 +59,10 @@ public class SupportAttachmentStorageService {
                 Files.copy(inputStream, target, StandardCopyOption.REPLACE_EXISTING);
             }
             return new StoredSupportAttachment(
-                cleanFileName(file.getOriginalFilename()),
+                MultipartFileUtils.sanitizeOriginalFileName(
+                    file.getOriginalFilename(),
+                    "attachment"
+                ),
                 relativePath.replace('\\', '/'),
                 contentType,
                 file.getSize()
@@ -98,52 +91,17 @@ public class SupportAttachmentStorageService {
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new BusinessException(ErrorCode.FILE_SIZE_EXCEEDED);
         }
-        String contentType = file.getContentType();
-        if (contentType == null) {
-            throw new BusinessException(ErrorCode.INVALID_ATTACHMENT_TYPE);
-        }
-        String normalized = contentType.toLowerCase(Locale.ROOT);
-        if (!ALLOWED_CONTENT_TYPES.contains(normalized) || !hasExpectedSignature(file, normalized)) {
-            throw new BusinessException(ErrorCode.INVALID_ATTACHMENT_TYPE);
-        }
-        return normalized;
-    }
-
-    private boolean hasExpectedSignature(MultipartFile file, String contentType) {
-        try (InputStream inputStream = file.getInputStream()) {
-            byte[] header = inputStream.readNBytes(12);
-            if ("image/webp".equals(contentType)) {
-                return header.length >= 12
-                    && Arrays.equals(Arrays.copyOfRange(header, 0, 4), "RIFF".getBytes(StandardCharsets.US_ASCII))
-                    && Arrays.equals(Arrays.copyOfRange(header, 8, 12), "WEBP".getBytes(StandardCharsets.US_ASCII));
-            }
-            byte[] signature = FILE_SIGNATURES.get(contentType);
-            return signature != null
-                && header.length >= signature.length
-                && Arrays.equals(Arrays.copyOf(header, signature.length), signature);
-        } catch (IOException exception) {
-            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, exception);
-        }
+        return MultipartFileUtils.validateContentType(
+            file,
+            ALLOWED_CONTENT_TYPES,
+            ErrorCode.INVALID_ATTACHMENT_TYPE
+        );
     }
 
     private Path supportRoot() {
         return Path.of(fileStorageProperties.uploadDir(), "private", "support")
             .toAbsolutePath()
             .normalize();
-    }
-
-    private String cleanFileName(String originalFileName) {
-        if (originalFileName == null || originalFileName.isBlank()) {
-            return "attachment";
-        }
-        String normalized = originalFileName.replace('\\', '/');
-        String fileName = normalized.substring(normalized.lastIndexOf('/') + 1)
-            .replaceAll("[\\p{Cntrl}]", "")
-            .trim();
-        if (fileName.isBlank()) {
-            return "attachment";
-        }
-        return fileName.length() <= 255 ? fileName : fileName.substring(fileName.length() - 255);
     }
 
     private String extensionFor(String contentType) {
