@@ -12,10 +12,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.dashboard.service.DashboardRealtimePublisher;
+import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
-import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderItemFulfillmentStatus;
@@ -28,18 +27,16 @@ import com.ymall.backend.payment.refund.dto.PaymentRefundRequest;
 import com.ymall.backend.payment.refund.repository.PaymentRefundRepository;
 import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.product.entity.Product;
-import com.ymall.backend.product.repository.ProductRepository;
-import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.seller.entity.SellerProfile;
 import com.ymall.backend.seller.repository.SellerProfileRepository;
 
-class PaymentRefundTransactionServiceTest {
+class PaymentRefundPreparationServiceTest {
 
     private OrderRepository orderRepository;
     private PaymentRepository paymentRepository;
     private PaymentRefundRepository refundRepository;
     private SellerProfileRepository sellerProfileRepository;
-    private PaymentRefundTransactionService service;
+    private PaymentRefundPreparationService service;
 
     @BeforeEach
     void setUp() {
@@ -47,15 +44,14 @@ class PaymentRefundTransactionServiceTest {
         paymentRepository = mock(PaymentRepository.class);
         refundRepository = mock(PaymentRefundRepository.class);
         sellerProfileRepository = mock(SellerProfileRepository.class);
-        service = new PaymentRefundTransactionService(
+        service = new PaymentRefundPreparationService(
             orderRepository,
             paymentRepository,
             refundRepository,
-            mock(ProductRepository.class),
-            mock(ProductCacheInvalidator.class),
             sellerProfileRepository,
-            mock(OrderOutboxService.class),
-            mock(DashboardRealtimePublisher.class)
+            mock(DashboardRealtimePublisher.class),
+            new PaymentRefundCalculator(),
+            new PaymentRefundResponseMapper()
         );
     }
 

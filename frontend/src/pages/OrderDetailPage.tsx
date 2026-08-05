@@ -479,7 +479,7 @@ export function OrderDetailPage() {
                 }}
             />
             <RefundDialog
-                key={refundDialogOpen ? order.orderId : 'closed'}
+                key={refundDialogOpen ? `refund-${order.orderId}` : 'refund-closed'}
                 open={refundDialogOpen}
                 orderId={order.orderId}
                 items={order.items}
@@ -493,7 +493,7 @@ export function OrderDetailPage() {
                 onSubmit={submitRefund}
             />
             <ReturnRequestDialog
-                key={returnItem?.orderItemId ?? 'closed'}
+                key={returnItem ? `return-${returnItem.orderItemId}` : 'return-closed'}
                 open={returnItem !== null}
                 item={returnItem}
                 isSubmitting={isRequestingReturn}
