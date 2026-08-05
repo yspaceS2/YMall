@@ -23,6 +23,7 @@ import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderItemFulfillmentStatus;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.order.repository.SellerOrderQueryRepository;
 import com.ymall.backend.payment.entity.PaymentResult;
 import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.seller.dto.SellerDeliveryAddressResponse;
@@ -52,6 +53,7 @@ public class SellerOrderService {
     );
 
     private final OrderRepository orderRepository;
+    private final SellerOrderQueryRepository orderQueryRepository;
     private final PaymentRepository paymentRepository;
     private final SellerProfileService sellerProfileService;
     private final OrderOutboxService orderOutboxService;
@@ -83,7 +85,7 @@ public class SellerOrderService {
                     ? OrderItemFulfillmentStatus.PENDING
                     : fulfillmentStatus
             );
-        Page<Order> orders = orderRepository.searchSellerOrders(
+        Page<Order> orders = orderQueryRepository.search(
             profile.getId(),
             SELLER_VISIBLE_STATUSES,
             normalizedKeyword,
@@ -110,7 +112,7 @@ public class SellerOrderService {
     public SellerPendingOrderCountResponse getPendingOrderCount(Long memberId) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
         return new SellerPendingOrderCountResponse(
-            orderRepository.countSellerActionRequiredOrders(
+            orderQueryRepository.countActionRequired(
                 profile.getId(),
                 SELLER_VISIBLE_STATUSES
             )
@@ -119,7 +121,7 @@ public class SellerOrderService {
 
     public SellerOrderDetailResponse getOrder(Long memberId, Long orderId) {
         SellerProfile profile = sellerProfileService.getProfileEntity(memberId);
-        Order order = orderRepository.findSellerOrderById(orderId, profile.getId())
+        Order order = orderQueryRepository.findById(orderId, profile.getId())
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND));
         boolean refundSupported = paymentRepository
             .existsByOrderIdAndResultAndPaymentKeyIsNotNull(
