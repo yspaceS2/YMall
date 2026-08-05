@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.order.repository.SellerOrderQueryRepository;
 import com.ymall.backend.payment.refund.dto.PaymentRefundResponse;
 import com.ymall.backend.payment.refund.entity.PaymentRefundItem;
 import com.ymall.backend.payment.refund.entity.PaymentRefundStatus;
@@ -23,6 +24,7 @@ import com.ymall.backend.seller.repository.SellerProfileRepository;
 class PaymentRefundQueryService {
 
     private final OrderRepository orderRepository;
+    private final SellerOrderQueryRepository sellerOrderQueryRepository;
     private final PaymentRefundRepository refundRepository;
     private final SellerProfileRepository sellerProfileRepository;
     private final PaymentRefundCalculator calculator;
@@ -51,7 +53,7 @@ class PaymentRefundQueryService {
     List<PaymentRefundResponse> getSellerRefunds(Long memberId, Long orderId) {
         SellerProfile profile = sellerProfileRepository.findByMemberId(memberId)
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_PROFILE_NOT_FOUND));
-        orderRepository.findSellerOrderById(orderId, profile.getId())
+        sellerOrderQueryRepository.findById(orderId, profile.getId())
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND));
         Predicate<PaymentRefundItem> itemAccess = refundItem ->
             calculator.isOwnedBySeller(refundItem.getOrderItem(), profile.getId());

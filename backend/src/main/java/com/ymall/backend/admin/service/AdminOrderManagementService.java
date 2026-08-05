@@ -14,7 +14,7 @@ import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.order.entity.Order;
-import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.order.repository.AdminOrderQueryRepository;
 import com.ymall.backend.payment.entity.PaymentResult;
 import com.ymall.backend.payment.repository.PaymentRepository;
 
@@ -23,7 +23,7 @@ import com.ymall.backend.payment.repository.PaymentRepository;
 @Transactional(readOnly = true)
 class AdminOrderManagementService {
 
-    private final OrderRepository orderRepository;
+    private final AdminOrderQueryRepository orderQueryRepository;
     private final PaymentRepository paymentRepository;
     private final AdminMapper adminMapper;
     private final AdminPageRequestFactory pageRequestFactory;
@@ -36,7 +36,7 @@ class AdminOrderManagementService {
     ) {
         String normalizedKeyword = normalize(keyword);
         Long orderId = parseOrderId(normalizedKeyword);
-        Page<Order> orders = orderRepository.searchAdminOrders(
+        Page<Order> orders = orderQueryRepository.search(
             orderId == null ? normalizedKeyword : "",
             orderId,
             "PENDING_REFUND".equals(workType),
@@ -47,7 +47,7 @@ class AdminOrderManagementService {
     }
 
     AdminOrderResponse getOrder(Long orderId) {
-        Order order = orderRepository.findAdminOrderById(orderId)
+        Order order = orderQueryRepository.findById(orderId)
             .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
         boolean refundSupported = paymentRepository
             .existsByOrderIdAndResultAndPaymentKeyIsNotNull(orderId, PaymentResult.SUCCESS);
