@@ -1,12 +1,6 @@
 package com.ymall.backend.global.security;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.HashSet;
-import java.util.HexFormat;
 import java.util.Set;
 import java.time.LocalDateTime;
 
@@ -19,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.util.SecurityTokenUtils;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberAccessStatus;
 import com.ymall.backend.member.repository.MemberRepository;
@@ -30,7 +25,6 @@ public class RefreshTokenService {
     private static final String KEY_PREFIX = "auth:refresh:";
     private static final String MEMBER_KEY_PREFIX = "auth:member-refresh:";
     private static final String VALUE_SEPARATOR = ":";
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final StringRedisTemplate redisTemplate;
     private final JwtProperties jwtProperties;
@@ -41,7 +35,7 @@ public class RefreshTokenService {
         if (member.getAccessStatus() != MemberAccessStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.MEMBER_ACCESS_RESTRICTED);
         }
-        String refreshToken = generateToken();
+        String refreshToken = SecurityTokenUtils.generateUrlSafeToken();
         String tokenKey = key(refreshToken);
         String memberKey = memberKey(member.getId());
         redisTemplate.opsForValue().set(
@@ -138,20 +132,8 @@ public class RefreshTokenService {
         return tokenKeys;
     }
 
-    private String generateToken() {
-        byte[] bytes = new byte[32];
-        SECURE_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
     private String key(String token) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                .digest(token.getBytes(StandardCharsets.UTF_8));
-            return KEY_PREFIX + HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
+        return KEY_PREFIX + SecurityTokenUtils.sha256(token);
     }
 
     private String memberKey(Long memberId) {

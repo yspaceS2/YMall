@@ -1,7 +1,5 @@
 package com.ymall.backend.member.service;
 
-import java.util.Locale;
-
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,6 +21,7 @@ import com.ymall.backend.member.dto.MemberSignupRequest;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.member.util.EmailAddressNormalizer;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +34,7 @@ public class MemberService {
     private final SignupEmailVerificationService signupEmailVerificationService;
 
     public EmailAvailabilityResponse checkEmailAvailability(String requestedEmail) {
-        String email = requestedEmail.trim().toLowerCase(Locale.ROOT);
+        String email = EmailAddressNormalizer.normalize(requestedEmail);
         return new EmailAvailabilityResponse(!memberRepository.existsByEmailIgnoreCase(email));
     }
 
@@ -62,7 +61,7 @@ public class MemberService {
 
     @Transactional
     public MemberResponse signup(MemberSignupRequest request) {
-        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        String email = EmailAddressNormalizer.normalize(request.email());
         if (memberRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException(ErrorCode.MEMBER_EMAIL_DUPLICATED);
         }

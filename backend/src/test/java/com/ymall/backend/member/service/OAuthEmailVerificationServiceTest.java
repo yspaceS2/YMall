@@ -1,7 +1,6 @@
 package com.ymall.backend.member.service;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -12,8 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -28,7 +25,7 @@ import com.ymall.backend.member.repository.MemberRepository;
 class OAuthEmailVerificationServiceTest {
 
     @Mock
-    private JavaMailSender mailSender;
+    private MemberMailSender memberMailSender;
     @Mock
     private MemberRepository memberRepository;
     @Mock
@@ -40,8 +37,11 @@ class OAuthEmailVerificationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OAuthEmailVerificationService(mailSender, memberRepository, oAuthFlowContext);
-        ReflectionTestUtils.setField(service, "from", "test@ymall.local");
+        service = new OAuthEmailVerificationService(
+            memberMailSender,
+            memberRepository,
+            oAuthFlowContext
+        );
     }
 
     @Test
@@ -51,7 +51,11 @@ class OAuthEmailVerificationServiceTest {
 
         service.send(request, " User@Example.com ");
 
-        verify(mailSender).send(any(org.springframework.mail.SimpleMailMessage.class));
+        verify(memberMailSender).send(
+            org.mockito.ArgumentMatchers.eq("user@example.com"),
+            org.mockito.ArgumentMatchers.eq("[YMall] 이메일 인증번호"),
+            org.mockito.ArgumentMatchers.contains("인증번호")
+        );
         verify(oAuthFlowContext).startEmailVerification(
             org.mockito.ArgumentMatchers.eq(request),
             org.mockito.ArgumentMatchers.eq("user@example.com"),
