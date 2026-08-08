@@ -12,6 +12,11 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { FeedbackMessage } from '../components/ui/FeedbackMessage'
 import type { AdminCategory, AdminCategoryRequest } from '../types/admin'
 import { useAdminAuthorization } from '../auth/useAdminAuthorization'
+import {
+    flattenAdminCategoryTree,
+    isAdminCategoryDescendant,
+    normalizeAdminCategorySlug,
+} from '../utils/adminCategory'
 
 const emptyForm: AdminCategoryRequest = {
     name: '',
@@ -44,11 +49,11 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
         ? null
         : categories.find((category) => category.categoryId === selectedId) ?? null
     const keyword = searchParams.get('keyword') ?? ''
-    const tree = useMemo(() => flattenTree(categories), [categories])
+    const tree = useMemo(() => flattenAdminCategoryTree(categories), [categories])
     const parentCandidates = categories.filter((category) =>
         category.depth < 3
         && category.categoryId !== selectedId
-        && (selectedId === null || !isDescendant(categories, category.categoryId, selectedId)),
+        && (selectedId === null || !isAdminCategoryDescendant(categories, category.categoryId, selectedId)),
     )
 
     useEffect(() => {
@@ -274,7 +279,7 @@ export function AdminCategoryManagementPage({ mode }: { mode: 'list' | 'new' | '
                                     readOnly={!canEdit}
                                     onChange={(event) => setForm({
                                         ...form,
-                                        slug: normalizeSlug(event.target.value),
+                                        slug: normalizeAdminCategorySlug(event.target.value),
                                     })}
                                     maxLength={100}
                                     pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
@@ -398,42 +403,6 @@ function CategoryField({ label, children }: { label: string; children: ReactNode
             {children}
         </label>
     )
-}
-
-function flattenTree(categories: AdminCategory[]) {
-    const byParent = new Map<number | null, AdminCategory[]>()
-    categories.forEach((category) => {
-        const siblings = byParent.get(category.parentId) ?? []
-        siblings.push(category)
-        byParent.set(category.parentId, siblings)
-    })
-    byParent.forEach((siblings) => siblings.sort(
-        (left, right) =>
-            left.displayOrder - right.displayOrder
-            || left.name.localeCompare(right.name, 'ko'),
-    ))
-    const result: AdminCategory[] = []
-    const visit = (parentId: number | null) => {
-        ;(byParent.get(parentId) ?? []).forEach((category) => {
-            result.push(category)
-            visit(category.categoryId)
-        })
-    }
-    visit(null)
-    return result
-}
-
-function isDescendant(categories: AdminCategory[], candidateId: number, categoryId: number) {
-    let cursor = categories.find((category) => category.categoryId === candidateId)
-    while (cursor?.parentId) {
-        if (cursor.parentId === categoryId) return true
-        cursor = categories.find((category) => category.categoryId === cursor?.parentId)
-    }
-    return false
-}
-
-function normalizeSlug(value: string) {
-    return value.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-')
 }
 
 const inputClassName =
