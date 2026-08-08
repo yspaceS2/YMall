@@ -27,6 +27,10 @@ import type {
     ReturnRequestStatus,
 } from '../types/order'
 import type { PageResponse } from '../types/api'
+import {
+    buildSettlementRequestQuery,
+    type SettlementRequestQueryOptions,
+} from './settlementQuery'
 
 export function getSellerProfile(signal?: AbortSignal) {
     return apiRequest<SellerProfile>('/seller/profile', { signal })
@@ -60,36 +64,20 @@ export function getSettlementAvailability(signal?: AbortSignal) {
     )
 }
 
-export function getSettlementRequests({
-    page = 1,
-    size = 20,
-    status,
-    workType,
-    requestId,
-    requestedFrom,
-    requestedTo,
-    signal,
-}: {
-    page?: number
-    size?: number
+type SellerSettlementRequestOptions = Omit<
+    SettlementRequestQueryOptions,
+    'status' | 'workType' | 'sellerKeyword'
+> & {
     status?: SettlementRequest['status']
     workType?: SettlementRequestWorkType
-    requestId?: number
-    requestedFrom?: string
-    requestedTo?: string
     signal?: AbortSignal
-} = {}) {
-    const query = new URLSearchParams({
-        page: String(page),
-        size: String(size),
-    })
-    if (status) query.set('status', status)
-    if (workType) query.set('workType', workType)
-    if (requestId !== undefined) query.set('requestId', String(requestId))
-    if (requestedFrom) query.set('requestedFrom', requestedFrom)
-    if (requestedTo) query.set('requestedTo', requestedTo)
+}
+
+export function getSettlementRequests(options: SellerSettlementRequestOptions = {}) {
+    const { signal, ...queryOptions } = options
+    const query = buildSettlementRequestQuery(queryOptions)
     return apiRequest<SettlementRequestPage>(
-        `/seller/settlement-requests?${query.toString()}`,
+        `/seller/settlement-requests?${query}`,
         { signal },
     )
 }
