@@ -23,7 +23,7 @@ import type {
     SupportInquiryDetail,
     SupportMessage,
 } from '../types/support'
-import { InquiryDetail } from './SupportCenterPage'
+import { InquiryDetail } from '../components/support/InquiryDetail'
 import { supportBasePath } from './supportInquiryRouting'
 
 export function SupportInquiryDetailPage({ admin = false }: { admin?: boolean }) {
