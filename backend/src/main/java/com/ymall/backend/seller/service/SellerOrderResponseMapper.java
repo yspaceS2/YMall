@@ -21,10 +21,10 @@ public class SellerOrderResponseMapper {
 
     public SellerOrderResponse toResponse(
         Order order,
-        Long sellerProfileId,
+        List<OrderItem> ownedItems,
         boolean refundSupported
     ) {
-        List<SellerOrderItemResponse> items = toItemResponses(order, sellerProfileId);
+        List<SellerOrderItemResponse> items = toItemResponses(ownedItems);
         return new SellerOrderResponse(
             order.getId(),
             order.getStatus(),
@@ -37,10 +37,9 @@ public class SellerOrderResponseMapper {
 
     public SellerOrderDetailResponse toDetail(
         Order order,
-        Long sellerProfileId,
+        List<OrderItem> ownedItems,
         boolean refundSupported
     ) {
-        List<OrderItem> ownedItems = ownedItems(order, sellerProfileId);
         List<SellerOrderItemResponse> items = ownedItems.stream()
             .map(this::toItemResponse)
             .toList();
@@ -58,15 +57,8 @@ public class SellerOrderResponseMapper {
         );
     }
 
-    public List<OrderItem> ownedItems(Order order, Long sellerProfileId) {
-        return order.getItems().stream()
-            .filter(item -> item.getProduct().getSellerProfile() != null)
-            .filter(item -> item.getProduct().getSellerProfile().getId().equals(sellerProfileId))
-            .toList();
-    }
-
-    private List<SellerOrderItemResponse> toItemResponses(Order order, Long sellerProfileId) {
-        return ownedItems(order, sellerProfileId).stream()
+    private List<SellerOrderItemResponse> toItemResponses(List<OrderItem> ownedItems) {
+        return ownedItems.stream()
             .map(this::toItemResponse)
             .toList();
     }

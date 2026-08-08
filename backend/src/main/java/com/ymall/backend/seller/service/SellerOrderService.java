@@ -54,6 +54,7 @@ public class SellerOrderService {
     private final PaymentRepository paymentRepository;
     private final SellerProfileService sellerProfileService;
     private final OrderOutboxService orderOutboxService;
+    private final SellerOrderItemOwnershipPolicy itemOwnershipPolicy;
     private final SellerOrderResponseMapper responseMapper;
 
     public PageResponse<SellerOrderResponse> getOrders(
@@ -99,11 +100,14 @@ public class SellerOrderService {
                 orderIds,
                 PaymentResult.SUCCESS
             );
-        return PageResponse.from(orders.map(order -> responseMapper.toResponse(
-            order,
-            profile.getId(),
-            refundSupportedOrderIds.contains(order.getId())
-        )));
+        return PageResponse.from(orders.map(order -> {
+            List<OrderItem> ownedItems = itemOwnershipPolicy.ownedItems(order, profile.getId());
+            return responseMapper.toResponse(
+                order,
+                ownedItems,
+                refundSupportedOrderIds.contains(order.getId())
+            );
+        }));
     }
 
     public SellerPendingOrderCountResponse getPendingOrderCount(Long memberId) {
@@ -125,7 +129,8 @@ public class SellerOrderService {
                 order.getId(),
                 PaymentResult.SUCCESS
             );
-        return responseMapper.toDetail(order, profile.getId(), refundSupported);
+        List<OrderItem> ownedItems = itemOwnershipPolicy.ownedItems(order, profile.getId());
+        return responseMapper.toDetail(order, ownedItems, refundSupported);
     }
 
     @Transactional
@@ -144,7 +149,8 @@ public class SellerOrderService {
             throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
         }
 
-        List<OrderItem> sellerItems = responseMapper.ownedItems(order, profile.getId()).stream()
+        List<OrderItem> ownedItems = itemOwnershipPolicy.ownedItems(order, profile.getId());
+        List<OrderItem> sellerItems = ownedItems.stream()
             .filter(item -> item.getRefundableQuantity() > 0)
             .toList();
         if (sellerItems.isEmpty()) {
@@ -176,7 +182,7 @@ public class SellerOrderService {
         }
         return responseMapper.toResponse(
             order,
-            profile.getId(),
+            ownedItems,
             paymentRepository.existsByOrderIdAndResultAndPaymentKeyIsNotNull(
                 order.getId(),
                 PaymentResult.SUCCESS
@@ -197,7 +203,8 @@ public class SellerOrderService {
         if (!SELLER_VISIBLE_STATUSES.contains(order.getStatus())) {
             throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
         }
-        OrderItem item = responseMapper.ownedItems(order, profile.getId()).stream()
+        List<OrderItem> ownedItems = itemOwnershipPolicy.ownedItems(order, profile.getId());
+        OrderItem item = ownedItems.stream()
             .filter(candidate -> candidate.getId().equals(orderItemId))
             .findFirst()
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND));
@@ -229,7 +236,7 @@ public class SellerOrderService {
         }
         return responseMapper.toDetail(
             order,
-            profile.getId(),
+            ownedItems,
             paymentRepository.existsByOrderIdAndResultAndPaymentKeyIsNotNull(
                 order.getId(),
                 PaymentResult.SUCCESS
