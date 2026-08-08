@@ -22,13 +22,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.member.entity.Member;
-import com.ymall.backend.member.entity.MemberAddress;
-import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.order.entity.Order;
@@ -42,9 +39,7 @@ import com.ymall.backend.payment.gateway.PaymentGatewayStatus;
 import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.payment.webhook.entity.PaymentWebhookProcessingResult;
 import com.ymall.backend.payment.webhook.repository.PaymentWebhookEventRepository;
-import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
-import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
 
@@ -95,39 +90,17 @@ class PaymentWebhookIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        Member member = memberRepository.save(new Member(
-            "webhook-user@example.com",
-            "password",
-            "Webhook User",
-            MemberRole.ROLE_USER
-        ));
-        addressId = memberAddressRepository.save(new MemberAddress(
-            member,
-            "Home",
-            "Recipient",
-            "01012345678",
-            "00000",
-            "123 Test-ro",
-            "101",
-            true
-        )).getId();
-        Category category = categoryRepository.save(new Category(
-            "Webhook Products",
-            "webhook-products"
-        ));
-        product = productRepository.save(new Product(
-            category,
-            "Webhook product",
-            "description",
-            "YMall",
-            BigDecimal.valueOf(10000),
-            BigDecimal.ZERO,
-            BigDecimal.valueOf(4.5),
-            10,
-            "thumbnail",
-            ProductStatus.APPROVED
-        ));
-        cartItemRepository.save(new CartItem(member, product, 2));
+        PaymentTestFixture.PaymentOrderData fixture = PaymentTestFixture.createOrderData(
+            memberRepository,
+            memberAddressRepository,
+            categoryRepository,
+            productRepository,
+            cartItemRepository,
+            "webhook-user"
+        );
+        Member member = fixture.member();
+        addressId = fixture.address().getId();
+        product = fixture.product();
         accessToken = jwtTokenProvider.createAccessToken(member).accessToken();
     }
 
