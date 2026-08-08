@@ -1,6 +1,5 @@
 package com.ymall.backend.seller.service;
 
-import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -26,10 +25,8 @@ import com.ymall.backend.order.repository.OrderRepository;
 import com.ymall.backend.order.repository.SellerOrderQueryRepository;
 import com.ymall.backend.payment.entity.PaymentResult;
 import com.ymall.backend.payment.repository.PaymentRepository;
-import com.ymall.backend.seller.dto.SellerDeliveryAddressResponse;
 import com.ymall.backend.seller.dto.SellerOrderDetailResponse;
 import com.ymall.backend.seller.dto.SellerOrderItemFulfillmentUpdateRequest;
-import com.ymall.backend.seller.dto.SellerOrderItemResponse;
 import com.ymall.backend.seller.dto.SellerOrderResponse;
 import com.ymall.backend.seller.dto.SellerOrderStatusUpdateRequest;
 import com.ymall.backend.seller.dto.SellerOrderWorkType;
@@ -57,7 +54,7 @@ public class SellerOrderService {
     private final PaymentRepository paymentRepository;
     private final SellerProfileService sellerProfileService;
     private final OrderOutboxService orderOutboxService;
-    private final SellerDeliveryAddressPrivacyPolicy deliveryAddressPrivacyPolicy;
+    private final SellerOrderResponseMapper responseMapper;
 
     public PageResponse<SellerOrderResponse> getOrders(
         Long memberId,
@@ -102,7 +99,7 @@ public class SellerOrderService {
                 orderIds,
                 PaymentResult.SUCCESS
             );
-        return PageResponse.from(orders.map(order -> toResponse(
+        return PageResponse.from(orders.map(order -> responseMapper.toResponse(
             order,
             profile.getId(),
             refundSupportedOrderIds.contains(order.getId())
@@ -128,16 +125,7 @@ public class SellerOrderService {
                 order.getId(),
                 PaymentResult.SUCCESS
             );
-        List<SellerOrderItemResponse> items = toItemResponses(order, profile.getId());
-        return new SellerOrderDetailResponse(
-            order.getId(),
-            order.getStatus(),
-            sellerAmount(items),
-            order.getCreatedAt(),
-            refundSupported,
-            toDeliveryAddressResponse(order, profile.getId()),
-            items
-        );
+        return responseMapper.toDetail(order, profile.getId(), refundSupported);
     }
 
     @Transactional
@@ -156,7 +144,7 @@ public class SellerOrderService {
             throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
         }
 
-        List<OrderItem> sellerItems = ownedItems(order, profile.getId()).stream()
+        List<OrderItem> sellerItems = responseMapper.ownedItems(order, profile.getId()).stream()
             .filter(item -> item.getRefundableQuantity() > 0)
             .toList();
         if (sellerItems.isEmpty()) {
@@ -186,7 +174,7 @@ public class SellerOrderService {
                 )
             );
         }
-        return toResponse(
+        return responseMapper.toResponse(
             order,
             profile.getId(),
             paymentRepository.existsByOrderIdAndResultAndPaymentKeyIsNotNull(
@@ -209,7 +197,7 @@ public class SellerOrderService {
         if (!SELLER_VISIBLE_STATUSES.contains(order.getStatus())) {
             throw new BusinessException(ErrorCode.ORDER_FULFILLMENT_NOT_ALLOWED);
         }
-        OrderItem item = ownedItems(order, profile.getId()).stream()
+        OrderItem item = responseMapper.ownedItems(order, profile.getId()).stream()
             .filter(candidate -> candidate.getId().equals(orderItemId))
             .findFirst()
             .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_ORDER_NOT_FOUND));
@@ -239,18 +227,13 @@ public class SellerOrderService {
                 )
             );
         }
-        List<SellerOrderItemResponse> items = toItemResponses(order, profile.getId());
-        return new SellerOrderDetailResponse(
-            order.getId(),
-            order.getStatus(),
-            sellerAmount(items),
-            order.getCreatedAt(),
+        return responseMapper.toDetail(
+            order,
+            profile.getId(),
             paymentRepository.existsByOrderIdAndResultAndPaymentKeyIsNotNull(
                 order.getId(),
                 PaymentResult.SUCCESS
-            ),
-            toDeliveryAddressResponse(order, profile.getId()),
-            items
+            )
         );
     }
 
@@ -270,70 +253,6 @@ public class SellerOrderService {
             case DELIVERED -> OrderEventType.ORDER_DELIVERED;
             default -> throw new IllegalStateException("Unsupported fulfillment order status: " + status);
         };
-    }
-
-    private SellerOrderResponse toResponse(
-        Order order,
-        Long sellerProfileId,
-        boolean refundSupported
-    ) {
-        List<SellerOrderItemResponse> items = toItemResponses(order, sellerProfileId);
-        return new SellerOrderResponse(
-            order.getId(),
-            order.getStatus(),
-            sellerAmount(items),
-            order.getCreatedAt(),
-            refundSupported,
-            items
-        );
-    }
-
-    private List<SellerOrderItemResponse> toItemResponses(Order order, Long sellerProfileId) {
-        return ownedItems(order, sellerProfileId).stream()
-            .map(this::toItemResponse)
-            .toList();
-    }
-
-    private SellerDeliveryAddressResponse toDeliveryAddressResponse(
-        Order order,
-        Long sellerProfileId
-    ) {
-        List<OrderItem> sellerItems = ownedItems(order, sellerProfileId);
-        return SellerDeliveryAddressResponse.from(
-            order.getDeliveryAddress(),
-            deliveryAddressPrivacyPolicy.shouldMask(sellerItems)
-        );
-    }
-
-    private BigDecimal sellerAmount(List<SellerOrderItemResponse> items) {
-        return items.stream()
-            .map(SellerOrderItemResponse::lineTotal)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private List<OrderItem> ownedItems(Order order, Long sellerProfileId) {
-        return order.getItems().stream()
-            .filter(item -> item.getProduct().getSellerProfile() != null)
-            .filter(item -> item.getProduct().getSellerProfile().getId().equals(sellerProfileId))
-            .toList();
-    }
-
-    private SellerOrderItemResponse toItemResponse(OrderItem item) {
-        return new SellerOrderItemResponse(
-            item.getId(),
-            item.getProduct().getId(),
-            item.getProductName(),
-            item.getUnitPrice(),
-            item.getQuantity(),
-            item.getRefundedQuantity(),
-            item.getLineTotal(),
-            item.getProduct().getThumbnailUrl(),
-            item.getEffectiveFulfillmentStatus(),
-            item.getCarrier(),
-            item.getTrackingNumber(),
-            item.getShippedAt(),
-            item.getDeliveredAt()
-        );
     }
 
     private Long parseOrderId(String keyword) {
