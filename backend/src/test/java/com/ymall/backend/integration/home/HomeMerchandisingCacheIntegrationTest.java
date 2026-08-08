@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Locale;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.Cache;
@@ -29,6 +32,9 @@ import com.ymall.backend.product.service.ProductCacheInvalidator;
 @ActiveProfiles("test")
 class HomeMerchandisingCacheIntegrationTest {
 
+    private static final Logger log = LoggerFactory.getLogger(
+        HomeMerchandisingCacheIntegrationTest.class
+    );
     private static final int MEASUREMENT_COUNT = 20;
 
     @Autowired private HomeMerchandisingService merchandisingService;
@@ -103,14 +109,15 @@ class HomeMerchandisingCacheIntegrationTest {
 
         double uncachedAverageMs = averageMillis(uncachedNanos);
         double cachedAverageMs = averageMillis(cachedNanos);
-        System.out.printf(
+        log.info(String.format(
+            Locale.ROOT,
             "HOME_MERCHANDISING_CACHE_BENCHMARK count=%d uncachedAvgMs=%.3f "
-                + "cachedAvgMs=%.3f improvement=%.1f%%%n",
+                + "cachedAvgMs=%.3f improvement=%.1f%%",
             MEASUREMENT_COUNT,
             uncachedAverageMs,
             cachedAverageMs,
             (1 - cachedAverageMs / uncachedAverageMs) * 100
-        );
+        ));
 
         assertThat(uncachedAverageMs).isPositive();
         assertThat(cachedAverageMs).isPositive();
