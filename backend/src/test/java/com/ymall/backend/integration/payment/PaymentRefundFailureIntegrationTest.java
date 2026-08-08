@@ -21,13 +21,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.security.JwtTokenProvider;
 import com.ymall.backend.member.entity.Member;
-import com.ymall.backend.member.entity.MemberAddress;
-import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.order.entity.Order;
@@ -38,9 +35,7 @@ import com.ymall.backend.payment.gateway.PaymentGatewayResult;
 import com.ymall.backend.payment.gateway.PaymentGatewayStatus;
 import com.ymall.backend.payment.refund.entity.PaymentRefundStatus;
 import com.ymall.backend.payment.refund.repository.PaymentRefundRepository;
-import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
-import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
 import com.ymall.backend.testsupport.PostgresIntegrationTestSupport;
@@ -82,39 +77,17 @@ class PaymentRefundFailureIntegrationTest extends PostgresIntegrationTestSupport
 
     @Test
     void recordsFailureAllowsRetryAndBlocksAfterUnknownOutcome() throws Exception {
-        Member member = memberRepository.save(new Member(
-            "refund-failure@example.com",
-            "password",
-            "Refund Failure User",
-            MemberRole.ROLE_USER
-        ));
-        Long addressId = memberAddressRepository.save(new MemberAddress(
-            member,
-            "Home",
-            "Recipient",
-            "01012345678",
-            "00000",
-            "123 Test-ro",
-            "101",
-            true
-        )).getId();
-        Category category = categoryRepository.save(new Category(
-            "Refund failure",
+        PaymentTestFixture.PaymentOrderData fixture = PaymentTestFixture.createOrderData(
+            memberRepository,
+            memberAddressRepository,
+            categoryRepository,
+            productRepository,
+            cartItemRepository,
             "refund-failure"
-        ));
-        Product product = productRepository.save(new Product(
-            category,
-            "Refund failure product",
-            "description",
-            "YMall",
-            BigDecimal.valueOf(10000),
-            BigDecimal.ZERO,
-            BigDecimal.valueOf(4.5),
-            10,
-            "thumbnail",
-            ProductStatus.APPROVED
-        ));
-        cartItemRepository.save(new CartItem(member, product, 2));
+        );
+        Member member = fixture.member();
+        Long addressId = fixture.address().getId();
+        Product product = fixture.product();
         String token = jwtTokenProvider.createAccessToken(member).accessToken();
 
         mockMvc.perform(post("/api/orders")
