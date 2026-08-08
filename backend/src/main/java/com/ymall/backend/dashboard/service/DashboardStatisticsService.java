@@ -26,8 +26,10 @@ import com.ymall.backend.dashboard.dto.DashboardStatusCountResponse;
 import com.ymall.backend.dashboard.dto.DashboardTopProductResponse;
 import com.ymall.backend.dashboard.dto.DashboardTrendPointResponse;
 import com.ymall.backend.dashboard.dto.SellerDashboardStatisticsResponse;
-import com.ymall.backend.dashboard.repository.DashboardStatisticsQueryRepository;
-import com.ymall.backend.dashboard.repository.DashboardStatisticsQueryRepository.TrendRow;
+import com.ymall.backend.dashboard.repository.AdminDashboardStatisticsQueryRepository;
+import com.ymall.backend.dashboard.repository.DashboardStatisticsQueryRows.RegistrationRow;
+import com.ymall.backend.dashboard.repository.DashboardStatisticsQueryRows.TrendRow;
+import com.ymall.backend.dashboard.repository.SellerDashboardStatisticsQueryRepository;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.seller.service.SellerProfileService;
 
@@ -38,16 +40,19 @@ public class DashboardStatisticsService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
     private static final BigDecimal ZERO_AMOUNT = BigDecimal.ZERO.setScale(2);
 
-    private final DashboardStatisticsQueryRepository queryRepository;
+    private final SellerDashboardStatisticsQueryRepository sellerQueryRepository;
+    private final AdminDashboardStatisticsQueryRepository adminQueryRepository;
     private final SellerProfileService sellerProfileService;
     private final Clock clock;
 
     public DashboardStatisticsService(
-        DashboardStatisticsQueryRepository queryRepository,
+        SellerDashboardStatisticsQueryRepository sellerQueryRepository,
+        AdminDashboardStatisticsQueryRepository adminQueryRepository,
         SellerProfileService sellerProfileService,
         Clock clock
     ) {
-        this.queryRepository = queryRepository;
+        this.sellerQueryRepository = sellerQueryRepository;
+        this.adminQueryRepository = adminQueryRepository;
         this.sellerProfileService = sellerProfileService;
         this.clock = clock;
     }
@@ -60,7 +65,7 @@ public class DashboardStatisticsService {
         Long sellerProfileId = sellerProfileService.getProfileEntity(memberId).getId();
         List<DashboardTrendPointResponse> trend = fillTrend(
             range,
-            queryRepository.findSellerTrend(
+            sellerQueryRepository.findTrend(
                 sellerProfileId,
                 range.fromDateTime(),
                 range.toDateTime(),
@@ -68,13 +73,13 @@ public class DashboardStatisticsService {
             )
         );
         Map<OrderStatus, Long> statusCounts = new EnumMap<>(OrderStatus.class);
-        queryRepository.findSellerOrderStatusCounts(
+        sellerQueryRepository.findOrderStatusCounts(
             sellerProfileId,
             range.fromDateTime(),
             range.toDateTime()
         ).forEach(row -> statusCounts.put(OrderStatus.valueOf(row.status()), row.count()));
-        var settlement = queryRepository.findSellerSettlement(sellerProfileId);
-        var pending = queryRepository.findSellerPending(sellerProfileId);
+        var settlement = sellerQueryRepository.findSettlement(sellerProfileId);
+        var pending = sellerQueryRepository.findPending(sellerProfileId);
 
         return new SellerDashboardStatisticsResponse(
             range.toResponse(),
@@ -89,7 +94,7 @@ public class DashboardStatisticsService {
                     statusCounts.getOrDefault(status, 0L)
                 ))
                 .toList(),
-            queryRepository.findSellerTopProducts(
+            sellerQueryRepository.findTopProducts(
                 sellerProfileId,
                 range.fromDateTime(),
                 range.toDateTime()
@@ -120,22 +125,22 @@ public class DashboardStatisticsService {
         PeriodRange range = periodRange(periodValue);
         List<DashboardTrendPointResponse> trend = fillTrend(
             range,
-            queryRepository.findAdminTransactionTrend(
+            adminQueryRepository.findAdminTransactionTrend(
                 range.fromDateTime(),
                 range.toDateTime(),
                 range.monthly()
             )
         );
-        Map<LocalDate, DashboardStatisticsQueryRepository.RegistrationRow> registrations =
-            queryRepository.findAdminRegistrationTrend(
+        Map<LocalDate, RegistrationRow> registrations =
+            adminQueryRepository.findAdminRegistrationTrend(
                 range.fromDateTime(),
                 range.toDateTime(),
                 range.monthly()
             ).stream().collect(Collectors.toMap(
-                DashboardStatisticsQueryRepository.RegistrationRow::bucket,
+                RegistrationRow::bucket,
                 Function.identity()
             ));
-        var pending = queryRepository.findAdminPending();
+        var pending = adminQueryRepository.findAdminPending();
 
         return new AdminDashboardStatisticsResponse(
             range.toResponse(),
@@ -152,7 +157,7 @@ public class DashboardStatisticsService {
                     row == null ? 0 : row.sellers()
                 );
             }).toList(),
-            queryRepository.findAdminCategorySales(
+            adminQueryRepository.findAdminCategorySales(
                 range.fromDateTime(),
                 range.toDateTime()
             ).stream().map(row -> new AdminDashboardStatisticsResponse.CategorySales(
@@ -161,7 +166,7 @@ public class DashboardStatisticsService {
                 row.netSalesAmount(),
                 row.salesQuantity()
             )).toList(),
-            queryRepository.findAdminTopProducts(
+            adminQueryRepository.findAdminTopProducts(
                 range.fromDateTime(),
                 range.toDateTime()
             ).stream().map(row -> new DashboardTopProductResponse(

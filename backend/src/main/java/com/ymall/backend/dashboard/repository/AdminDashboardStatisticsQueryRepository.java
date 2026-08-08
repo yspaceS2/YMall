@@ -1,6 +1,5 @@
 package com.ymall.backend.dashboard.repository;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,8 +8,14 @@ import java.util.Map;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.ymall.backend.dashboard.repository.DashboardStatisticsQueryRows.AdminPendingRow;
+import com.ymall.backend.dashboard.repository.DashboardStatisticsQueryRows.CategorySalesRow;
+import com.ymall.backend.dashboard.repository.DashboardStatisticsQueryRows.RegistrationRow;
+import com.ymall.backend.dashboard.repository.DashboardStatisticsQueryRows.TopProductRow;
+import com.ymall.backend.dashboard.repository.DashboardStatisticsQueryRows.TrendRow;
+
 @Repository
-public class DashboardStatisticsQueryRepository {
+public class AdminDashboardStatisticsQueryRepository {
 
     private static final String PAID_ORDER_FILTER = """
         EXISTS (
@@ -23,124 +28,8 @@ public class DashboardStatisticsQueryRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    public DashboardStatisticsQueryRepository(NamedParameterJdbcTemplate jdbcTemplate) {
+    public AdminDashboardStatisticsQueryRepository(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-    }
-
-    public List<TrendRow> findSellerTrend(
-        Long sellerProfileId,
-        LocalDateTime from,
-        LocalDateTime to,
-        boolean monthly
-    ) {
-        String bucket = monthly
-            ? "CAST(DATE_TRUNC('month', orders.created_at + INTERVAL '9' HOUR) AS DATE)"
-            : "CAST(orders.created_at + INTERVAL '9' HOUR AS DATE)";
-        String sql = """
-            SELECT %s AS bucket,
-                   COALESCE(SUM(item.unit_price * GREATEST(item.quantity - item.refunded_quantity, 0)), 0) AS net_sales_amount,
-                   COUNT(DISTINCT orders.id) AS order_count,
-                   COALESCE(SUM(GREATEST(item.quantity - item.refunded_quantity, 0)), 0) AS sales_quantity
-            FROM orders
-            JOIN order_items item ON item.order_id = orders.id
-            JOIN products product ON product.id = item.product_id
-            WHERE product.seller_profile_id = :sellerProfileId
-              AND orders.created_at >= :from
-              AND orders.created_at < :to
-              AND %s
-            GROUP BY %s
-            ORDER BY bucket
-            """.formatted(bucket, PAID_ORDER_FILTER, bucket);
-        return queryTrend(sql, Map.of(
-            "sellerProfileId", sellerProfileId,
-            "from", from,
-            "to", to
-        ));
-    }
-
-    public List<StatusCountRow> findSellerOrderStatusCounts(
-        Long sellerProfileId,
-        LocalDateTime from,
-        LocalDateTime to
-    ) {
-        return jdbcTemplate.query("""
-            SELECT orders.status, COUNT(DISTINCT orders.id) AS status_count
-            FROM orders
-            JOIN order_items item ON item.order_id = orders.id
-            JOIN products product ON product.id = item.product_id
-            WHERE product.seller_profile_id = :sellerProfileId
-              AND orders.created_at >= :from
-              AND orders.created_at < :to
-            GROUP BY orders.status
-            ORDER BY orders.status
-            """, Map.of("sellerProfileId", sellerProfileId, "from", from, "to", to),
-            (resultSet, rowNumber) -> new StatusCountRow(
-                resultSet.getString("status"),
-                resultSet.getLong("status_count")
-            ));
-    }
-
-    public List<TopProductRow> findSellerTopProducts(
-        Long sellerProfileId,
-        LocalDateTime from,
-        LocalDateTime to
-    ) {
-        return findTopProducts("product.seller_profile_id = :sellerProfileId", Map.of(
-            "sellerProfileId", sellerProfileId,
-            "from", from,
-            "to", to,
-            "limit", 5
-        ));
-    }
-
-    public SettlementRow findSellerSettlement(Long sellerProfileId) {
-        return jdbcTemplate.queryForObject("""
-            SELECT COALESCE(SUM(CASE WHEN status = 'AVAILABLE' THEN settlement_amount ELSE 0 END), 0) AS available_amount,
-                   COALESCE(SUM(CASE WHEN status = 'REQUESTED' THEN settlement_amount ELSE 0 END), 0) AS processing_amount,
-                   COALESCE(SUM(CASE WHEN status = 'PAID' THEN settlement_amount ELSE 0 END), 0) AS completed_amount
-            FROM settlement_ledger_entries
-            WHERE seller_profile_id = :sellerProfileId
-            """, Map.of("sellerProfileId", sellerProfileId),
-            (resultSet, rowNumber) -> new SettlementRow(
-                resultSet.getBigDecimal("available_amount"),
-                resultSet.getBigDecimal("processing_amount"),
-                resultSet.getBigDecimal("completed_amount")
-            ));
-    }
-
-    public SellerPendingRow findSellerPending(Long sellerProfileId) {
-        return jdbcTemplate.queryForObject("""
-            SELECT (
-                       SELECT COUNT(DISTINCT item.order_id)
-                       FROM order_items item
-                       JOIN products product ON product.id = item.product_id
-                       JOIN orders orders ON orders.id = item.order_id
-                       WHERE product.seller_profile_id = :sellerProfileId
-                         AND item.fulfillment_status IN ('PENDING', 'PREPARING')
-                         AND item.refunded_quantity < item.quantity
-                         AND orders.status IN ('PAID', 'PARTIALLY_REFUNDED', 'PREPARING')
-                   ) AS pending_orders,
-                   (
-                       SELECT COUNT(*)
-                       FROM product_return_requests return_request
-                       JOIN order_items item ON item.id = return_request.order_item_id
-                       JOIN products product ON product.id = item.product_id
-                       WHERE product.seller_profile_id = :sellerProfileId
-                         AND return_request.status = 'REQUESTED'
-                   ) AS pending_returns,
-                   (
-                       SELECT COUNT(*)
-                       FROM product_questions question
-                       JOIN products product ON product.id = question.product_id
-                       WHERE product.seller_profile_id = :sellerProfileId
-                         AND question.status = 'WAITING'
-                   ) AS pending_questions
-            """, Map.of("sellerProfileId", sellerProfileId),
-            (resultSet, rowNumber) -> new SellerPendingRow(
-                resultSet.getLong("pending_orders"),
-                resultSet.getLong("pending_returns"),
-                resultSet.getLong("pending_questions")
-            ));
     }
 
     public List<TrendRow> findAdminTransactionTrend(
@@ -315,53 +204,4 @@ public class DashboardStatisticsQueryRepository {
         ));
     }
 
-    public record TrendRow(
-        LocalDate bucket,
-        BigDecimal netSalesAmount,
-        long orderCount,
-        long salesQuantity
-    ) {
-    }
-
-    public record StatusCountRow(String status, long count) {
-    }
-
-    public record TopProductRow(
-        Long productId,
-        String productName,
-        long salesQuantity,
-        BigDecimal netSalesAmount
-    ) {
-    }
-
-    public record SettlementRow(
-        BigDecimal availableAmount,
-        BigDecimal processingAmount,
-        BigDecimal completedAmount
-    ) {
-    }
-
-    public record SellerPendingRow(long orders, long returns, long questions) {
-    }
-
-    public record RegistrationRow(LocalDate bucket, long members, long sellers) {
-    }
-
-    public record CategorySalesRow(
-        Long categoryId,
-        String categoryName,
-        BigDecimal netSalesAmount,
-        long salesQuantity
-    ) {
-    }
-
-    public record AdminPendingRow(
-        long products,
-        long sellers,
-        long refunds,
-        long returns,
-        long settlements,
-        long support
-    ) {
-    }
 }
