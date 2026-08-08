@@ -12,6 +12,7 @@
 - Semgrep: Java·TypeScript 소스의 기본 보안 규칙 및 OWASP Top 10 정적 분석
 - Trivy repository scan: npm·Gradle 의존성, IaC·Docker·Compose 설정과 시크릿 검사
 - Trivy image scan: Backend·Frontend 런타임 이미지의 OS·애플리케이션 의존성과 시크릿 검사
+- OWASP ZAP Baseline: 격리된 임시 YMall 환경의 공개 화면과 익명 응답을 탐색하고 수동 분석
 
 Private 저장소에서 GitHub Code Scanning을 사용할 수 없는 현재 계정 구성을 고려해 Semgrep OSS가 PR의 SAST 실패 여부를 직접 판정합니다. 저장소 공개 범위나 GitHub 라이선스가 변경되면 CodeQL 전환 또는 병행 여부를 다시 평가합니다.
 
@@ -20,14 +21,17 @@ Private 저장소에서 GitHub Code Scanning을 사용할 수 없는 현재 계�
 - Pull Request: Gitleaks, Semgrep, Trivy repository scan
 - `develop`·`main` push: 위 검사와 Backend·Frontend 이미지 검사
 - 수동 실행: 전체 검사
+- `OWASP ZAP Baseline` 수동 실행: 격리된 임시 환경을 생성해 익명 동적 검사
 
 이미지 검사는 빌드 비용과 중복 CI 사용량을 줄이기 위해 Pull Request에서는 실행하지 않고 병합 후 한 번 실행합니다.
+ZAP은 실행 중인 공용·운영 환경을 실수로 검사하지 않도록 수동 워크플로만 제공합니다. 검사 대상은 별도 Compose 프로젝트와 임시 데이터 볼륨으로 구성하고 검사 후 제거합니다.
 
 ## 실패 기준
 
 - Semgrep: 심각도 `ERROR` 발견 시 실패
 - Trivy: 수정 버전이 존재하는 `HIGH` 또는 `CRITICAL` 발견 시 실패
 - Gitleaks: 실제 시크릿으로 판단되는 탐지 결과가 있으면 실패
+- ZAP: 익명 Baseline의 Medium 위험 규칙은 실패, Low는 경고, SPA·정적 자원 캐시 탐지는 정보성으로 분류
 
 `CRITICAL`은 즉시 조치합니다. `HIGH`도 원칙적으로 병합 전에 조치합니다. 수정 버전이 없거나 오탐으로 확인된 경우에만 예외를 허용합니다.
 
@@ -57,3 +61,17 @@ Private 저장소에서 GitHub Code Scanning을 사용할 수 없는 현재 계�
 - Backend·Frontend 런타임 이미지 빌드 시 Alpine 보안 패키지 업데이트 적용
 
 조치 전후의 상세 식별자와 재검증 결과는 YMALL-79 및 해당 Pull Request에 기록합니다.
+
+## ZAP 익명 기준선
+
+ZAP Baseline은 실제 공격 페이로드를 전송하지 않고 페이지 탐색과 응답 분석만 수행합니다. 첫 검사에서 보안 헤더 미설정을 확인해 Frontend Nginx에 다음 통제를 적용했습니다.
+
+- Content Security Policy
+- Permissions Policy
+- Cross-Origin Opener·Resource Policy
+
+다음 Low 탐지는 기능 호환성을 위해 제한된 범위로 예외 처리하고 2026-11-09에 재검토합니다. 소유자는 YMall 유지보수 담당자입니다.
+
+- ZAP 90004: Google One Tap·OAuth 팝업 흐름을 위해 COOP `same-origin-allow-popups`를 유지하고 COEP는 강제하지 않습니다. CORP는 `same-origin`을 유지합니다.
+
+인증 후 화면과 데이터 변경을 유발할 수 있는 Active Scan은 이 워크플로에 포함하지 않습니다. 해당 검사는 전용 계정·폐기 가능한 데이터·명시적 승인이 준비된 후 별도로 실행합니다.

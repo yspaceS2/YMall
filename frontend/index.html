@@ -2,22 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <script>
-      (() => {
-        try {
-          const storedTheme = localStorage.getItem('ymall:theme')
-          const preference = ['system', 'light', 'dark'].includes(storedTheme) ? storedTheme : 'system'
-          const theme = preference === 'system'
-            ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-            : preference
-          document.documentElement.dataset.theme = theme
-          document.documentElement.style.colorScheme = theme
-        } catch {
-          document.documentElement.dataset.theme = 'light'
-          document.documentElement.style.colorScheme = 'light'
-        }
-      })()
-    </script>
+    <script src="/theme-init.js"></script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="일상에 취향을 더하는 YMall 셀렉트 스토어" />
