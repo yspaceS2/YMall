@@ -1,4 +1,3 @@
-import { LockKeyhole, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import {
@@ -11,11 +10,10 @@ import type {
     ProductQuestion,
     ProductQuestionRequest,
 } from '../../types/productQuestion'
-import { formatKoreanDateTime } from '../../utils/dateTime'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { FeedbackMessage } from '../ui/FeedbackMessage'
-import { PageState } from '../ui/PageState'
-import { StatusBadge } from '../ui/StatusBadge'
+import { ProductQuestionForm } from './ProductQuestionForm'
+import { ProductQuestionList } from './ProductQuestionList'
 
 const emptyForm: ProductQuestionRequest = {
     title: '',
@@ -211,55 +209,14 @@ export function ProductQuestionSection({
             </div>
 
             {isFormOpen && (
-                <form className="mb-8 grid gap-4 border border-line bg-paper p-5" onSubmit={submitQuestion}>
-                    <label className="grid gap-2 text-xs font-bold">
-                        문의 제목
-                        <input
-                            className="h-11 border border-line bg-surface px-3 text-sm font-normal outline-0 focus:border-ink"
-                            maxLength={100}
-                            value={form.title}
-                            onChange={(event) => setForm({ ...form, title: event.target.value })}
-                            required
-                        />
-                    </label>
-                    <label className="grid gap-2 text-xs font-bold">
-                        문의 내용
-                        <textarea
-                            className="min-h-32 resize-y border border-line bg-surface p-3 text-sm font-normal leading-6 outline-0 focus:border-ink"
-                            maxLength={2000}
-                            value={form.content}
-                            onChange={(event) => setForm({ ...form, content: event.target.value })}
-                            required
-                        />
-                    </label>
-                    <label className="flex items-center gap-2 text-xs font-bold">
-                        <input
-                            checked={form.privateQuestion}
-                            type="checkbox"
-                            onChange={(event) => setForm({
-                                ...form,
-                                privateQuestion: event.target.checked,
-                            })}
-                        />
-                        비밀 문의로 등록
-                    </label>
-                    <div className="flex justify-end gap-2">
-                        <button
-                            className="h-10 border border-line px-4 text-xs font-bold"
-                            type="button"
-                            onClick={() => setIsFormOpen(false)}
-                        >
-                            취소
-                        </button>
-                        <button
-                            className="h-10 bg-ink px-5 text-xs font-bold text-white disabled:opacity-50"
-                            disabled={isSaving}
-                            type="submit"
-                        >
-                            {isSaving ? '저장 중...' : editingQuestionId === null ? '문의 등록' : '문의 수정'}
-                        </button>
-                    </div>
-                </form>
+                <ProductQuestionForm
+                    form={form}
+                    isEditing={editingQuestionId !== null}
+                    isSaving={isSaving}
+                    onChange={setForm}
+                    onCancel={() => setIsFormOpen(false)}
+                    onSubmit={submitQuestion}
+                />
             )}
 
             {errorMessage && (
@@ -273,78 +230,12 @@ export function ProductQuestionSection({
                 </FeedbackMessage>
             )}
 
-            {isLoading ? (
-                <PageState variant="loading" title="상품 문의를 불러오는 중입니다" compact />
-            ) : questions.length === 0 ? (
-                <PageState
-                    variant="empty"
-                    title="등록된 상품 문의가 없습니다"
-                    description="상품에 대해 궁금한 점을 판매자에게 문의해 보세요."
-                    compact
-                />
-            ) : (
-                <div className="border-t-2 border-ink">
-                    {questions.map((question) => (
-                        <article className="border-b border-line py-6" key={question.questionId}>
-                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
-                                <StatusBadge tone={question.status === 'ANSWERED' ? 'success' : 'warning'}>
-                                    {question.status === 'ANSWERED' ? '답변 완료' : '답변 대기'}
-                                </StatusBadge>
-                                {question.privateQuestion && (
-                                    <span className="inline-flex items-center gap-1">
-                                        <LockKeyhole className="size-3" /> 비밀글
-                                    </span>
-                                )}
-                                <span>{question.memberName}</span>
-                                <time>{formatKoreanDateTime(question.createdAt)}</time>
-                            </div>
-                            <div className="mt-3 flex items-start justify-between gap-4">
-                                <div>
-                                    <h3 className="text-sm font-bold">{question.title}</h3>
-                                    {question.contentVisible && question.content && (
-                                        <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted">
-                                            {question.content}
-                                        </p>
-                                    )}
-                                </div>
-                                {question.ownedByRequester && (
-                                    <div className="flex shrink-0 gap-1">
-                                        {question.status === 'WAITING' && (
-                                            <button
-                                                className="grid size-9 place-items-center"
-                                                aria-label="문의 수정"
-                                                type="button"
-                                                onClick={() => openEditForm(question)}
-                                            >
-                                                <Pencil className="size-4" />
-                                            </button>
-                                        )}
-                                        <button
-                                            className="grid size-9 place-items-center text-danger"
-                                            aria-label="문의 삭제"
-                                            type="button"
-                                            onClick={() => setQuestionToDelete(question)}
-                                        >
-                                            <Trash2 className="size-4" />
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                            {question.answer && (
-                                <div className="mt-5 ml-5 border-l-2 border-lime bg-paper p-5">
-                                    <strong className="text-xs">판매자 답변</strong>
-                                    <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted">
-                                        {question.answer.content}
-                                    </p>
-                                    <time className="mt-3 block text-[11px] text-muted">
-                                        {formatKoreanDateTime(question.answer.updatedAt)}
-                                    </time>
-                                </div>
-                            )}
-                        </article>
-                    ))}
-                </div>
-            )}
+            <ProductQuestionList
+                questions={questions}
+                isLoading={isLoading}
+                onEdit={openEditForm}
+                onDelete={setQuestionToDelete}
+            />
 
             {hasNext && (
                 <button
