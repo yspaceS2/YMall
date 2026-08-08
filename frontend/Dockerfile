@@ -21,6 +21,10 @@ RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine@sha256:65e3e85dbaed8ba248841d9d58a899b6197106c23cb0ff1a132b7bfe0547e4c0 AS runtime
 
+USER root
+
+RUN apk upgrade --no-cache
+
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY nginx/proxy_params /etc/nginx/proxy_params
 COPY --from=builder --chown=101:101 /app/dist /usr/share/nginx/html

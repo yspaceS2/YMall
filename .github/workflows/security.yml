@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: security-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -23,6 +22,9 @@ jobs:
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout full Git history
@@ -37,3 +39,83 @@ jobs:
           GITLEAKS_ENABLE_COMMENTS: true
           GITLEAKS_ENABLE_SUMMARY: true
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+
+  sast:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Scan Java and TypeScript sources
+        run: >-
+          docker run --rm
+          --volume "$PWD:/src"
+          --workdir /src
+          semgrep/semgrep:1.172.0@sha256:65dcd4408adda7c183a6b4550cb1e9b19f7f627a6fbb7e0559bd466bedc44d7b
+          semgrep scan
+          --config p/default
+          --config p/owasp-top-ten
+          --severity ERROR
+          --error
+          --metrics=off
+          backend/src/main/java
+          frontend/src
+
+  repository-scan:
+    name: Trivy Repository Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Scan dependencies, secrets and configuration
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.73.0
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: table
+          exit-code: '1'
+
+  container-scan:
+    name: Trivy Container Image Scan
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Build backend image
+        run: docker build --tag ymall-backend:security-scan backend
+
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.73.0
+          image-ref: ymall-backend:security-scan
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: table
+          exit-code: '1'
+
+      - name: Build frontend image
+        run: docker build --tag ymall-frontend:security-scan frontend
+
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.73.0
+          image-ref: ymall-frontend:security-scan
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: table
+          exit-code: '1'
