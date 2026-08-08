@@ -1,20 +1,67 @@
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
-import { SettlementManagementPanel } from '../components/seller/SettlementManagementPanel'
-import { NotificationPage } from '../pages/NotificationPage'
-import { SellerDashboardPage } from '../pages/SellerDashboardPage'
-import { SellerOrderDetailPage } from '../pages/SellerOrderDetailPage'
-import { SellerOrderListPage } from '../pages/SellerOrderListPage'
-import { SellerProductEditorPage } from '../pages/SellerProductEditorPage'
-import { SellerProductListPage } from '../pages/SellerProductListPage'
-import { SellerProductQuestionDetailPage } from '../pages/SellerProductQuestionDetailPage'
-import { SellerProductQuestionListPage } from '../pages/SellerProductQuestionsPage'
-import { SellerProfilePage } from '../pages/SellerProfilePage'
-import { SellerReturnRequestDetailPage } from '../pages/SellerReturnRequestDetailPage'
-import { SellerReturnRequestsPage } from '../pages/SellerReturnRequestsPage'
-import { SettlementRequestDetailPage } from '../pages/SettlementRequestDetailPage'
-import { SupportInquiryDetailPage } from '../pages/SupportInquiryDetailPage'
-import { SupportInquiryListPage } from '../pages/SupportInquiryListPage'
+import { lazyNamed } from '../utils/lazyNamed'
 import { PortalPage } from './PortalPage'
+
+const SettlementManagementPanel = lazyNamed(
+    () => import('../components/seller/SettlementManagementPanel'),
+    (module) => module.SettlementManagementPanel,
+)
+const NotificationPage = lazyNamed(
+    () => import('../pages/NotificationPage'),
+    (module) => module.NotificationPage,
+)
+const SellerDashboardPage = lazyNamed(
+    () => import('../pages/SellerDashboardPage'),
+    (module) => module.SellerDashboardPage,
+)
+const SellerOrderDetailPage = lazyNamed(
+    () => import('../pages/SellerOrderDetailPage'),
+    (module) => module.SellerOrderDetailPage,
+)
+const SellerOrderListPage = lazyNamed(
+    () => import('../pages/SellerOrderListPage'),
+    (module) => module.SellerOrderListPage,
+)
+const SellerProductEditorPage = lazyNamed(
+    () => import('../pages/SellerProductEditorPage'),
+    (module) => module.SellerProductEditorPage,
+)
+const SellerProductListPage = lazyNamed(
+    () => import('../pages/SellerProductListPage'),
+    (module) => module.SellerProductListPage,
+)
+const SellerProductQuestionDetailPage = lazyNamed(
+    () => import('../pages/SellerProductQuestionDetailPage'),
+    (module) => module.SellerProductQuestionDetailPage,
+)
+const SellerProductQuestionListPage = lazyNamed(
+    () => import('../pages/SellerProductQuestionsPage'),
+    (module) => module.SellerProductQuestionListPage,
+)
+const SellerProfilePage = lazyNamed(
+    () => import('../pages/SellerProfilePage'),
+    (module) => module.SellerProfilePage,
+)
+const SellerReturnRequestDetailPage = lazyNamed(
+    () => import('../pages/SellerReturnRequestDetailPage'),
+    (module) => module.SellerReturnRequestDetailPage,
+)
+const SellerReturnRequestsPage = lazyNamed(
+    () => import('../pages/SellerReturnRequestsPage'),
+    (module) => module.SellerReturnRequestsPage,
+)
+const SettlementRequestDetailPage = lazyNamed(
+    () => import('../pages/SettlementRequestDetailPage'),
+    (module) => module.SettlementRequestDetailPage,
+)
+const SupportInquiryDetailPage = lazyNamed(
+    () => import('../pages/SupportInquiryDetailPage'),
+    (module) => module.SupportInquiryDetailPage,
+)
+const SupportInquiryListPage = lazyNamed(
+    () => import('../pages/SupportInquiryListPage'),
+    (module) => module.SupportInquiryListPage,
+)
 
 export function SellerPortalRoutes() {
     return (
