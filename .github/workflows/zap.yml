@@ -1,0 +1,85 @@
+name: OWASP ZAP Baseline
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zap-baseline-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  baseline:
+    name: Anonymous Baseline Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: ymall-zap
+      POSTGRES_DB: ymall_zap
+      POSTGRES_USER: ymall_zap_user
+      AI_REVIEW_ENABLED: "false"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Generate ephemeral credentials
+        shell: bash
+        run: |
+          database_password="$(openssl rand -hex 24)"
+          jwt_secret="$(openssl rand -base64 48 | tr -d '\n')"
+          echo "::add-mask::$database_password"
+          echo "::add-mask::$jwt_secret"
+          echo "POSTGRES_PASSWORD=$database_password" >> "$GITHUB_ENV"
+          echo "JWT_SECRET=$jwt_secret" >> "$GITHUB_ENV"
+
+      - name: Start isolated YMall stack
+        run: >-
+          docker compose
+          --file compose.yaml
+          --file compose.zap.yaml
+          up --detach --build --wait
+          postgres redis kafka backend frontend
+
+      - name: Prepare report directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/zap-reports"
+          chmod 777 "$RUNNER_TEMP/zap-reports"
+
+      - name: Run passive baseline scan
+        run: >-
+          docker run --rm
+          --network ymall-zap_ymall-network
+          --volume "$PWD/security:/zap/config:ro"
+          --volume "$RUNNER_TEMP/zap-reports:/zap/wrk:rw"
+          ghcr.io/zaproxy/zaproxy:stable@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef
+          zap-baseline.py
+          -t http://frontend:8080
+          -c /zap/config/zap-baseline.conf
+          -m 1
+          -j
+          -T 10
+          -I
+          -s
+          -J report.json
+          -w report.md
+          -r report.html
+
+      - name: Upload sanitized anonymous reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: zap-anonymous-baseline-report
+          path: ${{ runner.temp }}/zap-reports
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Stop isolated YMall stack
+        if: always()
+        run: >-
+          docker compose
+          --file compose.yaml
+          --file compose.zap.yaml
+          down --volumes --remove-orphans
