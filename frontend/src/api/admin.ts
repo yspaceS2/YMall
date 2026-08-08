@@ -25,6 +25,10 @@ import { apiRequest } from './client'
 import type { PaymentRefund, PaymentRefundRequest } from '../types/order'
 import type { ProductStatus } from '../types/product'
 import type { SettlementRequestHistory, SettlementRequestWorkType } from '../types/seller'
+import {
+    buildSettlementRequestQuery,
+    type SettlementRequestQueryOptions,
+} from './settlementQuery'
 
 const ADMIN_PAGE_SIZE = 20
 
@@ -253,41 +257,22 @@ export function getAdminRefunds(orderId: number, signal?: AbortSignal) {
     return apiRequest<PaymentRefund[]>(`/admin/orders/${orderId}/refunds`, { signal })
 }
 
+type AdminSettlementRequestOptions = Omit<
+    SettlementRequestQueryOptions,
+    'status' | 'workType'
+> & {
+    status?: SettlementRequestStatus
+    workType?: SettlementRequestWorkType
+    signal?: AbortSignal
+}
+
 export function getAdminSettlementRequests(
-    {
-        page = 1,
-        size = 20,
-        status,
-        workType,
-        requestId,
-        sellerKeyword,
-        requestedFrom,
-        requestedTo,
-        signal,
-    }: {
-        page?: number
-        size?: number
-        status?: SettlementRequestStatus
-        workType?: SettlementRequestWorkType
-        requestId?: number
-        sellerKeyword?: string
-        requestedFrom?: string
-        requestedTo?: string
-        signal?: AbortSignal
-    } = {},
+    options: AdminSettlementRequestOptions = {},
 ) {
-    const query = new URLSearchParams({
-        page: String(page),
-        size: String(size),
-    })
-    if (status) query.set('status', status)
-    if (workType) query.set('workType', workType)
-    if (requestId !== undefined) query.set('requestId', String(requestId))
-    if (sellerKeyword?.trim()) query.set('sellerKeyword', sellerKeyword.trim())
-    if (requestedFrom) query.set('requestedFrom', requestedFrom)
-    if (requestedTo) query.set('requestedTo', requestedTo)
+    const { signal, ...queryOptions } = options
+    const query = buildSettlementRequestQuery(queryOptions)
     return apiRequest<AdminSettlementRequestPage>(
-        `/admin/settlement-requests?${query.toString()}`,
+        `/admin/settlement-requests?${query}`,
         { signal },
     )
 }
