@@ -106,4 +106,29 @@ describe('SellerProductEditorPage', () => {
             'success',
         )
     })
+
+    it('상품 ID로 기존 정보를 불러와 수정 요청을 보낸다', async () => {
+        const user = userEvent.setup()
+        vi.mocked(getSellerProduct).mockResolvedValue(createdProduct)
+        vi.mocked(updateSellerProduct).mockResolvedValue(createdProduct)
+
+        render(<SellerProductEditorPage initialProductId={10} />)
+
+        expect(await screen.findByRole('textbox', { name: '상품명' })).toHaveValue('여름 원피스')
+        await user.click(screen.getByRole('button', { name: '상품 수정' }))
+
+        await waitFor(() => expect(updateSellerProduct).toHaveBeenCalledWith(
+            10,
+            expect.objectContaining({
+                categoryId: 3,
+                name: '여름 원피스',
+                price: 39000,
+                stock: 7,
+            }),
+        ))
+        expect(showToast).toHaveBeenCalledWith(
+            '상품 정보가 저장되었습니다. 콘텐츠 변경사항은 심사 후 반영됩니다.',
+            'success',
+        )
+    })
 })
