@@ -1,0 +1,59 @@
+# 보안 자동 검사 정책
+
+## 목적
+
+이 문서는 YMall 저장소의 정적 분석, 의존성·구성 검사와 컨테이너 이미지 검사 기준을 정의합니다. 이 검사는 프로젝트 자체 점검이며 외부 보안 인증이나 KISA 공식 심사를 의미하지 않습니다.
+
+## 검사 구성
+
+`Security Checks` GitHub Actions 워크플로는 다음 검사를 수행합니다.
+
+- Gitleaks: 전체 Git 이력의 시크릿 패턴 검사
+- Semgrep: Java·TypeScript 소스의 기본 보안 규칙 및 OWASP Top 10 정적 분석
+- Trivy repository scan: npm·Gradle 의존성, IaC·Docker·Compose 설정과 시크릿 검사
+- Trivy image scan: Backend·Frontend 런타임 이미지의 OS·애플리케이션 의존성과 시크릿 검사
+
+Private 저장소에서 GitHub Code Scanning을 사용할 수 없는 현재 계정 구성을 고려해 Semgrep OSS가 PR의 SAST 실패 여부를 직접 판정합니다. 저장소 공개 범위나 GitHub 라이선스가 변경되면 CodeQL 전환 또는 병행 여부를 다시 평가합니다.
+
+## 실행 시점
+
+- Pull Request: Gitleaks, Semgrep, Trivy repository scan
+- `develop`·`main` push: 위 검사와 Backend·Frontend 이미지 검사
+- 수동 실행: 전체 검사
+
+이미지 검사는 빌드 비용과 중복 CI 사용량을 줄이기 위해 Pull Request에서는 실행하지 않고 병합 후 한 번 실행합니다.
+
+## 실패 기준
+
+- Semgrep: 심각도 `ERROR` 발견 시 실패
+- Trivy: 수정 버전이 존재하는 `HIGH` 또는 `CRITICAL` 발견 시 실패
+- Gitleaks: 실제 시크릿으로 판단되는 탐지 결과가 있으면 실패
+
+`CRITICAL`은 즉시 조치합니다. `HIGH`도 원칙적으로 병합 전에 조치합니다. 수정 버전이 없거나 오탐으로 확인된 경우에만 예외를 허용합니다.
+
+## 예외 관리
+
+예외를 추가할 때는 다음 정보를 PR과 YMALL-79에 기록합니다.
+
+- 탐지 도구, 규칙 또는 취약점 식별자
+- 영향 범위와 오탐 또는 미적용 판단 근거
+- 보완 통제
+- 담당자와 재검토 만료일
+
+광범위한 경로 제외나 심각도 하향은 허용하지 않습니다. 예외는 가능한 한 정확한 규칙·취약점 단위로 제한하고 만료 시 다시 검토합니다.
+
+## 결과 및 시크릿 취급
+
+- 검사 출력과 보고서에 실제 토큰, 개인정보, 결제정보를 복사하지 않습니다.
+- Gitleaks 결과 artifact 업로드는 비활성 상태로 유지합니다.
+- 실패 원인 기록에는 취약점 식별자와 영향만 남기고 실제 시크릿 값은 남기지 않습니다.
+- 시크릿 노출이 확인되면 값 삭제보다 폐기·교체를 먼저 수행하고 Git 이력, CI·애플리케이션 로그와 배포 환경의 노출 범위를 확인합니다.
+
+## 도입 시 기준선 조치
+
+자동 검사를 처음 적용하면서 Backend 이미지에서 수정 가능한 High 취약점 4건을 확인해 함께 조치했습니다.
+
+- PostgreSQL JDBC를 `42.7.12`로 업데이트
+- Backend·Frontend 런타임 이미지 빌드 시 Alpine 보안 패키지 업데이트 적용
+
+조치 전후의 상세 식별자와 재검증 결과는 YMALL-79 및 해당 Pull Request에 기록합니다.
