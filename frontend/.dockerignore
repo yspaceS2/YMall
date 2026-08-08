@@ -1,6 +1,12 @@
 node_modules
 dist
 dist-ssr
+coverage
+e2e
+playwright-report
+test-results
+scripts
+playwright.config.ts
 .env
 .env.*
 *.local
