@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdminAuthorizationContext } from '../auth/AdminAuthorizationContext'
@@ -107,5 +108,36 @@ describe('AdminCategoryManagementPage', () => {
         })
 
         expect(screen.getByRole('button', { name: '삭제' })).toBeDisabled()
+    })
+
+    it('새 카테고리 입력을 정규화해 등록한다', async () => {
+        const user = userEvent.setup()
+        const savedCategory: AdminCategory = {
+            ...categories[1],
+            categoryId: 3,
+            name: '여름 원피스',
+            slug: 'summer-dresses',
+            hasProducts: false,
+        }
+        vi.mocked(createAdminCategory).mockResolvedValue(savedCategory)
+
+        renderPage('/admin/categories/new')
+
+        await user.type(
+            await screen.findByRole('textbox', { name: '카테고리명' }),
+            '여름 원피스',
+        )
+        await user.type(screen.getByRole('textbox', { name: '슬러그' }), 'Summer--Dresses')
+        await user.click(screen.getByRole('button', { name: '카테고리 등록' }))
+
+        await waitFor(() => expect(createAdminCategory).toHaveBeenCalledWith(
+            expect.objectContaining({
+                name: '여름 원피스',
+                slug: 'summer-dresses',
+                parentId: null,
+                displayOrder: 0,
+                active: true,
+            }),
+        ))
     })
 })
