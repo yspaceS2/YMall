@@ -23,7 +23,7 @@ import type {
 } from '../types/support'
 import { formatKoreanDateTime } from '../utils/dateTime'
 import { parsePositiveInteger } from '../utils/searchParams'
-import { InquiryCreateForm } from './SupportCenterPage'
+import { InquiryCreateForm } from '../components/support/InquiryCreateForm'
 import { supportBasePath } from './supportInquiryRouting'
 import { CATEGORY_LABELS, STATUS_LABELS } from './supportPresentation'
 
