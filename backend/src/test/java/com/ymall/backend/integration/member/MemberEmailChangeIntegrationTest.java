@@ -51,6 +51,7 @@ import com.ymall.backend.member.service.MemberEmailChangeService;
 @ActiveProfiles("test")
 class MemberEmailChangeIntegrationTest {
 
+    private static final String PASSWORD = "password123";
     private static final Pattern VERIFICATION_CODE_PATTERN = Pattern.compile("(?<!\\d)\\d{6}(?!\\d)");
 
     @Autowired private MockMvc mockMvc;
@@ -83,16 +84,11 @@ class MemberEmailChangeIntegrationTest {
 
     @Test
     void localMemberChangesVerifiedEmailAndExistingRefreshTokenIsRevoked() throws Exception {
-        Member member = memberRepository.save(new Member(
-            "old@example.com",
-            passwordEncoder.encode("password123"),
-            "Local User",
-            MemberRole.ROLE_USER
-        ));
-        LoginSession login = login("old@example.com", "password123");
+        Member member = memberRepository.save(localMember("old@example.com", "Local User"));
+        LoginSession login = login("old@example.com", PASSWORD);
         MockHttpSession session = new MockHttpSession();
 
-        reauthenticate(login.authorization(), "password123", session)
+        reauthenticate(login.authorization(), PASSWORD, session)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.verificationRequired").value(false));
 
@@ -114,18 +110,16 @@ class MemberEmailChangeIntegrationTest {
         mockMvc.perform(post("/api/members/tokens/refresh").cookie(login.refreshCookie()))
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TOKEN"));
-        loginExpectingStatus("old@example.com", "password123", 401);
-        loginExpectingStatus("new@example.com", "password123", 200);
+        loginExpectingStatus("old@example.com", PASSWORD, 401);
+        loginExpectingStatus("new@example.com", PASSWORD, 200);
     }
 
     @Test
     void socialMemberChangesEmailAfterOAuthReauthenticationAndKeepsProviderConnection()
         throws Exception {
-        Member member = memberRepository.save(new Member(
+        Member member = memberRepository.save(socialMember(
             "social-old@example.com",
-            null,
-            "Social User",
-            MemberRole.ROLE_USER
+            "Social User"
         ));
         oAuthAccountRepository.save(new OAuthAccount(member, OAuthProvider.GOOGLE, "google-sub-123"));
         String authorization = authorization(member);
@@ -172,15 +166,10 @@ class MemberEmailChangeIntegrationTest {
 
     @Test
     void finalDuplicateCheckRejectsEmailClaimedAfterCodeWasSent() throws Exception {
-        Member member = memberRepository.save(new Member(
-            "race-old@example.com",
-            passwordEncoder.encode("password123"),
-            "Race User",
-            MemberRole.ROLE_USER
-        ));
+        Member member = memberRepository.save(localMember("race-old@example.com", "Race User"));
         String authorization = authorization(member);
         MockHttpSession session = new MockHttpSession();
-        reauthenticate(authorization, "password123", session).andExpect(status().isOk());
+        reauthenticate(authorization, PASSWORD, session).andExpect(status().isOk());
         String requestId = requestNewEmail(
             authorization,
             "race-new@example.com",
@@ -188,11 +177,10 @@ class MemberEmailChangeIntegrationTest {
         );
         String code = capturedVerificationCode();
 
-        memberRepository.saveAndFlush(new Member(
+        memberRepository.saveAndFlush(localMember(
             "race-new@example.com",
-            passwordEncoder.encode("otherPassword123"),
             "Other User",
-            MemberRole.ROLE_USER
+            "otherPassword123"
         ));
 
         mockMvc.perform(patch("/api/members/me/email-change")
@@ -209,11 +197,9 @@ class MemberEmailChangeIntegrationTest {
 
     @Test
     void newEmailVerificationRequiresRecentReauthentication() throws Exception {
-        Member member = memberRepository.save(new Member(
+        Member member = memberRepository.save(localMember(
             "no-reauth@example.com",
-            passwordEncoder.encode("password123"),
-            "No Reauth User",
-            MemberRole.ROLE_USER
+            "No Reauth User"
         ));
 
         mockMvc.perform(post("/api/members/me/email-change/verifications")
@@ -228,12 +214,7 @@ class MemberEmailChangeIntegrationTest {
 
     @Test
     void socialReauthenticationRejectsProviderNotLinkedToCurrentMember() throws Exception {
-        Member member = memberRepository.save(new Member(
-            "social@example.com",
-            null,
-            "Social User",
-            MemberRole.ROLE_USER
-        ));
+        Member member = memberRepository.save(socialMember("social@example.com", "Social User"));
         oAuthAccountRepository.save(new OAuthAccount(
             member,
             OAuthProvider.GOOGLE,
@@ -251,17 +232,15 @@ class MemberEmailChangeIntegrationTest {
 
     @Test
     void reauthenticationCannotBeReusedFromAnotherSession() throws Exception {
-        Member member = memberRepository.save(new Member(
+        Member member = memberRepository.save(localMember(
             "session-bound@example.com",
-            passwordEncoder.encode("password123"),
-            "Session Bound User",
-            MemberRole.ROLE_USER
+            "Session Bound User"
         ));
         String authorization = authorization(member);
         MockHttpSession reauthenticatedSession = new MockHttpSession();
         MockHttpSession otherSession = new MockHttpSession();
 
-        reauthenticate(authorization, "password123", reauthenticatedSession)
+        reauthenticate(authorization, PASSWORD, reauthenticatedSession)
             .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/members/me/email-change/verifications")
@@ -278,15 +257,10 @@ class MemberEmailChangeIntegrationTest {
 
     @Test
     void expiredReauthenticationDoesNotConsumeValidEmailCode() throws Exception {
-        Member member = memberRepository.save(new Member(
-            "retry@example.com",
-            passwordEncoder.encode("password123"),
-            "Retry User",
-            MemberRole.ROLE_USER
-        ));
+        Member member = memberRepository.save(localMember("retry@example.com", "Retry User"));
         String authorization = authorization(member);
         MockHttpSession session = new MockHttpSession();
-        reauthenticate(authorization, "password123", session).andExpect(status().isOk());
+        reauthenticate(authorization, PASSWORD, session).andExpect(status().isOk());
         String requestId = requestNewEmail(authorization, "retry-new@example.com", session);
         String code = capturedVerificationCode();
         deleteKeys("email-change:reauthenticated:*");
@@ -300,7 +274,7 @@ class MemberEmailChangeIntegrationTest {
             .andExpect(jsonPath("$.error.code")
                 .value("EMAIL_CHANGE_REAUTHENTICATION_REQUIRED"));
 
-        reauthenticate(authorization, "password123", session).andExpect(status().isOk());
+        reauthenticate(authorization, PASSWORD, session).andExpect(status().isOk());
         mockMvc.perform(patch("/api/members/me/email-change")
                 .header(HttpHeaders.AUTHORIZATION, authorization)
                 .session(session)
@@ -369,6 +343,23 @@ class MemberEmailChangeIntegrationTest {
 
     private String authorization(Member member) {
         return "Bearer " + jwtTokenProvider.createAccessToken(member).accessToken();
+    }
+
+    private Member localMember(String email, String name) {
+        return localMember(email, name, PASSWORD);
+    }
+
+    private Member localMember(String email, String name, String password) {
+        return new Member(
+            email,
+            passwordEncoder.encode(password),
+            name,
+            MemberRole.ROLE_USER
+        );
+    }
+
+    private Member socialMember(String email, String name) {
+        return new Member(email, null, name, MemberRole.ROLE_USER);
     }
 
     private String loginJson(String email, String password) {
