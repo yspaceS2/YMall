@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -44,13 +44,17 @@ describe('PasswordResetPage', () => {
         const user = userEvent.setup()
         renderPage()
 
-        await user.type(screen.getByLabelText('이메일'), 'user@example.com')
+        fireEvent.change(screen.getByLabelText('이메일'), {
+            target: { value: 'user@example.com' },
+        })
         await user.click(screen.getByRole('button', { name: '인증번호 받기' }))
 
         expect(requestPasswordReset).toHaveBeenCalledWith('user@example.com')
         expect(await screen.findByLabelText('인증번호')).toBeInTheDocument()
 
-        await user.type(screen.getByLabelText('인증번호'), '123456')
+        fireEvent.change(screen.getByLabelText('인증번호'), {
+            target: { value: '123456' },
+        })
         await user.click(screen.getByRole('button', { name: '인증번호 확인' }))
 
         expect(verifyPasswordReset).toHaveBeenCalledWith(
@@ -59,13 +63,18 @@ describe('PasswordResetPage', () => {
         )
         expect(await screen.findByLabelText('새 비밀번호')).toBeInTheDocument()
 
-        await user.type(screen.getByLabelText('새 비밀번호'), 'newPassword123')
-        await user.type(screen.getByLabelText('새 비밀번호 확인'), 'differentPassword')
+        fireEvent.change(screen.getByLabelText('새 비밀번호'), {
+            target: { value: 'newPassword123' },
+        })
+        fireEvent.change(screen.getByLabelText('새 비밀번호 확인'), {
+            target: { value: 'differentPassword' },
+        })
         expect(screen.getByText('비밀번호가 일치하지 않습니다.')).toBeInTheDocument()
         expect(screen.getByRole('button', { name: '비밀번호 재설정' })).toBeDisabled()
 
-        await user.clear(screen.getByLabelText('새 비밀번호 확인'))
-        await user.type(screen.getByLabelText('새 비밀번호 확인'), 'newPassword123')
+        fireEvent.change(screen.getByLabelText('새 비밀번호 확인'), {
+            target: { value: 'newPassword123' },
+        })
         await user.click(screen.getByRole('button', { name: '비밀번호 재설정' }))
 
         expect(confirmPasswordReset).toHaveBeenCalledWith({
