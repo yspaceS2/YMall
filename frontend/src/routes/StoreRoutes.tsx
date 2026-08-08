@@ -1,20 +1,52 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { RequireAuth } from '../auth/RequireAuth'
 import { Layout } from '../components/Layout'
-import { AccessDeniedPage } from '../pages/AccessDeniedPage'
-import { CartPage } from '../pages/CartPage'
-import { CheckoutPage } from '../pages/CheckoutPage'
-import { LoginPage } from '../pages/LoginPage'
-import { OAuth2CallbackPage } from '../pages/OAuth2CallbackPage'
-import { OAuthSignupPage } from '../pages/OAuthSignupPage'
-import { OrderResultPage } from '../pages/OrderResultPage'
-import { PasswordResetPage } from '../pages/PasswordResetPage'
-import { PaymentPage } from '../pages/PaymentPage'
-import { ProductDetailPage } from '../pages/ProductDetailPage'
-import { ProductListPage } from '../pages/ProductListPage'
-import { SignupPage } from '../pages/SignupPage'
-import { TossPaymentFailPage } from '../pages/TossPaymentFailPage'
-import { TossPaymentSuccessPage } from '../pages/TossPaymentSuccessPage'
+import { lazyNamed } from '../utils/lazyNamed'
+
+const AccessDeniedPage = lazyNamed(
+    () => import('../pages/AccessDeniedPage'),
+    (module) => module.AccessDeniedPage,
+)
+const CartPage = lazyNamed(() => import('../pages/CartPage'), (module) => module.CartPage)
+const CheckoutPage = lazyNamed(
+    () => import('../pages/CheckoutPage'),
+    (module) => module.CheckoutPage,
+)
+const LoginPage = lazyNamed(() => import('../pages/LoginPage'), (module) => module.LoginPage)
+const OAuth2CallbackPage = lazyNamed(
+    () => import('../pages/OAuth2CallbackPage'),
+    (module) => module.OAuth2CallbackPage,
+)
+const OAuthSignupPage = lazyNamed(
+    () => import('../pages/OAuthSignupPage'),
+    (module) => module.OAuthSignupPage,
+)
+const OrderResultPage = lazyNamed(
+    () => import('../pages/OrderResultPage'),
+    (module) => module.OrderResultPage,
+)
+const PasswordResetPage = lazyNamed(
+    () => import('../pages/PasswordResetPage'),
+    (module) => module.PasswordResetPage,
+)
+const PaymentPage = lazyNamed(() => import('../pages/PaymentPage'), (module) => module.PaymentPage)
+const ProductDetailPage = lazyNamed(
+    () => import('../pages/ProductDetailPage'),
+    (module) => module.ProductDetailPage,
+)
+const ProductListPage = lazyNamed(
+    () => import('../pages/ProductListPage'),
+    (module) => module.ProductListPage,
+)
+const SignupPage = lazyNamed(() => import('../pages/SignupPage'), (module) => module.SignupPage)
+const TossPaymentFailPage = lazyNamed(
+    () => import('../pages/TossPaymentFailPage'),
+    (module) => module.TossPaymentFailPage,
+)
+const TossPaymentSuccessPage = lazyNamed(
+    () => import('../pages/TossPaymentSuccessPage'),
+    (module) => module.TossPaymentSuccessPage,
+)
 
 export function StoreRoutes() {
     return (

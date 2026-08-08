@@ -1,27 +1,67 @@
 import type { ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { RequireAdminPermission } from '../auth/RequireAdminPermission'
-import { AdminSellerApplicationPanel } from '../components/admin/AdminSellerApplicationPanel'
-import { AdminSettlementRequestList } from '../components/settlement/SettlementRequestList'
-import { AdminCategoryManagementPage } from '../pages/AdminCategoryManagementPage'
-import { AdminManagementPage } from '../pages/AdminManagementPage'
-import {
-    AdminProductChangeReviewDetailPage,
-    AdminProductChangeReviewListPage,
-} from '../pages/AdminProductChangeReviewPage'
-import {
-    AdminProductReviewDetailPage,
-    AdminProductReviewListPage,
-} from '../pages/AdminProductReviewPage'
-import { AdminResourceDetailPage } from '../pages/AdminResourceDetailPage'
-import { AdminResourceListPage } from '../pages/AdminResourceListPage'
-import { NotificationPage } from '../pages/NotificationPage'
-import { SettlementRequestDetailPage } from '../pages/SettlementRequestDetailPage'
-import { SupportInquiryDetailPage } from '../pages/SupportInquiryDetailPage'
-import { SupportInquiryListPage } from '../pages/SupportInquiryListPage'
 import type { AdminPermission } from '../types/admin'
+import { lazyNamed } from '../utils/lazyNamed'
 import { PortalPage } from './PortalPage'
 import { ADMIN_ROUTE_PERMISSIONS } from './adminRoutePermissions'
+
+const AdminSellerApplicationPanel = lazyNamed(
+    () => import('../components/admin/AdminSellerApplicationPanel'),
+    (module) => module.AdminSellerApplicationPanel,
+)
+const AdminSettlementRequestList = lazyNamed(
+    () => import('../components/settlement/SettlementRequestList'),
+    (module) => module.AdminSettlementRequestList,
+)
+const AdminCategoryManagementPage = lazyNamed(
+    () => import('../pages/AdminCategoryManagementPage'),
+    (module) => module.AdminCategoryManagementPage,
+)
+const AdminManagementPage = lazyNamed(
+    () => import('../pages/AdminManagementPage'),
+    (module) => module.AdminManagementPage,
+)
+const AdminProductChangeReviewDetailPage = lazyNamed(
+    () => import('../pages/AdminProductChangeReviewPage'),
+    (module) => module.AdminProductChangeReviewDetailPage,
+)
+const AdminProductChangeReviewListPage = lazyNamed(
+    () => import('../pages/AdminProductChangeReviewPage'),
+    (module) => module.AdminProductChangeReviewListPage,
+)
+const AdminProductReviewDetailPage = lazyNamed(
+    () => import('../pages/AdminProductReviewPage'),
+    (module) => module.AdminProductReviewDetailPage,
+)
+const AdminProductReviewListPage = lazyNamed(
+    () => import('../pages/AdminProductReviewPage'),
+    (module) => module.AdminProductReviewListPage,
+)
+const AdminResourceDetailPage = lazyNamed(
+    () => import('../pages/AdminResourceDetailPage'),
+    (module) => module.AdminResourceDetailPage,
+)
+const AdminResourceListPage = lazyNamed(
+    () => import('../pages/AdminResourceListPage'),
+    (module) => module.AdminResourceListPage,
+)
+const NotificationPage = lazyNamed(
+    () => import('../pages/NotificationPage'),
+    (module) => module.NotificationPage,
+)
+const SettlementRequestDetailPage = lazyNamed(
+    () => import('../pages/SettlementRequestDetailPage'),
+    (module) => module.SettlementRequestDetailPage,
+)
+const SupportInquiryDetailPage = lazyNamed(
+    () => import('../pages/SupportInquiryDetailPage'),
+    (module) => module.SupportInquiryDetailPage,
+)
+const SupportInquiryListPage = lazyNamed(
+    () => import('../pages/SupportInquiryListPage'),
+    (module) => module.SupportInquiryListPage,
+)
 
 export function AdminPortalRoutes() {
     return (

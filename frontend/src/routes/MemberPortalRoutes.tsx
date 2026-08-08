@@ -1,10 +1,27 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { NotificationPage } from '../pages/NotificationPage'
-import { OrderDetailPage } from '../pages/OrderDetailPage'
-import { OrderHistoryPage } from '../pages/OrderHistoryPage'
-import { MyPage } from '../pages/MyPage'
-import { SupportInquiryDetailPage } from '../pages/SupportInquiryDetailPage'
-import { SupportInquiryListPage } from '../pages/SupportInquiryListPage'
+import { lazyNamed } from '../utils/lazyNamed'
+
+const NotificationPage = lazyNamed(
+    () => import('../pages/NotificationPage'),
+    (module) => module.NotificationPage,
+)
+const OrderDetailPage = lazyNamed(
+    () => import('../pages/OrderDetailPage'),
+    (module) => module.OrderDetailPage,
+)
+const OrderHistoryPage = lazyNamed(
+    () => import('../pages/OrderHistoryPage'),
+    (module) => module.OrderHistoryPage,
+)
+const MyPage = lazyNamed(() => import('../pages/MyPage'), (module) => module.MyPage)
+const SupportInquiryDetailPage = lazyNamed(
+    () => import('../pages/SupportInquiryDetailPage'),
+    (module) => module.SupportInquiryDetailPage,
+)
+const SupportInquiryListPage = lazyNamed(
+    () => import('../pages/SupportInquiryListPage'),
+    (module) => module.SupportInquiryListPage,
+)
 
 export function MemberPortalRoutes() {
     return (
