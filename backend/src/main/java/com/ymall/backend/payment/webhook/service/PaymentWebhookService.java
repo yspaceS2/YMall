@@ -24,6 +24,13 @@ public class PaymentWebhookService {
     private final PaymentGateway paymentGateway;
     private final PaymentWebhookTransactionService transactionService;
 
+    /**
+     * 신뢰할 수 없는 웹훅을 Toss에서 결제 정보를 다시 조회한 뒤 처리한다.
+     *
+     * <p>웹훅 Payload는 결제를 식별하는 데만 사용하며 상태의 최종 근거로 신뢰하지 않는다.
+     * 중복 전송 ID는 먼저 빠르게 제외하고, {@link PaymentWebhookTransactionService}가 주문 잠금을
+     * 획득한 뒤 트랜잭션 안에서 다시 확인한다.</p>
+     */
     public void handle(String transmissionId, TossPaymentWebhookRequest request) {
         if (webhookEventRepository.existsByTransmissionId(transmissionId)) {
             return;
