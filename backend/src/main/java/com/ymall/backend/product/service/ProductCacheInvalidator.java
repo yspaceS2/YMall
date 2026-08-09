@@ -16,6 +16,13 @@ import com.ymall.backend.global.config.ProductCacheNames;
 import com.ymall.backend.home.config.HomeCacheNames;
 import com.ymall.backend.review.config.ReviewSummaryCacheNames;
 
+/**
+ * 상품 변경 트랜잭션이 커밋된 뒤 관련 조회 캐시를 무효화한다.
+ *
+ * <p>롤백된 변경 때문에 정상 캐시가 삭제되지 않도록 활성 트랜잭션에서는 afterCommit 시점까지
+ * 무효화를 미룬다. 캐시 장애는 원장 데이터 변경을 실패시키지 않으며, 상세 상품 변경은 리뷰 요약과
+ * 홈 진열 캐시에도 영향을 줄 수 있으므로 함께 제거한다.</p>
+ */
 @Component
 public class ProductCacheInvalidator {
 

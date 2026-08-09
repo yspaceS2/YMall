@@ -51,6 +51,13 @@ public class OAuthMemberService {
         return member;
     }
 
+    /**
+     * 공급자와 공급자 사용자 ID를 계정의 유일한 외부 식별자로 사용해 로그인·연결을 해석한다.
+     *
+     * <p>이메일이 같다는 이유만으로 기존 회원과 자동 병합하지 않는다. 로그인된 회원이 명시적으로
+     * 연결을 요청한 경우에만 계정을 연결하며, Kakao에서 필수 가입 정보가 부족한 경우에는 별도
+     * 가입 완료 절차를 요구한다.</p>
+     */
     @Transactional
     public OAuthLoginResult resolve(
         OAuthProvider provider,

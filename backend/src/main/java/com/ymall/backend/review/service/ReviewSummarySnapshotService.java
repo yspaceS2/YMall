@@ -61,7 +61,7 @@ public class ReviewSummarySnapshotService {
         Snapshot expected,
         ReviewSummaryGenerator.Result result
     ) {
-        // A generated result must never overwrite a newer review snapshot.
+        // 생성된 결과가 더 최신 리뷰 Snapshot을 덮어쓰지 않도록 저장 직전에 다시 확인한다.
         long currentCount = reviewRepository.countByProductId(productId);
         LocalDateTime currentUpdatedAt =
             reviewRepository.findLatestUpdatedAtByProductId(productId);

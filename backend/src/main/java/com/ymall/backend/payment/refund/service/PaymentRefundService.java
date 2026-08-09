@@ -16,6 +16,13 @@ import com.ymall.backend.payment.gateway.PaymentGatewayResult;
 import com.ymall.backend.payment.refund.dto.PaymentRefundRequest;
 import com.ymall.backend.payment.refund.dto.PaymentRefundResponse;
 
+/**
+ * 환불 상태 변경 트랜잭션과 외부 결제사 호출을 분리해 조정한다.
+ *
+ * <p>DB 잠금을 유지한 채 네트워크를 호출하지 않도록 먼저 환불을 준비하고, 결제사 호출 후 별도
+ * 트랜잭션에서 완료한다. Timeout처럼 결과를 확정할 수 없는 실패는 UNKNOWN으로 기록하고 결제사의
+ * 현재 상태를 조회해 조정하기 전까지 같은 주문의 새 환불을 허용하지 않는다.</p>
+ */
 @Service
 @RequiredArgsConstructor
 public class PaymentRefundService {

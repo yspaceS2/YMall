@@ -23,6 +23,13 @@ import com.ymall.backend.review.config.ReviewSummaryTopicProperties;
 @ConditionalOnProperty(name = "ymall.kafka.enabled", havingValue = "true", matchIfMissing = true)
 public class KafkaConsumerErrorConfig {
 
+    /**
+     * Consumer 실패를 제한 횟수만큼 재시도한 뒤 원본 Partition과 같은 번호의 DLT로 보낸다.
+     *
+     * <p>비즈니스 거부, 잘못된 인자와 역직렬화 실패는 반복해도 성공하지 않는 오류로 보고 즉시
+     * DLT 처리한다. Kafka 재전달은 중복될 수 있으므로 이 설정은 Consumer의 이벤트 ID 기반
+     * 멱등 처리를 대체하지 않는다.</p>
+     */
     @Bean
     public DefaultErrorHandler orderEventErrorHandler(
         KafkaTemplate<String, OrderEventEnvelope> kafkaTemplate,
