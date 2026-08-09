@@ -1,4 +1,4 @@
-# KISA 2026 기술적 취약점 분석·평가 매핑
+# KISA 2026 기술적 취약점 분석·평가 자체 점검
 
 ## 목적과 판정 원칙
 
@@ -13,6 +13,21 @@ YMall 코드와 배포 구성에 매핑한 1차 점검 기록이다. 공식 인�
 - `동적 점검 필요`: 정적 코드 검토 외에 실행 중인 애플리케이션에 대한 검증이 필요하다.
 - `배포 후 점검`: 도메인, TLS, 방화벽, 운영 계정처럼 배포 환경이 정해져야 판정할 수 있다.
 - `해당 없음`: YMall 기술 구성에 적용되지 않는다.
+
+기준일은 2026-08-09이며 기준 브랜치는 `develop`이다. 상세 테스트 근거는
+[`pre-deployment-security-checklist.md`](./pre-deployment-security-checklist.md), 자동 검사 정책은
+[`security-automation.md`](./security-automation.md)를 참조한다.
+
+## 점검 결과 요약
+
+| 영역 | 현재 결과 | 남은 작업 |
+| --- | --- | --- |
+| 웹 애플리케이션 | 배포 전 대상 항목 양호 | 운영 HTTPS·Cookie·CORS·응답 헤더 재검증 |
+| 인증·인가 | 역할·소유권·토큰·비밀번호 정책 검증 완료 | 운영 관리자 접근망 정책 결정 |
+| 결제·파일·로그 | 금액 검증, 멱등성, 파일 구조 검증과 로그 축소 완료 | 실제 운영 로그 표본 확인 |
+| 자동 보안 검사 | Gitleaks·Semgrep·Trivy·익명 ZAP 구성 완료 | 배포 이미지와 운영 URL 재검사 |
+| PostgreSQL | Compose 외부 포트 차단 완료 | 최소 권한 역할과 DB 감사 로그 구성 |
+| 컨테이너 | 비루트 실행, 필수 시크릿, 내부 네트워크 적용 | 운영 호스트 OS·방화벽·SSH 점검 |
 
 ## Web Application 점검
 
@@ -81,3 +96,43 @@ YMall 코드와 배포 구성에 매핑한 1차 점검 기록이다. 공식 인�
 - PostgreSQL 최소 권한 역할과 감사 로그 정책을 배포 문서 및 점검 스크립트로 관리한다.
 - HTTPS, TLS 1.2 이상, Secure 쿠키와 보안 헤더를 실제 배포 URL에서 검증한다.
 - 실제 배포 URL에 ZAP Baseline 또는 Passive Scan을 실행한다.
+
+## 자동·수동 검증 근거
+
+| 구분 | 결과 | 근거 |
+| --- | --- | --- |
+| 시크릿 검사 | 통과 | Gitleaks 전체 Git 이력 검사 및 redact 출력 |
+| 정적 분석 | 통과 | Semgrep Java·TypeScript 보안 규칙, 발견 0건 기준선 |
+| 의존성·구성 검사 | 통과 | Trivy repository HIGH·CRITICAL 0건 |
+| 컨테이너 이미지 검사 | 통과 | Backend·Frontend 이미지 HIGH·CRITICAL 0건 |
+| 익명 동적 검사 | 통과 | ZAP Baseline FAIL 0, 신규 Medium 0, PASS 63 |
+| 인증·인가·결제 | 통과 | Backend 통합 테스트와 배포 전 체크리스트 |
+| 파일·로그·Compose | 통과 | 공격 표본 테스트, 제한 로그 확인, 운영 Compose 실패·성공 경계 검증 |
+
+관련 작업 기록:
+
+- [PR #132 프론트엔드 High 의존성 취약점 해소](https://github.com/yspaceS2/YMall/pull/132)
+- [PR #133 Semgrep 및 Trivy 보안 검사 자동화](https://github.com/yspaceS2/YMall/pull/133)
+- [PR #134 OWASP ZAP 동적 보안 검사 추가](https://github.com/yspaceS2/YMall/pull/134)
+- [PR #135 관리자 권한 경계 보안 검증 보강](https://github.com/yspaceS2/YMall/pull/135)
+- [PR #136 배포 전 보안 검증 강화](https://github.com/yspaceS2/YMall/pull/136)
+- [PR #137 로그인 반복 시도 제한 적용](https://github.com/yspaceS2/YMall/pull/137)
+- [PR #138 HTTP 보안 경계 강화](https://github.com/yspaceS2/YMall/pull/138)
+- [PR #139 KISA 비밀번호 정책 적용](https://github.com/yspaceS2/YMall/pull/139)
+- [Jira YMALL-79](https://yspace-labs.atlassian.net/browse/YMALL-79)
+
+## 배포 전 결론
+
+저장소와 로컬 격리 환경에서 판정 가능한 배포 전 항목은 검증됐다. 현재 확인된 코드 수준의
+HIGH·CRITICAL 취약점이나 미조치 보안 결함은 없다. 다만 PostgreSQL 감사 로그는 운영 구성
+작업으로 남아 있으며 아래 항목은 실제 배포 환경에서 증적을 남긴 뒤 최종 판정한다.
+
+- 운영 HTTPS/TLS와 인증서, HTTP 강제 전환
+- Refresh Token Cookie의 실제 `Secure`·`HttpOnly`·`SameSite` 값
+- 운영 CORS와 CSP·COOP·CORP·Permissions Policy 응답
+- PostgreSQL·Redis·Kafka·Actuator·모니터링 포트의 외부 노출 여부
+- 운영 PostgreSQL 최소 권한 역할과 감사 로그
+- 호스트 OS 계정, SSH, 방화벽, 파일 권한과 시간 동기화
+- 실제 배포 URL에 대한 ZAP Baseline 또는 Passive Scan
+
+위 항목을 배포 후 갱신한 뒤 YMALL-79를 완료한다.

@@ -18,6 +18,8 @@ KISA 공식 심사 결과가 아닙니다. 실제 운영 도메인, HTTPS/TLS, �
 | 로그인·Refresh Token 회전·로그아웃 | 통과 | `RefreshTokenIntegrationTest.loginRefreshRotationAndLogoutManageDeviceSession` |
 | 역할 변경 전 Refresh Token 무효화 | 통과 | `RefreshTokenIntegrationTest.refreshTokenIssuedBeforeRoleChangeCannotBeRotated` |
 | 회원 제한 후 기존 액세스 토큰 무효화 | 통과 | `AdminManagementApiIntegrationTest.superAdminRestrictsMemberAndImmediatelyInvalidatesExistingToken` |
+| 로그인 반복 시도 제한과 계정 존재 여부 비노출 | 통과 | `MemberLoginIntegrationTest.repeatedLoginFailuresAreRateLimitedAndSuccessfulLoginResetsAttempts`, `LoginAttemptLimiterTest` |
+| 회원가입·변경·재설정의 공통 비밀번호 정책 | 통과 | `PasswordPolicyTest`, `MemberServiceTest`, `PasswordResetIntegrationTest` |
 
 Refresh Token은 브라우저가 자동 전송하는 Cookie이므로 배포 후 HTTPS 환경에서
 `Secure`, `HttpOnly`, `SameSite` 속성을 다시 확인합니다. 상태 변경 API는 액세스
@@ -70,7 +72,7 @@ Refresh Token은 브라우저가 자동 전송하는 Cookie이므로 배포 후 
 - [x] 애플리케이션 로그가 비밀번호, Authorization Header, Cookie, OAuth 오류 메시지와 결제 요청 본문을 기록하지 않는지 확인
 - [x] 운영 Compose에서 PostgreSQL·Redis·Kafka 포트가 호스트에 노출되지 않는지 확인
 - [x] 운영 Compose의 필수 환경변수 누락 시 안전하지 않은 기본값 없이 구성 단계에서 실패하는지 확인
-- [ ] KISA 적용 항목, N/A 사유와 배포 후 항목을 최종 평가 문서에 연결
+- [x] KISA 적용 항목, N/A 사유와 배포 후 항목을 [`kisa-2026-assessment.md`](./kisa-2026-assessment.md)에 연결
 
 검증 근거:
 
@@ -80,6 +82,8 @@ Refresh Token은 브라우저가 자동 전송하는 Cookie이므로 배포 후 
 - `PaymentWebhookService`: 결제 요청 본문과 stack trace 없이 제한된 식별자와 예외 유형만 기록
 - `docker compose -f compose.yaml -f compose.prod.yaml config --quiet`: 필수 변수 누락 실패와 완전한 구성 성공 확인
 - `compose.prod.yaml`: Redis 호스트 포트 제거, PostgreSQL·Kafka 내부 네트워크 전용, Frontend loopback 기본 바인딩, SMTP 인증·STARTTLS 강제
+- `PasswordPolicy`: 조합별 최소 길이, 허용 문자 종류, 예측 문자열, 이메일 유사값, 연속·반복 패턴과 현재 비밀번호 재사용 차단
+- `LoginAttemptLimiter`: 정규화된 이메일의 SHA-256 해시 키와 Redis TTL을 이용한 반복 로그인 제한
 
 ## 배포 후 점검
 
@@ -89,4 +93,8 @@ Refresh Token은 브라우저가 자동 전송하는 Cookie이므로 배포 후 
 - [ ] 운영 CORS 허용 출처
 - [ ] PostgreSQL, Redis, Kafka, Actuator와 모니터링 포트의 외부 노출 여부
 - [ ] 실제 배포 URL에 대한 ZAP Baseline 또는 Passive Scan
+- [ ] 운영 PostgreSQL 애플리케이션 계정의 최소 GRANT와 접속·DDL·권한 변경 감사 로그
+
+전체 KISA 판정과 N/A 사유는
+[`kisa-2026-assessment.md`](./kisa-2026-assessment.md)를 기준으로 관리합니다.
 
