@@ -1,6 +1,7 @@
 package com.ymall.backend.global.security;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
 
@@ -24,23 +25,27 @@ import com.ymall.backend.member.entity.MemberRole;
 public class JwtTokenProvider {
 
     private static final String ROLE_CLAIM = "role";
+    private static final String AUTH_VERSION_CLAIM = "authVersion";
     private static final String TOKEN_TYPE = "Bearer";
 
     private final JwtProperties properties;
     private final SecretKey signingKey;
+    private final Clock clock;
 
-    public JwtTokenProvider(JwtProperties properties) {
+    public JwtTokenProvider(JwtProperties properties, Clock clock) {
         this.properties = properties;
+        this.clock = clock;
         this.signingKey = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
     public TokenResponse createAccessToken(Member member) {
-        Instant issuedAt = Instant.now();
+        Instant issuedAt = clock.instant();
         Instant expiresAt = issuedAt.plus(properties.getAccessTokenExpiration());
         String token = Jwts.builder()
             .subject(member.getId().toString())
             .claim("email", member.getEmail())
             .claim(ROLE_CLAIM, member.getRole().name())
+            .claim(AUTH_VERSION_CLAIM, member.getAuthVersion())
             .issuedAt(Date.from(issuedAt))
             .expiration(Date.from(expiresAt))
             .signWith(signingKey)
@@ -61,10 +66,12 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
-            return new MemberPrincipal(
+            Long authVersion = claims.get(AUTH_VERSION_CLAIM, Long.class);
+            return MemberPrincipal.token(
                 Long.valueOf(claims.getSubject()),
                 claims.get("email", String.class),
-                MemberRole.valueOf(claims.get(ROLE_CLAIM, String.class))
+                MemberRole.valueOf(claims.get(ROLE_CLAIM, String.class)),
+                authVersion == null ? 0L : authVersion
             );
         } catch (ExpiredJwtException exception) {
             throw new BusinessException(ErrorCode.EXPIRED_TOKEN);

@@ -1,4 +1,10 @@
-import type { Category, PageResponse, ProductDetail, ProductSummary } from '../types/product'
+import type {
+  Category,
+  PageResponse,
+  ProductDetail,
+  ProductSuggestion,
+  ProductSummary,
+} from '../types/product'
 import { apiRequest } from './client'
 
 export function getCategories(signal?: AbortSignal) {
@@ -21,6 +27,7 @@ export function getProducts(options: {
   if (options.keyword) {
     path = '/products/search'
     params.set('keyword', options.keyword)
+    if (options.categoryId) params.set('categoryId', String(options.categoryId))
   } else if (options.categoryId) {
     path = `/categories/${options.categoryId}/products`
   }
@@ -32,4 +39,18 @@ export function getProducts(options: {
 
 export function getProduct(productId: number, signal?: AbortSignal) {
   return apiRequest<ProductDetail>(`/products/${productId}`, { signal })
+}
+
+export function getProductSuggestions(
+  keyword: string,
+  size = 8,
+  categoryId?: number,
+  signal?: AbortSignal,
+) {
+  const params = new URLSearchParams({
+    keyword,
+    size: String(size),
+  })
+  if (categoryId) params.set('categoryId', String(categoryId))
+  return apiRequest<ProductSuggestion[]>(`/products/suggestions?${params}`, { signal })
 }

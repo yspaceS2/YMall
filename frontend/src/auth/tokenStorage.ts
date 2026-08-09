@@ -3,6 +3,7 @@ import type { MemberRole } from '../types/auth'
 const ACCESS_TOKEN_KEY = 'ymall.accessToken'
 
 export const AUTH_CHANGED_EVENT = 'ymall:auth-changed'
+export const AUTH_LOGOUT_COMPLETED_EVENT = 'ymall:auth-logout-completed'
 export const AUTH_UNAUTHORIZED_EVENT = 'ymall:auth-unauthorized'
 
 export function getAccessToken() {
@@ -24,6 +25,12 @@ export function clearAccessToken() {
     window.dispatchEvent(new Event(AUTH_CHANGED_EVENT))
 }
 
+export function clearAccessTokenIfMatches(token: string) {
+    if (localStorage.getItem(ACCESS_TOKEN_KEY) === token) {
+        clearAccessToken()
+    }
+}
+
 export function notifyUnauthorized() {
     window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT))
 }
@@ -41,7 +48,13 @@ export function getTokenRole(token: string | null): MemberRole | null {
         : null
 }
 
-function getTokenPayload(token: string): { exp?: number; role?: unknown } | null {
+export function getTokenSubject(token: string | null) {
+    if (!token) return null
+    const subject = getTokenPayload(token)?.sub
+    return typeof subject === 'string' && subject.length > 0 ? subject : null
+}
+
+function getTokenPayload(token: string): { exp?: number; role?: unknown; sub?: unknown } | null {
     try {
         const payloadPart = token.split('.')[1]
         if (!payloadPart) {
@@ -50,7 +63,7 @@ function getTokenPayload(token: string): { exp?: number; role?: unknown } | null
 
         const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
         const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
-        return JSON.parse(atob(padded)) as { exp?: number; role?: unknown }
+        return JSON.parse(atob(padded)) as { exp?: number; role?: unknown; sub?: unknown }
     } catch {
         return null
     }

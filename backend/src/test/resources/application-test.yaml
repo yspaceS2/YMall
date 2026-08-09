@@ -12,13 +12,117 @@ spring:
     properties:
       hibernate:
         format_sql: false
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 2s
+      timeout: 2s
+  mail:
+    host: localhost
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            scope: openid, profile, email
 
 ymall:
+  login-attempt:
+    max-attempts: 5
+    window: 15m
+  oauth2:
+    google-one-tap:
+      client-id: test-client-id
+      nonce-ttl: 5m
+  email-change:
+    code-ttl: 5m
+    reauthentication-ttl: 10m
+    max-attempts: 5
+    max-requests: 5
+    request-window: 30m
+    resend-interval: 1m
+  signup-email-verification:
+    code-ttl: 5m
+    token-ttl: 10m
+    max-attempts: 5
+    max-requests: 5
+    request-window: 30m
+    resend-interval: 1m
   jwt:
     secret: test-jwt-secret-key-for-ymall-that-is-at-least-32-bytes-long
     access-token-expiration: 30m
+    refresh-token-expiration: 14d
+    refresh-token-cookie-secure: false
   file:
     upload-dir: ./build/test-uploads
     image-url-prefix: /images
     thumbnail-width: 300
     thumbnail-height: 300
+  mail:
+    from: test@ymall.local
+  settlement:
+    fee-rate: 0.03
+  cache:
+    product-detail-ttl: 10m
+    review-summary-ttl: 30m
+    home-merchandising-ttl: 5m
+  order:
+    pending-expiration:
+      enabled: false
+      timeout: 30m
+      batch-size: 100
+      poll-interval: 1h
+  seller:
+    order-privacy:
+      delivery-address-retention: 90d
+  ai:
+    review-summary:
+      enabled: false
+      base-url: http://localhost:12434/engines/v1
+      model: test-review-model
+      minimum-reviews: 10
+      maximum-reviews: 100
+      maximum-review-length: 1000
+      maximum-total-length: 6000
+      maximum-tokens: 192
+      connect-timeout: 100ms
+      read-timeout: 100ms
+      lock-ttl: 1m
+  kafka:
+    enabled: false
+    order-events:
+      name: ymall.order.events.v1
+      partitions: 3
+      replication-factor: 1
+      retention: 7d
+    outbox:
+      enabled: false
+      batch-size: 10
+      max-attempts: 3
+      retry-delay: 1ms
+      send-timeout: 1s
+      poll-interval: 1h
+      cleanup-interval: 1h
+      published-retention: 7d
+    notification-consumer:
+      enabled: false
+      group-id: ymall-notification-test
+    settlement-consumer:
+      enabled: false
+      group-id: ymall-settlement-test
+    review-summary:
+      name: ymall.review-summary.refresh.v1
+      partitions: 1
+      replication-factor: 1
+      retention: 1d
+      group-id: ymall-review-summary-test
+    consumer-retry:
+      max-retries: 2
+      retry-delay: 10ms
+      dlt-retention: 1d

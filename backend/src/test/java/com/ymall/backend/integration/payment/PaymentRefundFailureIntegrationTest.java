@@ -1,0 +1,283 @@
+package com.ymall.backend.integration.payment;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.ymall.backend.cart.repository.CartItemRepository;
+import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.repository.MemberAddressRepository;
+import com.ymall.backend.member.repository.MemberRepository;
+import com.ymall.backend.order.entity.Order;
+import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.payment.exception.PaymentException;
+import com.ymall.backend.payment.gateway.PaymentGateway;
+import com.ymall.backend.payment.gateway.PaymentGatewayResult;
+import com.ymall.backend.payment.gateway.PaymentGatewayStatus;
+import com.ymall.backend.payment.refund.entity.PaymentRefundStatus;
+import com.ymall.backend.payment.refund.repository.PaymentRefundRepository;
+import com.ymall.backend.product.entity.Product;
+import com.ymall.backend.product.repository.CategoryRepository;
+import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.testsupport.PostgresIntegrationTestSupport;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class PaymentRefundFailureIntegrationTest extends PostgresIntegrationTestSupport {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Autowired
+    private MemberAddressRepository memberAddressRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private CartItemRepository cartItemRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private PaymentRefundRepository refundRepository;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private PaymentGateway paymentGateway;
+
+    @Test
+    void recordsFailureAllowsRetryAndBlocksAfterUnknownOutcome() throws Exception {
+        PaymentTestFixture.PaymentOrderData fixture = PaymentTestFixture.createOrderData(
+            memberRepository,
+            memberAddressRepository,
+            categoryRepository,
+            productRepository,
+            cartItemRepository,
+            "refund-failure"
+        );
+        Member member = fixture.member();
+        Long addressId = fixture.address().getId();
+        Product product = fixture.product();
+        String token = jwtTokenProvider.createAccessToken(member).accessToken();
+
+        mockMvc.perform(post("/api/orders")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"idempotencyKey":"refund-failure-order","addressId":%d}
+                    """.formatted(addressId)))
+            .andExpect(status().isCreated());
+        Order order = orderRepository.findByMemberIdAndIdempotencyKey(
+            member.getId(),
+            "refund-failure-order"
+        ).orElseThrow();
+        Long orderItemId = order.getItems().get(0).getId();
+        given(paymentGateway.confirm(any())).willReturn(new PaymentGatewayResult(
+            "refund-failure-payment-key",
+            order.getPaymentOrderId(),
+            PaymentGatewayStatus.DONE,
+            order.getTotalAmount(),
+            BigDecimal.ZERO,
+            "CARD",
+            OffsetDateTime.now()
+        ));
+        mockMvc.perform(post(
+                "/api/orders/{orderId}/payments/confirmations",
+                order.getId()
+            )
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "paymentKey":"refund-failure-payment-key",
+                      "paymentOrderId":"%s",
+                      "amount":20000,
+                      "idempotencyKey":"refund-failure-confirmation"
+                    }
+                    """.formatted(order.getPaymentOrderId())))
+            .andExpect(status().isCreated());
+
+        given(paymentGateway.cancel(any()))
+            .willThrow(new PaymentException(
+                ErrorCode.PAYMENT_GATEWAY_ERROR,
+                "REJECT_REFUND",
+                "Refund was rejected."
+            ))
+            .willReturn(new PaymentGatewayResult(
+                "unexpected-payment-key",
+                order.getPaymentOrderId(),
+                PaymentGatewayStatus.CANCELED,
+                order.getTotalAmount(),
+                BigDecimal.ZERO,
+                "CARD",
+                OffsetDateTime.now()
+            ))
+            .willReturn(new PaymentGatewayResult(
+                "refund-failure-payment-key",
+                order.getPaymentOrderId(),
+                PaymentGatewayStatus.PARTIAL_CANCELED,
+                order.getTotalAmount(),
+                BigDecimal.valueOf(10000),
+                "CARD",
+                OffsetDateTime.now()
+            ))
+            .willReturn(new PaymentGatewayResult(
+                "unexpected-payment-key",
+                order.getPaymentOrderId(),
+                PaymentGatewayStatus.CANCELED,
+                order.getTotalAmount(),
+                BigDecimal.ZERO,
+                "CARD",
+                OffsetDateTime.now()
+            ));
+        given(paymentGateway.findByPaymentKey("refund-failure-payment-key"))
+            .willReturn(
+                new PaymentGatewayResult(
+                    "refund-failure-payment-key",
+                    order.getPaymentOrderId(),
+                    PaymentGatewayStatus.DONE,
+                    order.getTotalAmount(),
+                    order.getTotalAmount(),
+                    "CARD",
+                    OffsetDateTime.now()
+                ),
+                new PaymentGatewayResult(
+                    "refund-failure-payment-key",
+                    order.getPaymentOrderId(),
+                    PaymentGatewayStatus.CANCELED,
+                    order.getTotalAmount(),
+                    BigDecimal.ZERO,
+                    "CARD",
+                    OffsetDateTime.now()
+                )
+            );
+
+        mockMvc.perform(post("/api/orders/{orderId}/refunds", order.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(refundJson("failed-refund", orderItemId)))
+            .andExpect(status().isBadGateway())
+            .andExpect(jsonPath("$.error.code").value("PAYMENT_GATEWAY_ERROR"));
+
+        assertThat(refundRepository.findAll()).singleElement().satisfies(refund -> {
+            assertThat(refund.getStatus()).isEqualTo(PaymentRefundStatus.FAILED);
+            assertThat(refund.getFailureCode()).isEqualTo("REJECT_REFUND");
+            assertThat(refund.getFailureMessage()).isEqualTo("Refund was rejected.");
+        });
+
+        mockMvc.perform(post("/api/orders/{orderId}/refunds", order.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(refundJson("unknown-refund", orderItemId)))
+            .andExpect(status().isBadGateway())
+            .andExpect(jsonPath("$.error.code")
+                .value("PAYMENT_REFUND_PROVIDER_MISMATCH"));
+
+        assertThat(refundRepository.findAll())
+            .extracting(refund -> refund.getStatus())
+            .containsExactlyInAnyOrder(
+                PaymentRefundStatus.FAILED,
+                PaymentRefundStatus.UNKNOWN
+            );
+
+        mockMvc.perform(post("/api/orders/{orderId}/refunds", order.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(refundJson("unknown-refund", orderItemId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("FAILED"));
+
+        mockMvc.perform(post("/api/orders/{orderId}/refunds", order.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(refundJson("successful-retry", orderItemId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("SUCCEEDED"));
+
+        mockMvc.perform(post("/api/orders/{orderId}/refunds", order.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(refundJson("reconciled-refund", orderItemId)))
+            .andExpect(status().isBadGateway())
+            .andExpect(jsonPath("$.error.code")
+                .value("PAYMENT_REFUND_PROVIDER_MISMATCH"));
+
+        mockMvc.perform(post("/api/orders/{orderId}/refunds", order.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(refundJson("reconciled-refund", orderItemId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("SUCCEEDED"));
+
+        assertThat(refundRepository.findAll())
+            .extracting(refund -> refund.getStatus())
+            .containsExactlyInAnyOrder(
+                PaymentRefundStatus.FAILED,
+                PaymentRefundStatus.FAILED,
+                PaymentRefundStatus.SUCCEEDED,
+                PaymentRefundStatus.SUCCEEDED
+            );
+        assertThat(refundRepository.findAll())
+            .filteredOn(refund ->
+                "unknown-refund".equals(refund.getIdempotencyKey())
+            )
+            .singleElement()
+            .satisfies(refund ->
+                assertThat(refund.getFailureCode()).isEqualTo("REFUND_NOT_APPLIED")
+            );
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getStock())
+            .isEqualTo(10);
+        int succeededRefundQuantity = refundRepository
+            .findAllByOrderIdOrderByCreatedAtDesc(order.getId())
+            .stream()
+            .filter(refund -> refund.getStatus() == PaymentRefundStatus.SUCCEEDED)
+            .flatMap(refund -> refund.getItems().stream())
+            .mapToInt(refundItem -> refundItem.getQuantity())
+            .sum();
+        assertThat(succeededRefundQuantity).isEqualTo(2);
+    }
+
+    private String refundJson(String idempotencyKey, Long orderItemId) {
+        return """
+            {
+              "idempotencyKey":"%s",
+              "reason":"Refund integration test",
+              "items":[{"orderItemId":%d,"quantity":1}]
+            }
+            """.formatted(idempotencyKey, orderItemId);
+    }
+
+    private String bearer(String token) {
+        return "Bearer " + token;
+    }
+}

@@ -1,104 +1,132 @@
 package com.ymall.backend.admin.service;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
+import java.util.List;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+import com.ymall.backend.admin.dto.AdminAuditLogResponse;
 import com.ymall.backend.admin.dto.AdminMemberResponse;
+import com.ymall.backend.admin.dto.AdminMemberRestrictionRequest;
 import com.ymall.backend.admin.dto.AdminOrderResponse;
 import com.ymall.backend.admin.dto.AdminProductResponse;
 import com.ymall.backend.admin.dto.AdminProductStatusUpdateRequest;
 import com.ymall.backend.admin.dto.AdminSellerResponse;
-import com.ymall.backend.admin.mapper.AdminMapper;
+import com.ymall.backend.admin.dto.AdminSessionRevokeRequest;
+import com.ymall.backend.admin.entity.AdminGrade;
 import com.ymall.backend.global.common.PageResponse;
-import com.ymall.backend.global.exception.BusinessException;
-import com.ymall.backend.global.exception.ErrorCode;
-import com.ymall.backend.member.repository.MemberRepository;
-import com.ymall.backend.order.repository.OrderRepository;
-import com.ymall.backend.product.entity.Product;
+import com.ymall.backend.member.entity.MemberAccessStatus;
+import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.product.entity.ProductStatus;
-import com.ymall.backend.product.repository.ProductRepository;
-import com.ymall.backend.seller.repository.SellerProfileRepository;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class AdminService {
 
-    private static final int MAX_PAGE_SIZE = 100;
-
-    private final ProductRepository productRepository;
-    private final MemberRepository memberRepository;
-    private final SellerProfileRepository sellerProfileRepository;
-    private final OrderRepository orderRepository;
-    private final AdminMapper adminMapper;
+    private final AdminProductManagementService productManagementService;
+    private final AdminMemberManagementService memberManagementService;
+    private final AdminSellerManagementService sellerManagementService;
+    private final AdminOrderManagementService orderManagementService;
 
     public PageResponse<AdminProductResponse> getProducts(
         ProductStatus status,
         int page,
-        int size
+        int size,
+        String keyword
     ) {
-        return PageResponse.from(
-            productRepository.findByStatus(status, createPageable(page, size))
-                .map(adminMapper::toProductResponse)
-        );
+        return productManagementService.getProducts(status, page, size, keyword);
     }
 
-    @Transactional
+    public AdminProductResponse getProduct(Long productId) {
+        return productManagementService.getProduct(productId);
+    }
+
     public AdminProductResponse updateProductStatus(
         Long productId,
         AdminProductStatusUpdateRequest request
     ) {
-        if (request.status() != ProductStatus.APPROVED
-            && request.status() != ProductStatus.REJECTED) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST);
-        }
-
-        Product product = productRepository.findByIdForReview(productId)
-            .filter(foundProduct -> foundProduct.getStatus() != ProductStatus.DELETED)
-            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
-
-        if (product.getStatus() != ProductStatus.PENDING) {
-            throw new BusinessException(ErrorCode.PRODUCT_REVIEW_NOT_ALLOWED);
-        }
-        if (request.status() == ProductStatus.APPROVED) {
-            product.approve();
-        } else {
-            product.reject();
-        }
-
-        return adminMapper.toProductResponse(product);
+        return productManagementService.updateProductStatus(productId, request);
     }
 
-    public PageResponse<AdminMemberResponse> getMembers(int page, int size) {
-        return PageResponse.from(
-            memberRepository.findAll(createPageable(page, size))
-                .map(adminMapper::toMemberResponse)
+    public PageResponse<AdminMemberResponse> getMembers(
+        Long actorMemberId,
+        int page,
+        int size,
+        String keyword,
+        MemberAccessStatus accessStatus,
+        MemberRole role,
+        AdminGrade adminGrade,
+        LocalDate joinedFrom,
+        LocalDate joinedTo
+    ) {
+        return memberManagementService.getMembers(
+            actorMemberId,
+            page,
+            size,
+            keyword,
+            accessStatus,
+            role,
+            adminGrade,
+            joinedFrom,
+            joinedTo
         );
     }
 
-    public PageResponse<AdminSellerResponse> getSellers(int page, int size) {
-        return PageResponse.from(
-            sellerProfileRepository.findAll(createPageable(page, size))
-                .map(adminMapper::toSellerResponse)
+    public AdminMemberResponse getMember(Long actorMemberId, Long memberId) {
+        return memberManagementService.getMember(actorMemberId, memberId);
+    }
+
+    public AdminMemberResponse changeMemberRestriction(
+        Long actorMemberId,
+        Long memberId,
+        AdminMemberRestrictionRequest request
+    ) {
+        return memberManagementService.changeMemberRestriction(
+            actorMemberId,
+            memberId,
+            request
         );
     }
 
-    public PageResponse<AdminOrderResponse> getOrders(int page, int size) {
-        return PageResponse.from(
-            orderRepository.findAll(createPageable(page, size))
-                .map(adminMapper::toOrderResponse)
-        );
+    public void revokeMemberSessions(
+        Long actorMemberId,
+        Long memberId,
+        AdminSessionRevokeRequest request
+    ) {
+        memberManagementService.revokeMemberSessions(actorMemberId, memberId, request);
     }
 
-    private Pageable createPageable(int page, int size) {
-        int pageNumber = Math.max(page - 1, 0);
-        int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+    public List<AdminAuditLogResponse> getMemberAuditLogs(
+        Long actorMemberId,
+        Long memberId
+    ) {
+        return memberManagementService.getMemberAuditLogs(actorMemberId, memberId);
+    }
 
-        return PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+    public PageResponse<AdminSellerResponse> getSellers(
+        Long actorMemberId,
+        int page,
+        int size,
+        String keyword
+    ) {
+        return sellerManagementService.getSellers(actorMemberId, page, size, keyword);
+    }
+
+    public AdminSellerResponse getSeller(Long actorMemberId, Long sellerId) {
+        return sellerManagementService.getSeller(actorMemberId, sellerId);
+    }
+
+    public PageResponse<AdminOrderResponse> getOrders(
+        int page,
+        int size,
+        String keyword,
+        String workType
+    ) {
+        return orderManagementService.getOrders(page, size, keyword, workType);
+    }
+
+    public AdminOrderResponse getOrder(Long orderId) {
+        return orderManagementService.getOrder(orderId);
     }
 }

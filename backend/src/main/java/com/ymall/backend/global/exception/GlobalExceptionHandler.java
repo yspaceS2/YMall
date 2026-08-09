@@ -3,9 +3,14 @@ package com.ymall.backend.global.exception;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+
+import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -24,7 +29,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * @Valid 검증 실패 내용을 필드 단위 메시지로 병합한다.
+     * {@code @Valid} 검증 실패 내용을 필드 단위 메시지로 병합한다.
      * 프론트에서 어떤 입력값이 실패했는지 바로 표시할 수 있도록 field: message 형식을 사용한다.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -38,5 +43,44 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(ErrorCode.INVALID_REQUEST.getStatus())
             .body(ErrorResponse.of(ErrorCode.INVALID_REQUEST, message));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableMessageException() {
+        return ResponseEntity
+            .status(ErrorCode.INVALID_REQUEST.getStatus())
+            .body(ErrorResponse.from(ErrorCode.INVALID_REQUEST));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolationException(
+        ConstraintViolationException exception
+    ) {
+        String message = exception.getConstraintViolations()
+            .stream()
+            .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+            .collect(Collectors.joining(", "));
+
+        return ResponseEntity
+            .status(ErrorCode.INVALID_REQUEST.getStatus())
+            .body(ErrorResponse.of(ErrorCode.INVALID_REQUEST, message));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingRequestParameterException(
+        MissingServletRequestParameterException exception
+    ) {
+        String message = exception.getParameterName() + ": 필수 요청 값입니다.";
+
+        return ResponseEntity
+            .status(ErrorCode.INVALID_REQUEST.getStatus())
+            .body(ErrorResponse.of(ErrorCode.INVALID_REQUEST, message));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException() {
+        return ResponseEntity
+            .status(ErrorCode.FILE_SIZE_EXCEEDED.getStatus())
+            .body(ErrorResponse.from(ErrorCode.FILE_SIZE_EXCEEDED));
     }
 }

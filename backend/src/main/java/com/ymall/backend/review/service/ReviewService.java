@@ -6,6 +6,7 @@ import java.math.RoundingMode;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +23,12 @@ import com.ymall.backend.order.repository.OrderItemRepository;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 import com.ymall.backend.review.dto.ReviewCreateRequest;
 import com.ymall.backend.review.dto.ReviewResponse;
 import com.ymall.backend.review.dto.ReviewUpdateRequest;
 import com.ymall.backend.review.entity.Review;
+import com.ymall.backend.review.event.ReviewSummaryRefreshEvent;
 import com.ymall.backend.review.repository.ReviewRepository;
 
 @Service
@@ -39,6 +42,8 @@ public class ReviewService {
     private final OrderItemRepository orderItemRepository;
     private final MemberRepository memberRepository;
     private final ProductRepository productRepository;
+    private final ProductCacheInvalidator productCacheInvalidator;
+    private final ApplicationEventPublisher eventPublisher;
 
     public PageResponse<ReviewResponse> getProductReviews(Long productId, int page, int size) {
         if (!productRepository.existsByIdAndStatus(productId, ProductStatus.APPROVED)) {
@@ -81,6 +86,8 @@ public class ReviewService {
             request.content().trim()
         ));
         refreshProductRating(product);
+        productCacheInvalidator.evictDetail(product.getId());
+        eventPublisher.publishEvent(ReviewSummaryRefreshEvent.create(product.getId()));
         return ReviewResponse.from(review);
     }
 
@@ -91,6 +98,8 @@ public class ReviewService {
         review.update(request.rating(), request.content().trim());
         reviewRepository.flush();
         refreshProductRating(product);
+        productCacheInvalidator.evictDetail(product.getId());
+        eventPublisher.publishEvent(ReviewSummaryRefreshEvent.create(product.getId()));
         return ReviewResponse.from(review);
     }
 
@@ -101,6 +110,8 @@ public class ReviewService {
         reviewRepository.delete(review);
         reviewRepository.flush();
         refreshProductRating(product);
+        productCacheInvalidator.evictDetail(product.getId());
+        eventPublisher.publishEvent(ReviewSummaryRefreshEvent.create(product.getId()));
     }
 
     private Review getOwnedReview(Long memberId, Long reviewId) {

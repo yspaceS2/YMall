@@ -4,10 +4,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -51,12 +53,24 @@ public class Order {
     @Column(name = "idempotency_key", nullable = false, length = 100)
     private String idempotencyKey;
 
+    @Column(name = "payment_order_id", nullable = false, updatable = false, length = 64)
+    private String paymentOrderId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private OrderStatus status;
 
     @Column(nullable = false, precision = 38, scale = 2)
     private BigDecimal totalAmount;
+
+    @Column(name = "shipping_amount", nullable = false, precision = 38, scale = 2)
+    private BigDecimal shippingFee;
+
+    @Embedded
+    private DeliveryAddressSnapshot deliveryAddress;
+
+    @Column(name = "inventory_reserved", nullable = false)
+    private boolean inventoryReserved;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 100)
@@ -69,16 +83,29 @@ public class Order {
     private LocalDateTime updatedAt;
 
     public Order(Member member, String idempotencyKey) {
+        this(member, idempotencyKey, null);
+    }
+
+    public Order(Member member, String idempotencyKey, DeliveryAddressSnapshot deliveryAddress) {
         this.member = member;
         this.idempotencyKey = idempotencyKey;
+        this.paymentOrderId = "YMALL-" + UUID.randomUUID().toString().replace("-", "");
         this.status = OrderStatus.PENDING_PAYMENT;
         this.totalAmount = BigDecimal.ZERO.setScale(2);
+        this.shippingFee = BigDecimal.ZERO.setScale(2);
+        this.deliveryAddress = deliveryAddress;
+        this.inventoryReserved = true;
     }
 
     public void addItem(OrderItem item) {
         items.add(item);
         item.assignOrder(this);
-        totalAmount = totalAmount.add(item.getLineTotal());
+        shippingFee = shippingFee.add(item.getShippingFee());
+        totalAmount = totalAmount.add(item.getLineTotal()).add(item.getShippingFee());
+    }
+
+    public BigDecimal getProductAmount() {
+        return totalAmount.subtract(shippingFee);
     }
 
     public void completePayment() {
@@ -93,14 +120,37 @@ public class Order {
         this.status = OrderStatus.CANCELED;
     }
 
+    public void applyRefund(boolean fullyRefunded) {
+        this.status = fullyRefunded
+            ? OrderStatus.REFUNDED
+            : OrderStatus.PARTIALLY_REFUNDED;
+        if (fullyRefunded) {
+            this.inventoryReserved = false;
+        }
+    }
+
+    public void reserveInventory() {
+        this.inventoryReserved = true;
+    }
+
+    public void releaseInventory() {
+        this.inventoryReserved = false;
+    }
+
     public void refreshFulfillmentStatus() {
-        if (items.stream().allMatch(item ->
+        List<OrderItem> activeItems = items.stream()
+            .filter(item -> item.getRefundableQuantity() > 0)
+            .toList();
+        if (activeItems.isEmpty()) {
+            return;
+        }
+        if (activeItems.stream().allMatch(item ->
             item.getEffectiveFulfillmentStatus() == OrderItemFulfillmentStatus.DELIVERED
         )) {
             this.status = OrderStatus.DELIVERED;
             return;
         }
-        if (items.stream().allMatch(item -> {
+        if (activeItems.stream().allMatch(item -> {
             OrderItemFulfillmentStatus itemStatus = item.getEffectiveFulfillmentStatus();
             return itemStatus == OrderItemFulfillmentStatus.SHIPPED
                 || itemStatus == OrderItemFulfillmentStatus.DELIVERED;
@@ -108,13 +158,15 @@ public class Order {
             this.status = OrderStatus.SHIPPED;
             return;
         }
-        if (items.stream().anyMatch(item ->
+        if (activeItems.stream().anyMatch(item ->
             item.getEffectiveFulfillmentStatus() != OrderItemFulfillmentStatus.PENDING
         )) {
             this.status = OrderStatus.PREPARING;
             return;
         }
-        this.status = OrderStatus.PAID;
+        if (status != OrderStatus.PARTIALLY_REFUNDED) {
+            this.status = OrderStatus.PAID;
+        }
     }
 
     @PrePersist

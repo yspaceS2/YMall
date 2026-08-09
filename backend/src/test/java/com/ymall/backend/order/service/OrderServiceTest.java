@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -22,20 +23,24 @@ import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.member.entity.MemberRole;
+import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
-import com.ymall.backend.notification.event.NotificationEventPublisher;
 import com.ymall.backend.order.dto.OrderCreateRequest;
 import com.ymall.backend.order.dto.OrderResponse;
 import com.ymall.backend.order.entity.Order;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.mapper.OrderMapper;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -50,13 +55,22 @@ class OrderServiceTest {
     private MemberRepository memberRepository;
 
     @Mock
+    private MemberAddressRepository memberAddressRepository;
+
+    @Mock
     private ProductRepository productRepository;
 
     @Mock
     private OrderMapper orderMapper;
 
     @Mock
-    private NotificationEventPublisher notificationEventPublisher;
+    private OrderOutboxService orderOutboxService;
+
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
+    private ProductCacheInvalidator productCacheInvalidator;
 
     @InjectMocks
     private OrderService orderService;
@@ -71,17 +85,68 @@ class OrderServiceTest {
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(orderRepository.findByMemberIdAndIdempotencyKey(1L, "request-1"))
             .willReturn(Optional.empty());
+        given(memberAddressRepository.findByIdAndMemberId(1L, 1L))
+            .willReturn(Optional.of(address(member)));
         given(cartItemRepository.findAllByMemberIdForUpdate(1L)).willReturn(List.of(cartItem));
         given(productRepository.findAllByIdForUpdate(List.of(1L))).willReturn(List.of(product));
         given(orderRepository.save(any(Order.class))).willAnswer(invocation -> invocation.getArgument(0));
         given(orderMapper.toOrderResponse(any(Order.class))).willReturn(response);
 
-        OrderResponse result = orderService.createOrder(1L, new OrderCreateRequest("request-1"));
+        OrderResponse result = orderService.createOrder(1L, new OrderCreateRequest("request-1", 1L));
 
         assertThat(result.orderId()).isEqualTo(1L);
         assertThat(product.getStock()).isEqualTo(7);
         then(cartItemRepository).should().deleteAll(List.of(cartItem));
         then(orderRepository).should().save(any(Order.class));
+        then(productCacheInvalidator).should().evictProductDetails(List.of(1L));
+    }
+
+    @Test
+    void snapshotsShippingFeeAndAddsItToOrderTotal() {
+        Member member = member();
+        Product product = new Product(
+            new Category("전자기기", "electronics"),
+            "무선 키보드",
+            "description",
+            "YMall",
+            BigDecimal.valueOf(39_000),
+            BigDecimal.ZERO,
+            null,
+            null,
+            false,
+            BigDecimal.valueOf(3_000),
+            2,
+            BigDecimal.valueOf(4.5),
+            10,
+            "thumbnail",
+            ProductStatus.APPROVED
+        );
+        ReflectionTestUtils.setField(product, "id", 1L);
+        CartItem cartItem = new CartItem(member, product, 2);
+
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(orderRepository.findByMemberIdAndIdempotencyKey(1L, "shipping-request"))
+            .willReturn(Optional.empty());
+        given(memberAddressRepository.findByIdAndMemberId(1L, 1L))
+            .willReturn(Optional.of(address(member)));
+        given(cartItemRepository.findAllByMemberIdForUpdate(1L)).willReturn(List.of(cartItem));
+        given(productRepository.findAllByIdForUpdate(List.of(1L))).willReturn(List.of(product));
+        given(orderRepository.save(any(Order.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(orderMapper.toOrderResponse(any(Order.class))).willReturn(response(1L));
+
+        orderService.createOrder(
+            1L,
+            new OrderCreateRequest("shipping-request", 1L)
+        );
+
+        ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
+        then(orderRepository).should().save(captor.capture());
+        Order savedOrder = captor.getValue();
+        assertThat(savedOrder.getProductAmount()).isEqualByComparingTo("78000");
+        assertThat(savedOrder.getShippingFee()).isEqualByComparingTo("3000");
+        assertThat(savedOrder.getTotalAmount()).isEqualByComparingTo("81000");
+        assertThat(savedOrder.getItems().get(0).getShippingFee())
+            .isEqualByComparingTo("3000");
     }
 
     @Test
@@ -95,7 +160,7 @@ class OrderServiceTest {
             .willReturn(Optional.of(existingOrder));
         given(orderMapper.toOrderResponse(existingOrder)).willReturn(response);
 
-        OrderResponse result = orderService.createOrder(1L, new OrderCreateRequest("request-1"));
+        OrderResponse result = orderService.createOrder(1L, new OrderCreateRequest("request-1", 1L));
 
         assertThat(result.orderId()).isEqualTo(10L);
         then(cartItemRepository).shouldHaveNoInteractions();
@@ -112,10 +177,12 @@ class OrderServiceTest {
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(orderRepository.findByMemberIdAndIdempotencyKey(1L, "request-1"))
             .willReturn(Optional.empty());
+        given(memberAddressRepository.findByIdAndMemberId(1L, 1L))
+            .willReturn(Optional.of(address(member)));
         given(cartItemRepository.findAllByMemberIdForUpdate(1L)).willReturn(List.of(cartItem));
         given(productRepository.findAllByIdForUpdate(List.of(1L))).willReturn(List.of(product));
 
-        assertThatThrownBy(() -> orderService.createOrder(1L, new OrderCreateRequest("request-1")))
+        assertThatThrownBy(() -> orderService.createOrder(1L, new OrderCreateRequest("request-1", 1L)))
             .isInstanceOf(BusinessException.class)
             .extracting(exception -> ((BusinessException) exception).getErrorCode())
             .isEqualTo(ErrorCode.INSUFFICIENT_STOCK);
@@ -146,6 +213,19 @@ class OrderServiceTest {
         );
         ReflectionTestUtils.setField(product, "id", 1L);
         return product;
+    }
+
+    private MemberAddress address(Member member) {
+        return new MemberAddress(
+            member,
+            "Home",
+            "Recipient",
+            "01012345678",
+            "00000",
+            "123 Test-ro",
+            "101",
+            true
+        );
     }
 
     private OrderResponse response(Long orderId) {

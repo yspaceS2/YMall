@@ -2,6 +2,7 @@ package com.ymall.backend.notification.repository;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,15 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Optional<Notification> findByIdAndMemberId(Long notificationId, Long memberId);
 
     long countByMemberIdAndReadAtIsNull(Long memberId);
+
+    boolean existsBySourceEventId(UUID sourceEventId);
+
+    @Modifying(clearAutomatically = true)
+    @Query("""
+        delete from Notification notification
+        where notification.member.id = :memberId
+        """)
+    int deleteAllByMemberId(@Param("memberId") Long memberId);
 
     @Modifying(clearAutomatically = true)
     @Query("""

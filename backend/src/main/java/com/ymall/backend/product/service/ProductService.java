@@ -1,22 +1,29 @@
 package com.ymall.backend.product.service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.global.config.ProductCacheNames;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.product.dto.CategoryResponse;
 import com.ymall.backend.product.dto.ProductCreateRequest;
 import com.ymall.backend.product.dto.ProductDetailResponse;
 import com.ymall.backend.product.dto.ProductListResponse;
+import com.ymall.backend.product.dto.ProductSuggestionResponse;
 import com.ymall.backend.product.dto.ProductUpdateRequest;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
@@ -24,6 +31,9 @@ import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.mapper.ProductMapper;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.repository.ProductSuggestionFinder;
+import com.ymall.backend.product.search.KoreanSearchNormalizer;
+import com.ymall.backend.product.search.ProductSearchMatch;
 
 @Service
 @RequiredArgsConstructor
@@ -31,10 +41,15 @@ import com.ymall.backend.product.repository.ProductRepository;
 public class ProductService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_SUGGESTION_SIZE = 8;
+    private static final int MAX_FUZZY_SEARCH_RESULTS = 100;
 
     private final ProductRepository productRepository;
+    private final ProductSuggestionFinder productSuggestionFinder;
     private final CategoryRepository categoryRepository;
+    private final ProductCategoryPolicy productCategoryPolicy;
     private final ProductMapper productMapper;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
     /**
      * 사용자에게 노출되는 상품 목록은 승인된 상품만 대상으로 한다.
@@ -53,6 +68,7 @@ public class ProductService {
      * 상품 상세 조회도 공개 목록과 동일하게 APPROVED 상태만 허용한다.
      * DELETED, DRAFT, PENDING 상품은 외부 사용자가 존재 여부를 알 수 없도록 404로 처리한다.
      */
+    @Cacheable(cacheNames = ProductCacheNames.DETAILS, key = "#productId", sync = true)
     public ProductDetailResponse getProduct(Long productId) {
         return productRepository.findWithCategoryAndImagesById(productId)
             .filter(product -> product.getStatus() == ProductStatus.APPROVED)
@@ -60,33 +76,136 @@ public class ProductService {
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
     }
 
-    public PageResponse<ProductListResponse> searchProducts(String keyword, int page, int size) {
+    public PageResponse<ProductListResponse> searchProducts(
+        String keyword,
+        Long categoryId,
+        int page,
+        int size
+    ) {
         Pageable pageable = createPageable(page, size);
+        String normalizedKeyword = KoreanSearchNormalizer.normalize(keyword);
+        if (normalizedKeyword.isEmpty()) {
+            return categoryId == null
+                ? getProducts(page, size)
+                : getProductsByCategory(categoryId, page, size);
+        }
+        Set<Long> categoryIds = categoryId == null
+            ? Set.of()
+            : getSearchCategoryIds(categoryId);
+        String choseongKeyword = KoreanSearchNormalizer.isChoseongQuery(normalizedKeyword)
+            ? normalizedKeyword
+            : "";
 
-        return PageResponse.from(
-            productRepository.findByNameContainingIgnoreCaseAndStatus(
-                    keyword,
-                    ProductStatus.APPROVED,
-                    pageable
+        Page<Product> exactMatches = productRepository.searchPublicProducts(
+            normalizedKeyword,
+            choseongKeyword,
+            ProductStatus.APPROVED,
+            !categoryIds.isEmpty(),
+            categoryIds.isEmpty() ? Set.of(-1L) : categoryIds,
+            pageable
+        );
+        if (exactMatches.getTotalElements() > 0) {
+            return PageResponse.from(exactMatches.map(productMapper::toProductListResponse));
+        }
+
+        return fuzzySearch(normalizedKeyword, categoryIds, page, size);
+    }
+
+    public List<ProductSuggestionResponse> getProductSuggestions(
+        String keyword,
+        Long categoryId,
+        int size
+    ) {
+        String normalizedKeyword = KoreanSearchNormalizer.normalize(keyword);
+        if (normalizedKeyword.length() < 2) {
+            return List.of();
+        }
+        Set<Long> categoryIds = categoryId == null
+            ? Set.of()
+            : getSearchCategoryIds(categoryId);
+        int suggestionSize = Math.min(Math.max(size, 1), MAX_SUGGESTION_SIZE);
+        return productSuggestionFinder.findMatches(
+                normalizedKeyword,
+                categoryIds,
+                suggestionSize
+            )
+            .stream()
+            .map(ProductSuggestionResponse::from)
+            .toList();
+    }
+
+    private PageResponse<ProductListResponse> fuzzySearch(
+        String normalizedKeyword,
+        Set<Long> categoryIds,
+        int page,
+        int size
+    ) {
+        List<ProductSearchMatch> matches = productSuggestionFinder.findMatches(
+            normalizedKeyword,
+            categoryIds,
+            MAX_FUZZY_SEARCH_RESULTS
+        );
+        int pageNumber = Math.max(page, 1);
+        int pageSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        long requestedOffset = (long) (pageNumber - 1) * pageSize;
+        int fromIndex = requestedOffset >= matches.size()
+            ? matches.size()
+            : (int) requestedOffset;
+        int toIndex = Math.min(fromIndex + pageSize, matches.size());
+        List<ProductSearchMatch> pageMatches = matches.subList(fromIndex, toIndex);
+
+        Map<Long, Product> productsById = pageMatches.isEmpty()
+            ? Map.of()
+            : productRepository.findByIdIn(
+                    pageMatches.stream().map(ProductSearchMatch::productId).toList()
                 )
-                .map(productMapper::toProductListResponse)
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(
+                    Product::getId,
+                    product -> product,
+                    (left, right) -> left,
+                    LinkedHashMap::new
+                ));
+        List<ProductListResponse> content = pageMatches.stream()
+            .map(match -> productsById.get(match.productId()))
+            .filter(java.util.Objects::nonNull)
+            .map(productMapper::toProductListResponse)
+            .toList();
+        int totalPages = matches.isEmpty()
+            ? 0
+            : (int) Math.ceil((double) matches.size() / pageSize);
+
+        return new PageResponse<>(
+            content,
+            pageNumber,
+            pageSize,
+            matches.size(),
+            totalPages,
+            pageNumber < totalPages,
+            pageNumber > 1 && fromIndex > 0
         );
     }
 
     public List<CategoryResponse> getCategories() {
-        return categoryRepository.findAll(Sort.by(Sort.Direction.ASC, "name"))
+        return categoryRepository.findByActiveTrue(
+                Sort.by(
+                    Sort.Order.asc("depth"),
+                    Sort.Order.asc("displayOrder"),
+                    Sort.Order.asc("name")
+                )
+            )
             .stream()
+            .filter(productCategoryPolicy::isPathActive)
             .map(productMapper::toCategoryResponse)
             .toList();
     }
 
     public PageResponse<ProductListResponse> getProductsByCategory(Long categoryId, int page, int size) {
-        Category category = categoryRepository.findById(categoryId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+        Set<Long> categoryIds = productCategoryPolicy.getPublicTreeIds(categoryId);
 
         return PageResponse.from(
-            productRepository.findByCategoryAndStatus(
-                    category,
+            productRepository.findByCategoryIdInAndStatus(
+                    categoryIds,
                     ProductStatus.APPROVED,
                     createPageable(page, size)
                 )
@@ -96,7 +215,7 @@ public class ProductService {
 
     @Transactional
     public ProductDetailResponse createProduct(ProductCreateRequest request) {
-        Category category = getCategory(request.categoryId());
+        Category category = productCategoryPolicy.getSelectableCategory(request.categoryId());
         Product product = productMapper.toEntity(request, category, ProductStatus.APPROVED);
         Product savedProduct = productRepository.save(product);
 
@@ -110,7 +229,7 @@ public class ProductService {
     @Transactional
     public ProductDetailResponse updateProduct(Long productId, ProductUpdateRequest request) {
         Product product = getProductEntity(productId);
-        Category category = getCategory(request.categoryId());
+        Category category = productCategoryPolicy.getSelectableCategory(request.categoryId());
 
         product.update(
             category,
@@ -119,10 +238,18 @@ public class ProductService {
             request.brand(),
             request.price(),
             request.discountPercentage(),
+            request.discountStartDate(),
+            request.discountEndDate(),
+            request.freeShipping(),
+            request.shippingFee() == null ? java.math.BigDecimal.ZERO : request.shippingFee(),
+            request.estimatedDeliveryDays(),
             request.stock(),
             request.thumbnailUrl()
         );
         product.replaceImages(productMapper.toImageEntities(request));
+        product.replaceDetailImages(productMapper.toDetailImageEntities(request));
+
+        productCacheInvalidator.evictDetail(productId);
 
         return productMapper.toProductDetailResponse(product);
     }
@@ -136,6 +263,7 @@ public class ProductService {
         Product product = getProductEntity(productId);
 
         product.delete();
+        productCacheInvalidator.evictDetail(productId);
     }
 
     /**
@@ -150,9 +278,8 @@ public class ProductService {
         return PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 
-    private Category getCategory(Long categoryId) {
-        return categoryRepository.findById(categoryId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+    private Set<Long> getSearchCategoryIds(Long categoryId) {
+        return productCategoryPolicy.getPublicTreeIds(categoryId);
     }
 
     /**

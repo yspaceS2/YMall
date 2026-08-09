@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import lombok.RequiredArgsConstructor;
 
+import com.ymall.backend.file.domain.FilePurpose;
 import com.ymall.backend.file.dto.FileUploadResponse;
 import com.ymall.backend.file.service.FileStorageService;
 import com.ymall.backend.global.common.ApiResponse;
@@ -20,7 +21,10 @@ public class FileController {
     private final FileStorageService fileStorageService;
 
     @PostMapping("/images")
-    public ApiResponse<FileUploadResponse> uploadImage(@RequestParam MultipartFile file) {
-        return ApiResponse.success(fileStorageService.storeImage(file), "이미지가 업로드되었습니다.");
+    public ApiResponse<FileUploadResponse> uploadImage(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.success(
+            fileStorageService.storeImage(file, FilePurpose.PRODUCT_IMAGE),
+            "이미지가 업로드되었습니다."
+        );
     }
 }

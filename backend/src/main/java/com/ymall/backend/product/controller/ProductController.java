@@ -1,7 +1,10 @@
 package com.ymall.backend.product.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 
 import com.ymall.backend.global.common.ApiResponse;
@@ -20,10 +24,12 @@ import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.product.dto.ProductCreateRequest;
 import com.ymall.backend.product.dto.ProductDetailResponse;
 import com.ymall.backend.product.dto.ProductListResponse;
+import com.ymall.backend.product.dto.ProductSuggestionResponse;
 import com.ymall.backend.product.dto.ProductUpdateRequest;
 import com.ymall.backend.product.service.ProductService;
 
 @RestController
+@Validated
 @RequiredArgsConstructor
 @RequestMapping("/api/products")
 public class ProductController {
@@ -45,11 +51,21 @@ public class ProductController {
 
     @GetMapping("/search")
     public ApiResponse<PageResponse<ProductListResponse>> searchProducts(
-        @RequestParam String keyword,
+        @RequestParam @Size(max = 100, message = "검색어는 100자 이하여야 합니다.") String keyword,
+        @RequestParam(required = false) Long categoryId,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size
     ) {
-        return ApiResponse.success(productService.searchProducts(keyword, page, size));
+        return ApiResponse.success(productService.searchProducts(keyword, categoryId, page, size));
+    }
+
+    @GetMapping("/suggestions")
+    public ApiResponse<List<ProductSuggestionResponse>> getProductSuggestions(
+        @RequestParam @Size(max = 100, message = "검색어는 100자 이하여야 합니다.") String keyword,
+        @RequestParam(required = false) Long categoryId,
+        @RequestParam(defaultValue = "8") int size
+    ) {
+        return ApiResponse.success(productService.getProductSuggestions(keyword, categoryId, size));
     }
 
     @PostMapping

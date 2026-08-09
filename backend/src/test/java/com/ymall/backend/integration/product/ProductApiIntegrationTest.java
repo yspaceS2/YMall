@@ -56,12 +56,15 @@ class ProductApiIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.name").value("iPhone 15"))
-            .andExpect(jsonPath("$.data.images[0].imageUrl").value("image"));
+            .andExpect(jsonPath("$.data.images[0].imageUrl").value("image"))
+            .andExpect(jsonPath("$.data.detailImages[0].imageUrl").value("detail-image-01"))
+            .andExpect(jsonPath("$.data.detailImages[1].imageUrl").value("detail-image-02"));
 
         assertThat(productRepository.findAll()).hasSize(1);
         Product savedProduct = productRepository.findAll().get(0);
         assertThat(savedProduct.getName()).isEqualTo("iPhone 15");
         assertThat(savedProduct.getImages()).hasSize(1);
+        assertThat(savedProduct.getDetailImages()).hasSize(2);
     }
 
     /**
@@ -84,6 +87,90 @@ class ProductApiIntegrationTest {
             .andExpect(jsonPath("$.data.content[0].name").value("iPhone 15"));
     }
 
+    @Test
+    @DisplayName("상품 검색은 상품명과 검색어의 공백을 무시한다")
+    void searchProductsIgnoringWhitespace() throws Exception {
+        Category category = categoryRepository.save(new Category("audio", "audio"));
+        productRepository.save(createProduct(category, "무선 블루투스 스피커", ProductStatus.APPROVED));
+
+        mockMvc.perform(get("/api/products/search")
+                .param("keyword", "무선블루투스스피커")
+                .param("page", "1")
+                .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].name").value("무선 블루투스 스피커"));
+    }
+
+    @Test
+    @DisplayName("상위 카테고리 조회는 활성 하위 카테고리의 승인 상품을 포함한다")
+    void getProductsByParentCategory() throws Exception {
+        Category fashion = categoryRepository.save(
+            new Category("패션", "fashion", null, 1, 1, true)
+        );
+        Category women = categoryRepository.save(
+            new Category("여성패션", "women-fashion", fashion, 2, 1, true)
+        );
+        Category dresses = categoryRepository.save(
+            new Category("원피스", "women-dresses", women, 3, 1, true)
+        );
+        Category inactive = categoryRepository.save(
+            new Category("숨김 카테고리", "inactive-fashion", fashion, 2, 2, false)
+        );
+        Category activeChildOfInactive = categoryRepository.save(
+            new Category(
+                "숨김 경로의 하위 카테고리",
+                "inactive-fashion-child",
+                inactive,
+                3,
+                1,
+                true
+            )
+        );
+        Category living = categoryRepository.save(
+            new Category("생활", "living", null, 1, 2, true)
+        );
+
+        productRepository.save(createProduct(
+            dresses,
+            "활성 하위 상품",
+            ProductStatus.APPROVED
+        ));
+        productRepository.save(createProduct(
+            dresses,
+            "승인 대기 상품",
+            ProductStatus.PENDING
+        ));
+        productRepository.save(createProduct(
+            inactive,
+            "숨김 카테고리 상품",
+            ProductStatus.APPROVED
+        ));
+        productRepository.save(createProduct(
+            activeChildOfInactive,
+            "숨김 경로의 하위 상품",
+            ProductStatus.APPROVED
+        ));
+        productRepository.save(createProduct(
+            living,
+            "다른 카테고리 상품",
+            ProductStatus.APPROVED
+        ));
+
+        mockMvc.perform(get("/api/categories/{categoryId}/products", fashion.getId())
+                .param("page", "1")
+                .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].name").value("활성 하위 상품"));
+
+        mockMvc.perform(get("/api/categories"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(
+                "$.data[?(@.slug == 'inactive-fashion-child')]"
+            ).isEmpty());
+    }
+
     /**
      * 상품 수정 API가 실제 DB에 저장된 상품의 기본 정보와 이미지 목록을
      * 요청 본문 기준으로 교체하는지 검증한다.
@@ -99,11 +186,13 @@ class ProductApiIntegrationTest {
                 .content(productUpdateJson(category.getId())))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.name").value("Updated Product"));
+            .andExpect(jsonPath("$.data.name").value("Updated Product"))
+            .andExpect(jsonPath("$.data.detailImages[0].imageUrl").value("updated-detail-image"));
 
         Product updatedProduct = productRepository.findById(product.getId()).orElseThrow();
         assertThat(updatedProduct.getName()).isEqualTo("Updated Product");
         assertThat(updatedProduct.getImages()).hasSize(1);
+        assertThat(updatedProduct.getDetailImages()).hasSize(1);
     }
 
     /**
@@ -147,12 +236,29 @@ class ProductApiIntegrationTest {
               "brand": "Apple",
               "price": 1200,
               "discountPercentage": 10,
+              "discountStartDate": "2026-01-01",
+              "discountEndDate": "2099-12-31",
+              "freeShipping": true,
+              "shippingFee": 0,
+              "estimatedDeliveryDays": 3,
               "stock": 20,
               "thumbnailUrl": "thumbnail",
               "images": [
                 {
                   "originalUrl": "original",
                   "imageUrl": "image",
+                  "sortOrder": 0
+                }
+              ],
+              "detailImages": [
+                {
+                  "originalUrl": "detail-original-02",
+                  "imageUrl": "detail-image-02",
+                  "sortOrder": 1
+                },
+                {
+                  "originalUrl": "detail-original-01",
+                  "imageUrl": "detail-image-01",
                   "sortOrder": 0
                 }
               ]
@@ -169,12 +275,24 @@ class ProductApiIntegrationTest {
               "brand": "Apple",
               "price": 900,
               "discountPercentage": 5,
+              "discountStartDate": "2026-01-01",
+              "discountEndDate": "2099-12-31",
+              "freeShipping": false,
+              "shippingFee": 3000,
+              "estimatedDeliveryDays": 2,
               "stock": 10,
               "thumbnailUrl": "updated-thumbnail",
               "images": [
                 {
                   "originalUrl": "updated-original",
                   "imageUrl": "updated-image",
+                  "sortOrder": 0
+                }
+              ],
+              "detailImages": [
+                {
+                  "originalUrl": "updated-detail-original",
+                  "imageUrl": "updated-detail-image",
                   "sortOrder": 0
                 }
               ]

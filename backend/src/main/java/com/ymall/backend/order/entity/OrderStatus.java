@@ -5,6 +5,8 @@ public enum OrderStatus {
     PAID,
     PAYMENT_FAILED,
     CANCELED,
+    PARTIALLY_REFUNDED,
+    REFUNDED,
     PREPARING,
     SHIPPED,
     DELIVERED

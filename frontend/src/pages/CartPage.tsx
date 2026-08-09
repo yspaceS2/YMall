@@ -1,8 +1,11 @@
-import { ChevronLeft, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react'
+import { ChevronLeft, Minus, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteCartItem, getCart, updateCartItemQuantity } from '../api/cart'
 import { ApiError } from '../api/client'
+import { FeedbackMessage } from '../components/ui/FeedbackMessage'
+import { PageState } from '../components/ui/PageState'
+import { StatusBadge } from '../components/ui/StatusBadge'
 import type { CartItem } from '../types/cart'
 import { formatPrice, getDiscountedPrice, resolveImageUrl } from '../utils/product'
 
@@ -65,6 +68,10 @@ export function CartPage() {
         ),
         [items],
     )
+    const totalShippingFee = useMemo(
+        () => items.reduce((total, item) => total + item.shippingFee, 0),
+        [items],
+    )
     const hasUnavailableItems = useMemo(
         () => items.some((item) => (
             item.productStatus !== 'APPROVED'
@@ -116,38 +123,27 @@ export function CartPage() {
     }
 
     if (isLoading) {
-        return <div className="grid min-h-80 place-content-center gap-2 text-center text-muted"><strong className="text-ink">장바구니를 불러오는 중입니다.</strong></div>
+        return <PageState variant="loading" title="장바구니를 불러오는 중입니다" description="잠시만 기다려 주세요." />
     }
 
     if (errorMessage && items.length === 0) {
-        return (
-            <div className="grid min-h-80 place-content-center gap-2 text-center text-muted">
-                <strong className="text-ink">장바구니를 불러오지 못했습니다.</strong>
-                <p className="m-0">{errorMessage}</p>
-                <button className="justify-self-center border border-ink bg-transparent px-4 py-2" type="button" onClick={retryCart}>다시 시도</button>
-            </div>
-        )
+        return <PageState variant="error" title="장바구니를 불러오지 못했습니다" description={errorMessage} action={<button className="border border-ink bg-white px-5 py-2.5 text-xs font-bold" type="button" onClick={retryCart}>다시 시도</button>} />
     }
 
     return (
         <section className="mx-auto max-w-360 px-4 pt-12 pb-20 min-[601px]:px-[clamp(20px,5vw,72px)] min-[601px]:pt-18 min-[601px]:pb-27.5">
             <div className="mb-10.5 flex flex-col items-start gap-3.5 border-b border-ink pb-6 min-[601px]:flex-row min-[601px]:items-end min-[601px]:justify-between">
                 <div>
-                    <p className="mb-2.5 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">YOUR SHOPPING BAG</p>
+                    <p className="mb-2.5 text-[11px] font-extrabold tracking-[.18em] text-accent">YOUR SHOPPING BAG</p>
                     <h1 className="m-0 font-serif text-[clamp(42px,5vw,66px)] leading-none font-medium tracking-[-.05em]">장바구니</h1>
                 </div>
                 <span className="text-[13px] text-muted">{totalQuantity}개 상품</span>
             </div>
 
-            {errorMessage && <p className="mb-4.5 text-xs text-[#b23b2f]" role="alert">{errorMessage}</p>}
+            {errorMessage && <FeedbackMessage className="mb-4.5" tone="error">{errorMessage}</FeedbackMessage>}
 
             {items.length === 0 ? (
-                <div className="flex min-h-95 flex-col items-center justify-center text-center text-muted">
-                    <ShoppingBag className="mb-5.5 size-9.5" aria-hidden="true" />
-                    <strong className="text-ink">장바구니가 비어 있습니다.</strong>
-                    <p className="mt-2 mb-5.5">마음에 드는 상품을 담아보세요.</p>
-                    <Link className="flex items-center gap-1 text-xs underline" to="/"><ChevronLeft className="size-4" /> 상품 둘러보기</Link>
-                </div>
+                <PageState variant="empty" title="장바구니가 비어 있습니다" description="마음에 드는 상품을 담아보세요." action={<Link className="flex items-center gap-1 border border-ink bg-white px-5 py-2.5 text-xs font-bold" to="/"><ChevronLeft className="size-4" /> 상품 둘러보기</Link>} />
             ) : (
                 <div className="grid grid-cols-1 items-start gap-10 min-[1050px]:grid-cols-[minmax(0,1fr)_340px] min-[1050px]:gap-[clamp(40px,6vw,90px)]">
                     <div className="border-t border-line">
@@ -161,7 +157,7 @@ export function CartPage() {
 
                             return (
                                 <article className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-b border-line py-6 min-[601px]:grid-cols-[130px_minmax(0,1fr)_auto] min-[601px]:gap-6" key={item.cartItemId}>
-                                    <Link className="aspect-[.82] overflow-hidden bg-[#e9e9e3]" to={`/products/${item.productId}`}>
+                                    <Link className="aspect-[.82] overflow-hidden bg-subtle" to={`/products/${item.productId}`}>
                                         {item.thumbnailUrl ? (
                                             <img
                                                 className="size-full object-cover"
@@ -169,15 +165,15 @@ export function CartPage() {
                                                 alt={item.productName}
                                             />
                                         ) : (
-                                            <span className="grid size-full place-items-center font-serif text-[13px] font-bold tracking-[.14em] text-[#99998f]">YMALL</span>
+                                            <span className="grid size-full place-items-center font-serif text-[13px] font-bold tracking-[.14em] text-muted">YMALL</span>
                                         )}
                                     </Link>
                                     <div className="flex min-w-0 flex-col justify-between">
                                         <div className="flex flex-col items-start gap-1.5">
-                                            {!isAvailable && <span className="bg-[#f5e6e3] px-1.5 py-0.5 text-[10px] font-extrabold text-[#a33]">구매 불가</span>}
+                                            {!isAvailable && <StatusBadge tone="danger">구매 불가</StatusBadge>}
                                             <Link className="text-[15px] font-bold" to={`/products/${item.productId}`}>{item.productName}</Link>
                                             {item.discountPercentage > 0 && (
-                                                <del className="text-[11px] text-[#aaa]">{formatPrice(item.price)}</del>
+                                                <del className="text-[11px] text-muted">{formatPrice(item.price)}</del>
                                             )}
                                             <strong className="text-[13px]">{formatPrice(discountedPrice)}</strong>
                                         </div>
@@ -223,22 +219,22 @@ export function CartPage() {
                     </div>
 
                     <aside className="top-25 border border-line bg-white p-5.5 min-[1050px]:sticky min-[1050px]:p-7">
-                        <p className="mb-2.5 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">ORDER SUMMARY</p>
+                        <p className="mb-2.5 text-[11px] font-extrabold tracking-[.18em] text-accent">ORDER SUMMARY</p>
                         <dl className="my-6">
                             <div className="flex justify-between py-2 text-xs text-muted"><dt>상품 수량</dt><dd className="m-0 text-ink">{totalQuantity}개</dd></div>
                             <div className="flex justify-between py-2 text-xs text-muted"><dt>상품 금액</dt><dd className="m-0 text-ink">{formatPrice(totalPrice)}</dd></div>
-                            <div className="flex justify-between py-2 text-xs text-muted"><dt>배송비</dt><dd className="m-0 text-ink">무료</dd></div>
+                            <div className="flex justify-between py-2 text-xs text-muted"><dt>배송비</dt><dd className="m-0 text-ink">{totalShippingFee === 0 ? '무료' : formatPrice(totalShippingFee)}</dd></div>
                             <div className="mt-3.5 flex items-baseline justify-between border-t border-ink pt-5 text-xs font-extrabold">
                                 <dt>결제 예정 금액</dt>
-                                <dd className="m-0 text-xl">{formatPrice(totalPrice)}</dd>
+                                <dd className="m-0 text-xl">{formatPrice(totalPrice + totalShippingFee)}</dd>
                             </div>
                         </dl>
                         {hasUnavailableItems ? (
                             <>
-                                <span className="grid h-13 cursor-not-allowed place-items-center bg-[#ddd] text-[13px] font-extrabold text-[#888]" aria-disabled="true">
+                                <span className="grid h-13 cursor-not-allowed place-items-center bg-disabled text-[13px] font-extrabold text-muted" aria-disabled="true">
                                     주문서 작성
                                 </span>
-                                <p className="mt-2.5 text-[11px] leading-4 text-[#b23b2f]">
+                                <p className="mt-2.5 text-[11px] leading-4 text-danger">
                                     구매 불가 상품을 삭제하거나 수량을 조정해 주세요.
                                 </p>
                             </>

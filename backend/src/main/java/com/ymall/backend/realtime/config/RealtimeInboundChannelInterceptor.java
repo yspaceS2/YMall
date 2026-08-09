@@ -1,0 +1,125 @@
+package com.ymall.backend.realtime.config;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.stereotype.Component;
+
+import com.ymall.backend.global.exception.BusinessException;
+import com.ymall.backend.global.exception.ErrorCode;
+import com.ymall.backend.admin.entity.AdminPermission;
+import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.global.security.MemberPrincipal;
+import com.ymall.backend.global.security.MemberPrincipalResolver;
+import com.ymall.backend.support.repository.SupportInquiryRepository;
+
+@Component
+@RequiredArgsConstructor
+public class RealtimeInboundChannelInterceptor implements ChannelInterceptor {
+
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String INQUIRY_TOPIC = "/topic/support/inquiries/";
+    private static final String MEMBER_TOPIC = "/topic/realtime/members/";
+
+    private final JwtTokenProvider jwtTokenProvider;
+    private final MemberPrincipalResolver principalResolver;
+    private final ObjectProvider<SupportInquiryRepository> inquiryRepositoryProvider;
+
+    @Override
+    public Message<?> preSend(Message<?> message, MessageChannel channel) {
+        StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(
+            message,
+            StompHeaderAccessor.class
+        );
+        if (accessor == null) {
+            return message;
+        }
+        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+            authenticate(accessor);
+        } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            authorizeSubscription(accessor);
+        } else if (StompCommand.SEND.equals(accessor.getCommand())) {
+            refreshAuthentication(accessor);
+        }
+        return message;
+    }
+
+    private void authenticate(StompHeaderAccessor accessor) {
+        String authorization = accessor.getFirstNativeHeader("Authorization");
+        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+        MemberPrincipal tokenPrincipal = jwtTokenProvider.parseAccessToken(
+            authorization.substring(BEARER_PREFIX.length())
+        );
+        MemberPrincipal principal = principalResolver.resolve(tokenPrincipal);
+        accessor.setUser(UsernamePasswordAuthenticationToken.authenticated(
+            principal,
+            null,
+            principal.authorities()
+        ));
+    }
+
+    private void authorizeSubscription(StompHeaderAccessor accessor) {
+        MemberPrincipal principal = principal(accessor);
+        String destination = accessor.getDestination();
+        if (destination == null) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+        if (destination.startsWith(INQUIRY_TOPIC)) {
+            Long inquiryId = parseId(destination, INQUIRY_TOPIC);
+            SupportInquiryRepository inquiryRepository = inquiryRepositoryProvider.getObject();
+            boolean allowed = principal.permissions().contains(AdminPermission.SUPPORT_REPLY)
+                ? inquiryRepository.existsById(inquiryId)
+                : inquiryRepository.findByIdAndMemberId(inquiryId, principal.memberId()).isPresent();
+            if (!allowed) {
+                throw new BusinessException(ErrorCode.ACCESS_DENIED);
+            }
+            return;
+        }
+        if (destination.startsWith(MEMBER_TOPIC)) {
+            Long memberId = parseId(destination, MEMBER_TOPIC);
+            if (!memberId.equals(principal.memberId())
+                && !principal.permissions().contains(AdminPermission.ADMIN_ALL_MANAGE)) {
+                throw new BusinessException(ErrorCode.ACCESS_DENIED);
+            }
+            return;
+        }
+        if ("/topic/realtime/admin".equals(destination)
+            && principal.permissions().contains(AdminPermission.DASHBOARD_READ)) {
+            return;
+        }
+        throw new BusinessException(ErrorCode.ACCESS_DENIED);
+    }
+
+    private void refreshAuthentication(StompHeaderAccessor accessor) {
+        MemberPrincipal principal = principal(accessor);
+        accessor.setUser(UsernamePasswordAuthenticationToken.authenticated(
+            principal,
+            null,
+            principal.authorities()
+        ));
+    }
+
+    private MemberPrincipal principal(StompHeaderAccessor accessor) {
+        if (!(accessor.getUser() instanceof UsernamePasswordAuthenticationToken authentication)
+            || !(authentication.getPrincipal() instanceof MemberPrincipal principal)) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+        return principalResolver.resolve(principal);
+    }
+
+    private Long parseId(String destination, String prefix) {
+        try {
+            return Long.valueOf(destination.substring(prefix.length()));
+        } catch (NumberFormatException exception) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+}

@@ -45,6 +45,7 @@ class JwtPropertiesTest {
         JwtProperties properties = new JwtProperties();
         properties.setSecret(SECRET);
         properties.setAccessTokenExpiration(expiration);
+        properties.setRefreshTokenExpiration(Duration.ofDays(14));
         return validator.validate(properties);
     }
 }

@@ -4,9 +4,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.PageRequest;
@@ -20,20 +22,26 @@ import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.global.common.PageResponse;
+import com.ymall.backend.global.messaging.OrderEventType;
+import com.ymall.backend.global.messaging.outbox.OrderOutboxService;
 import com.ymall.backend.member.entity.Member;
 import com.ymall.backend.member.repository.MemberRepository;
-import com.ymall.backend.notification.event.NotificationEvent;
-import com.ymall.backend.notification.event.NotificationEventPublisher;
+import com.ymall.backend.member.repository.MemberAddressRepository;
+import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.order.dto.OrderCreateRequest;
 import com.ymall.backend.order.dto.OrderResponse;
 import com.ymall.backend.order.entity.Order;
+import com.ymall.backend.order.entity.DeliveryAddressSnapshot;
 import com.ymall.backend.order.entity.OrderItem;
 import com.ymall.backend.order.entity.OrderStatus;
 import com.ymall.backend.order.mapper.OrderMapper;
 import com.ymall.backend.order.repository.OrderRepository;
+import com.ymall.backend.payment.entity.PaymentResult;
+import com.ymall.backend.payment.repository.PaymentRepository;
 import com.ymall.backend.product.entity.Product;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.service.ProductCacheInvalidator;
 
 @Service
 @RequiredArgsConstructor
@@ -46,10 +54,24 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CartItemRepository cartItemRepository;
     private final MemberRepository memberRepository;
+    private final MemberAddressRepository memberAddressRepository;
     private final ProductRepository productRepository;
+    private final PaymentRepository paymentRepository;
     private final OrderMapper orderMapper;
-    private final NotificationEventPublisher notificationEventPublisher;
+    private final OrderOutboxService orderOutboxService;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
+    /**
+     * 회원 범위의 멱등성 키마다 주문을 최대 한 번 생성한다.
+     *
+     * <p>기존 주문을 조회하기 전에 회원 행을 잠가 동일 회원의 동시 요청이 모두 조회를 통과하고
+     * 재고를 중복 예약하지 못하게 한다. 같은 키로 재시도하면 현재 장바구니를 다시 읽지 않고
+     * 최초 생성된 주문을 반환한다.</p>
+     *
+     * @param memberId 주문을 소유하는 인증 회원 ID
+     * @param request 클라이언트가 생성한 멱등성 키를 포함한 주문 요청
+     * @return 재시도라면 기존 주문, 최초 요청이라면 새로 생성한 주문
+     */
     @Transactional
     public OrderResponse createOrder(Long memberId, OrderCreateRequest request) {
         Member member = memberRepository.findByIdForUpdate(memberId)
@@ -57,13 +79,13 @@ public class OrderService {
 
         return orderRepository.findByMemberIdAndIdempotencyKey(memberId, request.idempotencyKey())
             .map(orderMapper::toOrderResponse)
-            .orElseGet(() -> createNewOrder(member, request.idempotencyKey()));
+            .orElseGet(() -> createNewOrder(member, request));
     }
 
     public OrderResponse getOrder(Long memberId, Long orderId) {
-        return orderRepository.findByIdAndMemberId(orderId, memberId)
-            .map(orderMapper::toOrderResponse)
+        Order order = orderRepository.findByIdAndMemberId(orderId, memberId)
             .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+        return orderMapper.toOrderResponse(order, isRefundSupported(order.getId()));
     }
 
     public PageResponse<OrderResponse> getOrders(Long memberId, int page, int size) {
@@ -72,10 +94,15 @@ public class OrderService {
             Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
             Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        return PageResponse.from(
-            orderRepository.findByMemberIdOrderByCreatedAtDesc(memberId, pageable)
-                .map(orderMapper::toOrderResponse)
+        Page<Order> orders = orderRepository.findByMemberIdOrderByCreatedAtDesc(
+            memberId,
+            pageable
         );
+        Set<Long> refundSupportedOrderIds = findRefundSupportedOrderIds(orders);
+        return PageResponse.from(orders.map(order -> orderMapper.toOrderResponse(
+            order,
+            refundSupportedOrderIds.contains(order.getId())
+        )));
     }
 
     @Transactional
@@ -87,26 +114,35 @@ public class OrderService {
             throw new BusinessException(ErrorCode.ORDER_CANCELLATION_NOT_ALLOWED);
         }
 
-        List<Long> productIds = order.getItems().stream()
-            .map(item -> item.getProduct().getId())
-            .sorted()
-            .toList();
-        Map<Long, Product> products = productRepository.findAllByIdForUpdate(productIds)
-            .stream()
-            .collect(Collectors.toMap(Product::getId, Function.identity()));
-        for (OrderItem item : order.getItems()) {
-            Product product = products.get(item.getProduct().getId());
-            if (product == null) {
-                throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
+        if (order.isInventoryReserved()) {
+            List<Long> productIds = order.getItems().stream()
+                .map(item -> item.getProduct().getId())
+                .sorted()
+                .toList();
+            Map<Long, Product> products = productRepository.findAllByIdForUpdate(productIds)
+                .stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+            for (OrderItem item : order.getItems()) {
+                Product product = products.get(item.getProduct().getId());
+                if (product == null) {
+                    throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
+                }
+                product.increaseStock(item.getQuantity());
             }
-            product.increaseStock(item.getQuantity());
+            order.releaseInventory();
+            productCacheInvalidator.evictProductDetails(productIds);
         }
         order.cancel();
-        notificationEventPublisher.publish(NotificationEvent.orderCanceled(memberId, orderId));
+        orderOutboxService.save(
+            OrderEventType.ORDER_CANCELED,
+            orderId,
+            memberId,
+            Map.of("status", OrderStatus.CANCELED.name())
+        );
         return orderMapper.toOrderResponse(order);
     }
 
-    private OrderResponse createNewOrder(Member member, String idempotencyKey) {
+    private OrderResponse createNewOrder(Member member, OrderCreateRequest request) {
         List<CartItem> cartItems = cartItemRepository.findAllByMemberIdForUpdate(member.getId());
         if (cartItems.isEmpty()) {
             throw new BusinessException(ErrorCode.CART_EMPTY);
@@ -120,7 +156,8 @@ public class OrderService {
             .stream()
             .collect(Collectors.toMap(Product::getId, Function.identity()));
 
-        Order order = new Order(member, idempotencyKey);
+        DeliveryAddressSnapshot deliveryAddress = resolveDeliveryAddress(member.getId(), request.addressId());
+        Order order = new Order(member, request.idempotencyKey(), deliveryAddress);
         for (CartItem cartItem : cartItems) {
             Product product = products.get(cartItem.getProduct().getId());
             if (product == null) {
@@ -132,17 +169,34 @@ public class OrderService {
                 product,
                 product.getName(),
                 calculateUnitPrice(product),
-                cartItem.getQuantity()
+                cartItem.getQuantity(),
+                product.getEffectiveShippingFee()
             ));
             product.decreaseStock(cartItem.getQuantity());
         }
+        productCacheInvalidator.evictProductDetails(productIds);
 
         Order savedOrder = orderRepository.save(order);
         cartItemRepository.deleteAll(cartItems);
-        notificationEventPublisher.publish(
-            NotificationEvent.orderCreated(member.getId(), savedOrder.getId())
+        orderOutboxService.save(
+            OrderEventType.ORDER_CREATED,
+            savedOrder.getId(),
+            member.getId(),
+            Map.of(
+                "status", savedOrder.getStatus().name(),
+                "totalAmount", savedOrder.getTotalAmount()
+            )
         );
         return orderMapper.toOrderResponse(savedOrder);
+    }
+
+    private DeliveryAddressSnapshot resolveDeliveryAddress(Long memberId, Long addressId) {
+        if (addressId == null) {
+            throw new BusinessException(ErrorCode.MEMBER_ADDRESS_NOT_FOUND);
+        }
+        MemberAddress address = memberAddressRepository.findByIdAndMemberId(addressId, memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_ADDRESS_NOT_FOUND));
+        return new DeliveryAddressSnapshot(address);
     }
 
     private void validateOrderable(Product product, int quantity) {
@@ -155,11 +209,27 @@ public class OrderService {
     }
 
     private BigDecimal calculateUnitPrice(Product product) {
-        BigDecimal discountPercentage = product.getDiscountPercentage() == null
-            ? BigDecimal.ZERO
-            : product.getDiscountPercentage();
+        BigDecimal discountPercentage = product.getEffectiveDiscountPercentage();
         return product.getPrice()
             .multiply(ONE_HUNDRED.subtract(discountPercentage))
             .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
+    }
+
+    private boolean isRefundSupported(Long orderId) {
+        return paymentRepository.existsByOrderIdAndResultAndPaymentKeyIsNotNull(
+            orderId,
+            PaymentResult.SUCCESS
+        );
+    }
+
+    private Set<Long> findRefundSupportedOrderIds(Page<Order> orders) {
+        List<Long> orderIds = orders.stream().map(Order::getId).toList();
+        if (orderIds.isEmpty()) {
+            return Set.of();
+        }
+        return paymentRepository.findRefundSupportedOrderIds(
+            orderIds,
+            PaymentResult.SUCCESS
+        );
     }
 }

@@ -27,7 +27,9 @@ import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.product.dto.CategoryResponse;
 import com.ymall.backend.product.dto.ProductDetailResponse;
 import com.ymall.backend.product.dto.ProductListResponse;
+import com.ymall.backend.product.dto.ProductSuggestionResponse;
 import com.ymall.backend.product.entity.ProductStatus;
+import com.ymall.backend.product.search.ProductSearchMatchType;
 import com.ymall.backend.product.service.ProductService;
 
 @WebMvcTest(ProductController.class)
@@ -85,6 +87,38 @@ class ProductControllerTest {
             .andExpect(jsonPath("$.data.category.categoryId").value(1))
             .andExpect(jsonPath("$.data.name").value("iPhone 15"))
             .andExpect(jsonPath("$.data.status").value("APPROVED"));
+    }
+
+    @Test
+    @DisplayName("상품 추천 검색어를 조회한다")
+    void getProductSuggestions() throws Exception {
+        given(productService.getProductSuggestions("ㄴㅌㅂ", null, 8)).willReturn(List.of(
+            new ProductSuggestionResponse(
+                1L,
+                "노트북 파우치",
+                "thumbnail",
+                ProductSearchMatchType.CHOSEONG
+            )
+        ));
+
+        mockMvc.perform(get("/api/products/suggestions")
+                .param("keyword", "ㄴㅌㅂ")
+                .param("size", "8"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data[0].productId").value(1))
+            .andExpect(jsonPath("$.data[0].name").value("노트북 파우치"))
+            .andExpect(jsonPath("$.data[0].matchType").value("CHOSEONG"));
+    }
+
+    @Test
+    @DisplayName("상품 추천 검색어가 100자를 초과하면 400을 반환한다")
+    void rejectTooLongProductSuggestionKeyword() throws Exception {
+        mockMvc.perform(get("/api/products/suggestions")
+                .param("keyword", "가".repeat(101)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        then(productService).shouldHaveNoInteractions();
     }
 
     /**
@@ -160,8 +194,13 @@ class ProductControllerTest {
               "brand": "Apple",
               "price": 1200,
               "discountPercentage": 10,
+              "discountStartDate": "2026-07-01",
+              "discountEndDate": "2026-08-01",
               "stock": 20,
               "thumbnailUrl": "thumbnail",
+              "freeShipping": true,
+              "shippingFee": 0,
+              "estimatedDeliveryDays": 3,
               "images": [
                 {
                   "originalUrl": "original",
@@ -222,6 +261,7 @@ class ProductControllerTest {
             20,
             "thumbnail",
             ProductStatus.APPROVED,
+            List.of(),
             List.of()
         );
     }

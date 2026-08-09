@@ -1,40 +1,54 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Suspense } from 'react'
+import { Route, Routes } from 'react-router-dom'
+import { AdminAuthorizationProvider } from './auth/AdminAuthorizationProvider'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireRole } from './auth/RequireRole'
-import { Layout } from './components/Layout'
-import { CartPage } from './pages/CartPage'
-import { CheckoutPage } from './pages/CheckoutPage'
-import { LoginPage } from './pages/LoginPage'
-import { NotificationPage } from './pages/NotificationPage'
-import { OrderHistoryPage } from './pages/OrderHistoryPage'
-import { OrderResultPage } from './pages/OrderResultPage'
-import { PaymentPage } from './pages/PaymentPage'
-import { ProductDetailPage } from './pages/ProductDetailPage'
-import { ProductListPage } from './pages/ProductListPage'
-import { SellerManagementPage } from './pages/SellerManagementPage'
-import { AdminManagementPage } from './pages/AdminManagementPage'
+import { ManagementLayout } from './components/management/ManagementLayout'
+import { RouteLoadingFallback } from './components/routing/RouteLoadingFallback'
+import { AdminPortalRoutes } from './routes/AdminPortalRoutes'
+import { MemberPortalRoutes } from './routes/MemberPortalRoutes'
+import { SellerPortalRoutes } from './routes/SellerPortalRoutes'
+import { StoreRoutes } from './routes/StoreRoutes'
 
 function App() {
     return (
-        <Layout>
+        <Suspense fallback={<RouteLoadingFallback />}>
             <Routes>
-                <Route path="/" element={<ProductListPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/products/:productId" element={<ProductDetailPage />} />
-                <Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />
                 <Route
-                    path="/checkout"
-                    element={<RequireAuth><CheckoutPage /></RequireAuth>}
+                    path="/mypage/*"
+                    element={
+                        <RequireAuth>
+                            <ManagementLayout role="member">
+                                <MemberPortalRoutes />
+                            </ManagementLayout>
+                        </RequireAuth>
+                    }
                 />
-                <Route path="/orders" element={<RequireAuth><OrderHistoryPage /></RequireAuth>} />
-                <Route path="/notifications" element={<RequireAuth><NotificationPage /></RequireAuth>} />
-                <Route path="/orders/:orderId/payment" element={<RequireAuth><PaymentPage /></RequireAuth>} />
-                <Route path="/orders/:orderId/result" element={<RequireAuth><OrderResultPage /></RequireAuth>} />
-                <Route path="/seller" element={<RequireRole roles={['ROLE_SELLER', 'ROLE_ADMIN']}><SellerManagementPage /></RequireRole>} />
-                <Route path="/admin" element={<RequireRole roles={['ROLE_ADMIN']}><AdminManagementPage /></RequireRole>} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route
+                    path="/seller/*"
+                    element={
+                        <RequireRole roles={['ROLE_SELLER', 'ROLE_ADMIN']}>
+                            <ManagementLayout role="seller">
+                                <SellerPortalRoutes />
+                            </ManagementLayout>
+                        </RequireRole>
+                    }
+                />
+                <Route
+                    path="/admin/*"
+                    element={
+                        <RequireRole roles={['ROLE_ADMIN']}>
+                            <AdminAuthorizationProvider>
+                                <ManagementLayout role="admin">
+                                    <AdminPortalRoutes />
+                                </ManagementLayout>
+                            </AdminAuthorizationProvider>
+                        </RequireRole>
+                    }
+                />
+                <Route path="*" element={<StoreRoutes />} />
             </Routes>
-        </Layout>
+        </Suspense>
     )
 }
 

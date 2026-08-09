@@ -1,6 +1,9 @@
 # Logs
 logs/
+backups/
+tmp/
 *.log
+.env
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -14,6 +17,8 @@ frontend/dist-ssr/
 frontend/*.local
 frontend/.env.local
 frontend/.env.*.local
+frontend/playwright-report/
+frontend/test-results/
 
 # Backend
 backend/HELP.md
@@ -72,3 +77,16 @@ frontend/.vscode/*
 
 # Local agent instructions
 AGENTS.md
+
+# AI datasets and model artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+ai/datasets/imported/
+ai/datasets/processed/
+ai/evaluation/results/smoke-*.json
+ai/training/data/
+ai/models/
+*.gguf
+*.safetensors

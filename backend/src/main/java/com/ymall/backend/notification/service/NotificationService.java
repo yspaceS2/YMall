@@ -1,5 +1,6 @@
 package com.ymall.backend.notification.service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import com.ymall.backend.global.common.PageResponse;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberRole;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.notification.dto.NotificationReadAllResponse;
 import com.ymall.backend.notification.dto.NotificationResponse;
@@ -20,6 +22,8 @@ import com.ymall.backend.notification.dto.NotificationUnreadCountResponse;
 import com.ymall.backend.notification.entity.Notification;
 import com.ymall.backend.notification.event.NotificationEvent;
 import com.ymall.backend.notification.repository.NotificationRepository;
+import com.ymall.backend.realtime.dto.RealtimeEvent;
+import com.ymall.backend.realtime.service.RealtimePublisher;
 
 @Service
 @RequiredArgsConstructor
@@ -30,12 +34,14 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final MemberRepository memberRepository;
+    private final Clock clock;
+    private final RealtimePublisher realtimePublisher;
 
     public PageResponse<NotificationResponse> getNotifications(Long memberId, int page, int size) {
         Pageable pageable = PageRequest.of(
             Math.max(page - 1, 0),
             Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
-            Sort.by(Sort.Direction.DESC, "createdAt")
+            Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
         );
         return PageResponse.from(
             notificationRepository.findByMemberId(memberId, pageable)
@@ -60,20 +66,61 @@ public class NotificationService {
 
     @Transactional
     public NotificationReadAllResponse markAllAsRead(Long memberId) {
-        int updatedCount = notificationRepository.markAllAsRead(memberId, LocalDateTime.now());
+        int updatedCount = notificationRepository.markAllAsRead(
+            memberId,
+            LocalDateTime.now(clock)
+        );
         return new NotificationReadAllResponse(updatedCount);
     }
 
     @Transactional
+    public void delete(Long memberId, Long notificationId) {
+        validatePersonalNotificationDeletion(memberId);
+        Notification notification = notificationRepository
+            .findByIdAndMemberId(notificationId, memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
+        notificationRepository.delete(notification);
+    }
+
+    @Transactional
+    public void deleteAll(Long memberId) {
+        validatePersonalNotificationDeletion(memberId);
+        notificationRepository.deleteAllByMemberId(memberId);
+    }
+
+    @Transactional
     public void create(NotificationEvent event) {
+        if (notificationRepository.existsBySourceEventId(event.sourceEventId())) {
+            return;
+        }
         Member member = memberRepository.findById(event.memberId())
             .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
         notificationRepository.save(new Notification(
             member,
+            event.sourceEventId(),
             event.type(),
             event.title(),
             event.message(),
             event.targetUrl()
         ));
+        realtimePublisher.publishToMember(
+            event.memberId(),
+            RealtimeEvent.of("NOTIFICATIONS_INVALIDATED", "notification", null)
+        );
+        if (event.type().name().startsWith("ORDER_")
+            || event.type().name().startsWith("PAYMENT_")
+            || event.type().name().startsWith("RETURN_")) {
+            realtimePublisher.publishToAdmins(
+                RealtimeEvent.of("DASHBOARD_INVALIDATED", "order", null)
+            );
+        }
+    }
+
+    private void validatePersonalNotificationDeletion(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        if (member.getRole() != MemberRole.ROLE_USER) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
     }
 }

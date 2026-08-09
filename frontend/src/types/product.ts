@@ -1,9 +1,18 @@
-export type ProductStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'SOLD_OUT'
+export type ProductStatus =
+  | 'DRAFT'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'SOLD_OUT'
+  | 'DELETED'
 
 export interface Category {
   categoryId: number
   name: string
   slug: string
+  parentId?: number | null
+  depth?: number
+  displayOrder?: number
 }
 
 export interface ProductSummary {
@@ -20,6 +29,15 @@ export interface ProductSummary {
   status: ProductStatus
 }
 
+export type ProductSearchMatchType = 'EXACT' | 'PREFIX' | 'CONTAINS' | 'CHOSEONG' | 'FUZZY'
+
+export interface ProductSuggestion {
+  productId: number
+  name: string
+  thumbnailUrl: string | null
+  matchType: ProductSearchMatchType
+}
+
 export interface ProductImage {
   imageId: number
   originalUrl: string
@@ -27,10 +45,23 @@ export interface ProductImage {
   sortOrder: number
 }
 
+export interface ProductDetailImage {
+  detailImageId: number
+  originalUrl: string | null
+  imageUrl: string
+  sortOrder: number
+}
+
 export interface ProductDetail extends Omit<ProductSummary, 'categoryId' | 'categoryName'> {
   category: Category
   description: string
+  discountStartDate: string | null
+  discountEndDate: string | null
+  freeShipping: boolean
+  shippingFee: number
+  estimatedDeliveryDays: number
   images: ProductImage[]
+  detailImages: ProductDetailImage[]
 }
 
 export interface PageResponse<T> {

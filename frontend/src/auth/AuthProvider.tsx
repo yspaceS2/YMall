@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { loginMember } from '../api/auth'
+import { loginMember, logoutMember } from '../api/auth'
+import { refreshAccessToken } from '../api/client'
 import type { LoginRequest } from '../types/auth'
 import { AuthContext } from './AuthContext'
 import {
     AUTH_CHANGED_EVENT,
+    AUTH_LOGOUT_COMPLETED_EVENT,
     AUTH_UNAUTHORIZED_EVENT,
     clearAccessToken,
     getAccessToken,
@@ -16,9 +18,34 @@ import {
 export function AuthProvider({ children }: { children: ReactNode }) {
     const initialToken = getAccessToken()
     const [isAuthenticated, setIsAuthenticated] = useState(() => initialToken !== null)
+    const [isLoggingOut, setIsLoggingOut] = useState(false)
     const [role, setRole] = useState(() => getTokenRole(initialToken))
     const location = useLocation()
     const navigate = useNavigate()
+
+    useEffect(() => {
+        if (getAccessToken() !== null) {
+            return
+        }
+        refreshAccessToken()
+            .then((accessToken) => {
+                if (!accessToken) {
+                    return
+                }
+                setAccessToken(accessToken)
+                setIsAuthenticated(true)
+                setRole(getTokenRole(accessToken))
+            })
+            .catch(() => undefined)
+    }, [])
+
+    useEffect(() => {
+        if (!isLoggingOut || location.pathname !== '/') {
+            return
+        }
+        const frame = window.requestAnimationFrame(() => setIsLoggingOut(false))
+        return () => window.cancelAnimationFrame(frame)
+    }, [isLoggingOut, location.pathname])
 
     useEffect(() => {
         let expirationTimer: number | undefined
@@ -38,10 +65,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return
             }
 
-            expirationTimer = window.setTimeout(
-                clearAccessToken,
-                Math.max(expiration - Date.now(), 0),
-            )
+            expirationTimer = window.setTimeout(async () => {
+                try {
+                    const refreshedToken = await refreshAccessToken()
+                    if (refreshedToken) {
+                        setAccessToken(refreshedToken)
+                    } else {
+                        clearAccessToken()
+                    }
+                } catch {
+                    clearAccessToken()
+                }
+            }, Math.max(expiration - Date.now() - 5_000, 0))
         }
         const syncAuthentication = () => {
             const token = getAccessToken()
@@ -76,21 +111,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const login = useCallback(async (request: LoginRequest) => {
         const response = await loginMember(request)
+        const authenticatedRole = getTokenRole(response.accessToken)
         setAccessToken(response.accessToken)
         setIsAuthenticated(true)
-        setRole(getTokenRole(response.accessToken))
+        setRole(authenticatedRole)
+        return authenticatedRole
     }, [])
 
-    const logout = useCallback(() => {
-        clearAccessToken()
-        setIsAuthenticated(false)
-        setRole(null)
-        navigate('/', { replace: true })
+    const completeOAuthLogin = useCallback((accessToken: string) => {
+        const authenticatedRole = getTokenRole(accessToken)
+        setAccessToken(accessToken)
+        setIsAuthenticated(true)
+        setRole(authenticatedRole)
+        return authenticatedRole
+    }, [])
+
+    const logout = useCallback(async () => {
+        setIsLoggingOut(true)
+        try {
+            await logoutMember()
+        } finally {
+            navigate('/', { replace: true, state: null, flushSync: true })
+            clearAccessToken()
+            setIsAuthenticated(false)
+            setRole(null)
+            window.dispatchEvent(new Event(AUTH_LOGOUT_COMPLETED_EVENT))
+        }
     }, [navigate])
 
     const value = useMemo(
-        () => ({ isAuthenticated, role, login, logout }),
-        [isAuthenticated, role, login, logout],
+        () => ({ isAuthenticated, isLoggingOut, role, login, completeOAuthLogin, logout }),
+        [isAuthenticated, isLoggingOut, role, login, completeOAuthLogin, logout],
     )
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

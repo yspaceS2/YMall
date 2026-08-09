@@ -1,6 +1,7 @@
 package com.ymall.backend.integration.notification;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,11 +23,15 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ymall.backend.cart.entity.CartItem;
 import com.ymall.backend.cart.repository.CartItemRepository;
 import com.ymall.backend.global.security.JwtTokenProvider;
+import com.ymall.backend.global.messaging.outbox.OrderOutboxEventRepository;
 import com.ymall.backend.member.entity.Member;
+import com.ymall.backend.member.entity.MemberAddress;
 import com.ymall.backend.member.entity.MemberRole;
+import com.ymall.backend.member.repository.MemberAddressRepository;
 import com.ymall.backend.member.repository.MemberRepository;
 import com.ymall.backend.notification.entity.NotificationType;
 import com.ymall.backend.notification.repository.NotificationRepository;
+import com.ymall.backend.notification.service.OrderNotificationEventProcessor;
 import com.ymall.backend.order.repository.OrderRepository;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
@@ -35,6 +40,7 @@ import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
 import com.ymall.backend.seller.entity.SellerProfile;
 import com.ymall.backend.seller.repository.SellerProfileRepository;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -47,6 +53,9 @@ class NotificationApiIntegrationTest {
 
     @Autowired
     private MemberRepository memberRepository;
+
+    @Autowired
+    private MemberAddressRepository memberAddressRepository;
 
     @Autowired
     private SellerProfileRepository sellerProfileRepository;
@@ -67,16 +76,31 @@ class NotificationApiIntegrationTest {
     private NotificationRepository notificationRepository;
 
     @Autowired
+    private OrderOutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private OrderNotificationEventProcessor notificationEventProcessor;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
     private String buyerToken;
     private String otherToken;
     private String sellerToken;
     private String secondSellerToken;
+    private Long buyerAddressId;
+    private Long buyerId;
 
     @BeforeEach
     void setUp() {
         Member buyer = saveMember("notification-buyer@example.com", MemberRole.ROLE_USER);
+        buyerId = buyer.getId();
+        buyerAddressId = memberAddressRepository.save(new MemberAddress(
+            buyer, "Home", "Recipient", "01012345678", "00000", "123 Test-ro", "101", true
+        )).getId();
         Member other = saveMember("notification-other@example.com", MemberRole.ROLE_USER);
         Member seller = saveMember("notification-seller@example.com", MemberRole.ROLE_SELLER);
         Member secondSeller = saveMember(
@@ -151,6 +175,8 @@ class NotificationApiIntegrationTest {
                 .content("{\"fulfillmentStatus\":\"PREPARING\"}"))
             .andExpect(status().isOk());
 
+        consumeOutboxEvents();
+
         mockMvc.perform(get("/api/notifications")
                 .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
             .andExpect(status().isOk())
@@ -165,6 +191,7 @@ class NotificationApiIntegrationTest {
             .andExpect(jsonPath("$.data.content.length()").value(0));
 
         Long notificationId = notificationRepository.findAll().stream()
+            .filter(notification -> notification.getMember().getId().equals(buyerId))
             .filter(notification -> notification.getType() == NotificationType.ORDER_CREATED)
             .findFirst()
             .orElseThrow()
@@ -194,6 +221,29 @@ class NotificationApiIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.unreadCount").value(0));
+
+        mockMvc.perform(delete("/api/notifications/{notificationId}", notificationId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(otherToken)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("NOTIFICATION_NOT_FOUND"));
+
+        mockMvc.perform(delete("/api/notifications")
+                .header(HttpHeaders.AUTHORIZATION, bearer(sellerToken)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+
+        mockMvc.perform(delete("/api/notifications/{notificationId}", notificationId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(delete("/api/notifications")
+                .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/notifications")
+                .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.content.length()").value(0));
     }
 
     @Test
@@ -216,6 +266,8 @@ class NotificationApiIntegrationTest {
         updateFulfillment(orderId, secondSellerToken, "SHIPPED");
         updateFulfillment(orderId, secondSellerToken, "DELIVERED");
 
+        consumeOutboxEvents();
+
         mockMvc.perform(get("/api/notifications")
                 .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken)))
             .andExpect(status().isOk())
@@ -232,18 +284,40 @@ class NotificationApiIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(buyerToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"idempotencyKey":"notification-order"}
-                    """))
+                    {"idempotencyKey":"notification-order","addressId":%d}
+                    """.formatted(buyerAddressId)))
             .andExpect(status().isCreated());
     }
 
     private void updateFulfillment(Long orderId, String token, String fulfillmentStatus)
         throws Exception {
+        String content = "SHIPPED".equals(fulfillmentStatus)
+            ? """
+                {
+                  "fulfillmentStatus":"SHIPPED",
+                  "carrier":"CJ대한통운",
+                  "trackingNumber":"1234567890"
+                }
+                """
+            : "{\"fulfillmentStatus\":\"%s\"}".formatted(fulfillmentStatus);
         mockMvc.perform(patch("/api/seller/orders/{orderId}/status", orderId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fulfillmentStatus\":\"%s\"}".formatted(fulfillmentStatus)))
+                .content(content))
             .andExpect(status().isOk());
+    }
+
+    private void consumeOutboxEvents() {
+        outboxEventRepository.findAll().stream()
+            .sorted((left, right) -> {
+                int createdAtComparison = left.getCreatedAt().compareTo(right.getCreatedAt());
+                return createdAtComparison != 0
+                    ? createdAtComparison
+                    : left.getEventId().compareTo(right.getEventId());
+            })
+            .forEach(outboxEvent -> notificationEventProcessor.process(
+                outboxEvent.toEnvelope(objectMapper)
+            ));
     }
 
     private Member saveMember(String email, MemberRole role) {

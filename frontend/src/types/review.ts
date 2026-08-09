@@ -9,6 +9,16 @@ export interface Review {
     updatedAt: string
 }
 
+export interface ReviewSummary {
+    available: boolean
+    reviewCount: number
+    pros: string[]
+    cons: string[]
+    commonOpinions: string[]
+    modelVersion: string | null
+    generatedAt: string | null
+}
+
 export interface ReviewCreateRequest {
     orderItemId: number
     rating: number

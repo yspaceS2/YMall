@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import com.ymall.backend.global.common.ApiResponse;
 import com.ymall.backend.global.security.MemberPrincipal;
 import com.ymall.backend.payment.dto.MockPaymentRequest;
+import com.ymall.backend.payment.dto.PaymentConfirmRequest;
 import com.ymall.backend.payment.dto.PaymentResponse;
 import com.ymall.backend.payment.service.PaymentService;
 
@@ -36,6 +37,20 @@ public class PaymentController {
             .body(ApiResponse.success(
                 paymentService.processPayment(principal.memberId(), orderId, request),
                 "모의 결제를 처리했습니다."
+            ));
+    }
+
+    @PostMapping("/confirmations")
+    public ResponseEntity<ApiResponse<PaymentResponse>> confirmPayment(
+        @AuthenticationPrincipal MemberPrincipal principal,
+        @PathVariable Long orderId,
+        @Valid @RequestBody PaymentConfirmRequest request
+    ) {
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(ApiResponse.success(
+                paymentService.confirmPayment(principal.memberId(), orderId, request),
+                "결제가 승인되었습니다."
             ));
     }
 }

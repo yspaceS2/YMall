@@ -8,9 +8,12 @@ public record OrderItemResponse(
     Long orderItemId,
     Long productId,
     String productName,
+    String thumbnailUrl,
     BigDecimal unitPrice,
     Integer quantity,
+    Integer refundedQuantity,
     BigDecimal totalPrice,
+    BigDecimal shippingFee,
     OrderItemFulfillmentStatus fulfillmentStatus
 ) {
 }

@@ -17,9 +17,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
-import com.ymall.backend.global.security.JwtTokenProvider;
-import com.ymall.backend.member.dto.MemberResponse;
+import com.ymall.backend.global.security.AuthenticationTokens;
+import com.ymall.backend.global.security.RefreshTokenService;
+import com.ymall.backend.member.dto.EmailAvailabilityResponse;
 import com.ymall.backend.member.dto.MemberLoginRequest;
+import com.ymall.backend.member.dto.MemberResponse;
 import com.ymall.backend.member.dto.MemberSignupRequest;
 import com.ymall.backend.member.dto.TokenResponse;
 import com.ymall.backend.member.entity.Member;
@@ -36,21 +38,50 @@ class MemberServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private JwtTokenProvider jwtTokenProvider;
+    private RefreshTokenService refreshTokenService;
+
+    @Mock
+    private SignupEmailVerificationService signupEmailVerificationService;
+
+    @Mock
+    private LoginAttemptLimiter loginAttemptLimiter;
+
+    @Mock
+    private PasswordPolicy passwordPolicy;
 
     private MemberService memberService;
 
     @BeforeEach
     void setUp() {
-        memberService = new MemberService(memberRepository, passwordEncoder, jwtTokenProvider);
+        memberService = new MemberService(
+            memberRepository,
+            passwordEncoder,
+            refreshTokenService,
+            signupEmailVerificationService,
+            loginAttemptLimiter,
+            passwordPolicy
+        );
+    }
+
+    @Test
+    void checkEmailAvailabilityReturnsNormalizedEmailResult() {
+        given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(false);
+
+        EmailAvailabilityResponse response = memberService.checkEmailAvailability(" User@Example.com ");
+
+        assertThat(response.available()).isTrue();
+        verify(memberRepository).existsByEmailIgnoreCase("user@example.com");
     }
 
     @Test
     void signupStoresNormalizedEmailAndEncodedPassword() {
         MemberSignupRequest request = new MemberSignupRequest(
             " User@Example.com ",
+            "verification-token",
             "password123",
-            "홍길동"
+            "password123",
+            "홍길동",
+            "010-1234-5678"
         );
         given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(false);
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");
@@ -58,12 +89,17 @@ class MemberServiceTest {
 
         MemberResponse response = memberService.signup(request);
 
+        verify(signupEmailVerificationService)
+            .consume("verification-token", "user@example.com");
+        verify(passwordPolicy).validate("password123", "user@example.com");
         ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
         verify(memberRepository).saveAndFlush(memberCaptor.capture());
         Member savedMember = memberCaptor.getValue();
         assertThat(savedMember.getEmail()).isEqualTo("user@example.com");
         assertThat(savedMember.getPassword()).isEqualTo("encoded-password");
         assertThat(savedMember.getPassword()).isNotEqualTo(request.password());
+        assertThat(savedMember.getPhone()).isEqualTo("01012345678");
+        assertThat(response.phone()).isEqualTo("01012345678");
         assertThat(response.role()).isEqualTo(MemberRole.ROLE_USER);
     }
 
@@ -71,8 +107,11 @@ class MemberServiceTest {
     void signupRejectsDuplicatedEmail() {
         MemberSignupRequest request = new MemberSignupRequest(
             "user@example.com",
+            "verification-token",
             "password123",
-            "홍길동"
+            "password123",
+            "홍길동",
+            "01012345678"
         );
         given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(true);
 
@@ -86,8 +125,11 @@ class MemberServiceTest {
     void signupMapsConcurrentDuplicateToBusinessException() {
         MemberSignupRequest request = new MemberSignupRequest(
             "user@example.com",
+            "verification-token",
             "password123",
-            "홍길동"
+            "password123",
+            "홍길동",
+            "01012345678"
         );
         given(memberRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(false);
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");
@@ -112,9 +154,12 @@ class MemberServiceTest {
         TokenResponse tokenResponse = new TokenResponse("token", "Bearer", 1800);
         given(memberRepository.findByEmailIgnoreCase("user@example.com")).willReturn(java.util.Optional.of(member));
         given(passwordEncoder.matches("password123", "encoded-password")).willReturn(true);
-        given(jwtTokenProvider.createAccessToken(member)).willReturn(tokenResponse);
+        AuthenticationTokens tokens = new AuthenticationTokens(tokenResponse, "refresh-token");
+        given(refreshTokenService.issueForLogin(member)).willReturn(tokens);
 
-        assertThat(memberService.login(request)).isEqualTo(tokenResponse);
+        assertThat(memberService.login(request)).isEqualTo(tokens);
+        verify(loginAttemptLimiter).consume("user@example.com");
+        verify(loginAttemptLimiter).reset("user@example.com");
     }
 
     @Test
@@ -133,5 +178,6 @@ class MemberServiceTest {
             .isInstanceOf(BusinessException.class)
             .extracting(exception -> ((BusinessException) exception).getErrorCode())
             .isEqualTo(ErrorCode.LOGIN_FAILED);
+        verify(loginAttemptLimiter).consume("user@example.com");
     }
 }

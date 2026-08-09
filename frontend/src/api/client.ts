@@ -1,7 +1,8 @@
-import { clearAccessToken, getAccessToken, notifyUnauthorized } from '../auth/tokenStorage'
+import { clearAccessTokenIfMatches, getAccessToken, notifyUnauthorized, setAccessToken } from '../auth/tokenStorage'
 import type { ApiResponse, ErrorResponse } from '../types/api'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
+let refreshPromise: Promise<string | null> | null = null
 
 interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
     body?: unknown
@@ -24,25 +25,60 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     const { body, auth = true, headers: initialHeaders, ...requestInit } = options
     const headers = new Headers(initialHeaders)
     const token = auth ? getAccessToken() : null
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
 
-    if (body !== undefined) {
+    if (body !== undefined && !isFormData) {
         headers.set('Content-Type', 'application/json')
     }
     if (token) {
         headers.set('Authorization', `Bearer ${token}`)
     }
 
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-        ...requestInit,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-    })
+    const request = (accessToken: string | null) => {
+        const requestHeaders = new Headers(headers)
+        if (accessToken) {
+            requestHeaders.set('Authorization', `Bearer ${accessToken}`)
+        } else {
+            requestHeaders.delete('Authorization')
+        }
+        return fetch(`${API_BASE_URL}${path}`, {
+            ...requestInit,
+            credentials: requestInit.credentials ?? 'include',
+            headers: requestHeaders,
+            body: body === undefined
+                ? undefined
+                : isFormData
+                    ? body
+                    : JSON.stringify(body),
+        })
+    }
+
+    let requestToken = token
+    let response = await request(requestToken)
+    if (response.status === 401 && auth && path !== '/members/tokens/refresh') {
+        const latestToken = getAccessToken()
+        if (latestToken && latestToken !== requestToken) {
+            requestToken = latestToken
+            response = await request(requestToken)
+        } else {
+            const refreshedToken = await refreshAccessToken()
+            if (refreshedToken) {
+                setAccessToken(refreshedToken)
+                requestToken = refreshedToken
+                response = await request(requestToken)
+            }
+        }
+    }
 
     if (!response.ok) {
         const error = (await response.json().catch(() => null)) as ErrorResponse | null
         if (response.status === 401 && auth) {
-            clearAccessToken()
-            notifyUnauthorized()
+            if (requestToken) {
+                clearAccessTokenIfMatches(requestToken)
+            }
+            if (getAccessToken() === null) {
+                notifyUnauthorized()
+            }
         }
         throw new ApiError(
             error?.error.message ?? '요청을 처리하지 못했습니다.',
@@ -57,4 +93,22 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
     const result = (await response.json()) as ApiResponse<T>
     return result.data
+}
+
+export async function refreshAccessToken() {
+    if (refreshPromise === null) {
+        refreshPromise = fetch(`${API_BASE_URL}/members/tokens/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+        }).then(async (response) => {
+            if (!response.ok) {
+                return null
+            }
+            const result = (await response.json()) as ApiResponse<{ accessToken: string }>
+            return result.data.accessToken
+        }).finally(() => {
+            refreshPromise = null
+        })
+    }
+    return refreshPromise
 }

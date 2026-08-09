@@ -11,11 +11,17 @@ import com.ymall.backend.order.entity.OrderItem;
 @Mapper(componentModel = "spring")
 public interface OrderMapper {
 
-    @Mapping(source = "id", target = "orderId")
-    OrderResponse toOrderResponse(Order order);
+    @Mapping(source = "order.id", target = "orderId")
+    @Mapping(source = "refundSupported", target = "refundSupported")
+    OrderResponse toOrderResponse(Order order, boolean refundSupported);
+
+    default OrderResponse toOrderResponse(Order order) {
+        return toOrderResponse(order, false);
+    }
 
     @Mapping(source = "id", target = "orderItemId")
     @Mapping(source = "product.id", target = "productId")
+    @Mapping(source = "product.thumbnailUrl", target = "thumbnailUrl")
     @Mapping(source = "lineTotal", target = "totalPrice")
     @Mapping(target = "fulfillmentStatus", expression = "java(orderItem.getEffectiveFulfillmentStatus())")
     OrderItemResponse toOrderItemResponse(OrderItem orderItem);

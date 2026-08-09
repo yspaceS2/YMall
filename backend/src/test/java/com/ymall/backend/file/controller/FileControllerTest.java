@@ -16,6 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.ymall.backend.file.domain.FilePurpose;
 import com.ymall.backend.file.dto.FileUploadResponse;
 import com.ymall.backend.file.service.FileStorageService;
 import com.ymall.backend.global.exception.BusinessException;
@@ -54,7 +55,10 @@ class FileControllerTest {
             "image/jpeg"
         );
 
-        given(fileStorageService.storeImage(any(MultipartFile.class))).willReturn(response);
+        given(fileStorageService.storeImage(
+            any(MultipartFile.class),
+            any(FilePurpose.class)
+        )).willReturn(response);
 
         mockMvc.perform(multipart("/api/files/images").file(file))
             .andExpect(status().isOk())
@@ -74,7 +78,10 @@ class FileControllerTest {
             "image".getBytes()
         );
 
-        given(fileStorageService.storeImage(any(MultipartFile.class)))
+        given(fileStorageService.storeImage(
+            any(MultipartFile.class),
+            any(FilePurpose.class)
+        ))
             .willThrow(new BusinessException(ErrorCode.FILE_UPLOAD_FAILED));
 
         mockMvc.perform(multipart("/api/files/images").file(file))

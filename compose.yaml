@@ -1,0 +1,382 @@
+name: ymall
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - timezone=UTC
+    environment:
+      TZ: UTC
+      POSTGRES_DB: ${POSTGRES_DB:-ymall}
+      POSTGRES_USER: ${POSTGRES_USER:-ymall_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ymall_local_password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - ymall-network
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - ymall-network
+
+  kafka:
+    image: apache/kafka:3.9.1
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - ymall-network
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+      JAVA_TOOL_OPTIONS: -Duser.timezone=UTC
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ymall}
+      DB_USERNAME: ${POSTGRES_USER:-ymall_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ymall_local_password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LOGIN_MAX_ATTEMPTS: ${LOGIN_MAX_ATTEMPTS:-5}
+      LOGIN_ATTEMPT_WINDOW: ${LOGIN_ATTEMPT_WINDOW:-15m}
+      PENDING_ORDER_EXPIRATION_ENABLED: ${PENDING_ORDER_EXPIRATION_ENABLED:-true}
+      PENDING_ORDER_EXPIRATION_TIMEOUT: ${PENDING_ORDER_EXPIRATION_TIMEOUT:-30m}
+      PENDING_ORDER_EXPIRATION_BATCH_SIZE: ${PENDING_ORDER_EXPIRATION_BATCH_SIZE:-100}
+      PENDING_ORDER_EXPIRATION_POLL_INTERVAL: ${PENDING_ORDER_EXPIRATION_POLL_INTERVAL:-1m}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_CONSUMER_GROUP: ymall-compose
+      JWT_SECRET: ${JWT_SECRET:-ymall-local-compose-jwt-secret-change-before-production-2026}
+      SELLER_SETTLEMENT_ACCOUNT_ENCRYPTION_KEY: ${SELLER_SETTLEMENT_ACCOUNT_ENCRYPTION_KEY:-}
+      CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-5173}
+      OAUTH2_FRONTEND_REDIRECT_URI: http://localhost:${FRONTEND_PORT:-5173}/oauth2/callback
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-local-disabled}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-local-disabled}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-local-disabled}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-local-disabled}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-local-disabled}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-local-disabled}
+      TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:-}
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:-}
+      TOSS_API_BASE_URL: ${TOSS_API_BASE_URL:-https://api.tosspayments.com}
+      MAIL_HOST: ${MAIL_HOST:-host.docker.internal}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-local-disabled}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-local-disabled}
+      MAIL_FROM: ${MAIL_FROM:-noreply@ymall.local}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_STARTTLS_ENABLED: ${MAIL_STARTTLS_ENABLED:-false}
+      AI_REVIEW_ENABLED: ${AI_REVIEW_ENABLED:-true}
+      AI_REVIEW_MINIMUM_REVIEWS: ${AI_REVIEW_MINIMUM_REVIEWS:-10}
+      AI_REVIEW_MAXIMUM_REVIEWS: ${AI_REVIEW_MAXIMUM_REVIEWS:-100}
+      AI_REVIEW_MAXIMUM_REVIEW_LENGTH: ${AI_REVIEW_MAXIMUM_REVIEW_LENGTH:-1000}
+      AI_REVIEW_MAXIMUM_TOTAL_LENGTH: ${AI_REVIEW_MAXIMUM_TOTAL_LENGTH:-6000}
+      AI_REVIEW_MAX_TOKENS: ${AI_REVIEW_MAX_TOKENS:-192}
+      AI_REVIEW_CONNECT_TIMEOUT: ${AI_REVIEW_CONNECT_TIMEOUT:-3s}
+      AI_REVIEW_READ_TIMEOUT: ${AI_REVIEW_READ_TIMEOUT:-180s}
+      AI_REVIEW_LOCK_TTL: ${AI_REVIEW_LOCK_TTL:-5m}
+    volumes:
+      - backend-uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ymall-network
+    models:
+      review-summary-model:
+        endpoint_var: AI_REVIEW_BASE_URL
+        model_var: AI_REVIEW_MODEL
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_OAUTH2_BASE_URL: ""
+        VITE_TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:-}
+    restart: unless-stopped
+    environment:
+      BACKEND_HOST: backend
+      BACKEND_PORT: 8080
+    ports:
+      - "${FRONTEND_PORT:-5173}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ymall-network
+
+  ai-contract-check:
+    image: python:3.12-alpine
+    profiles:
+      - ai-check
+    working_dir: /workspace
+    command: ["python", "-m", "ai.inference.check_service"]
+    environment:
+      AI_REVIEW_MAX_TOKENS: ${AI_REVIEW_MAX_TOKENS:-192}
+      AI_REVIEW_REQUEST_TIMEOUT_SECONDS: ${AI_REVIEW_REQUEST_TIMEOUT_SECONDS:-180}
+    volumes:
+      - ./ai/inference:/workspace/ai/inference:ro
+    models:
+      review-summary-model:
+        endpoint_var: AI_REVIEW_MODEL_URL
+        model_var: AI_REVIEW_MODEL_NAME
+    networks:
+      - ymall-network
+
+  k6:
+    image: grafana/k6:2.1.0
+    profiles:
+      - load-test
+    command: ["run", "/scripts/scenarios/${LOAD_TEST_SCENARIO:-read}.js"]
+    environment:
+      LOAD_TEST_BASE_URL: ${LOAD_TEST_BASE_URL:-http://backend:8080/api}
+      LOAD_TEST_PRODUCT_ID: ${LOAD_TEST_PRODUCT_ID:-}
+      LOAD_TEST_SEARCH_KEYWORD: ${LOAD_TEST_SEARCH_KEYWORD:-}
+      LOAD_TEST_USER_EMAILS: ${LOAD_TEST_USER_EMAILS:-}
+      LOAD_TEST_USER_PASSWORDS: ${LOAD_TEST_USER_PASSWORDS:-}
+      LOAD_TEST_ADDRESS_ID: ${LOAD_TEST_ADDRESS_ID:-}
+      LOAD_TEST_ENABLE_WRITES: ${LOAD_TEST_ENABLE_WRITES:-false}
+      LOAD_TEST_TARGET_VUS: ${LOAD_TEST_TARGET_VUS:-10}
+      LOAD_TEST_RAMP_UP: ${LOAD_TEST_RAMP_UP:-30s}
+      LOAD_TEST_HOLD: ${LOAD_TEST_HOLD:-1m}
+      LOAD_TEST_RAMP_DOWN: ${LOAD_TEST_RAMP_DOWN:-30s}
+      LOAD_TEST_SPIKE_BASE_VUS: ${LOAD_TEST_SPIKE_BASE_VUS:-5}
+      LOAD_TEST_SPIKE_VUS: ${LOAD_TEST_SPIKE_VUS:-50}
+      LOAD_TEST_SPIKE_WARM_UP: ${LOAD_TEST_SPIKE_WARM_UP:-20s}
+      LOAD_TEST_SPIKE_DURATION: ${LOAD_TEST_SPIKE_DURATION:-30s}
+      LOAD_TEST_SPIKE_RECOVERY: ${LOAD_TEST_SPIKE_RECOVERY:-30s}
+      LOAD_TEST_P95_MS: ${LOAD_TEST_P95_MS:-500}
+      LOAD_TEST_FAILURE_RATE: ${LOAD_TEST_FAILURE_RATE:-0.01}
+      LOAD_TEST_THINK_TIME: ${LOAD_TEST_THINK_TIME:-1}
+      LOAD_TEST_REFRESH_EVERY: ${LOAD_TEST_REFRESH_EVERY:-20}
+      LOAD_TEST_WRITE_EVERY: ${LOAD_TEST_WRITE_EVERY:-10}
+    volumes:
+      - ./load-test:/scripts:ro
+      - ./docs/performance:/results
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ymall-network
+
+  postgres-monitoring-init:
+    image: postgres:16-alpine
+    profiles:
+      - monitoring
+    restart: "no"
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-ymall}
+      PGUSER: ${POSTGRES_USER:-ymall_user}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-ymall_local_password}
+    command:
+      - psql
+      - -v
+      - ON_ERROR_STOP=1
+      - -c
+      - CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ymall-network
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.19.1
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    command:
+      - --collector.stat_statements
+      - --collector.stat_statements.limit=50
+      - --collector.long_running_transactions
+    environment:
+      DATA_SOURCE_URI: postgres:5432/${POSTGRES_DB:-ymall}?sslmode=disable
+      DATA_SOURCE_USER: ${POSTGRES_USER:-ymall_user}
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD:-ymall_local_password}
+      PG_EXPORTER_COLLECTION_TIMEOUT: 5s
+    depends_on:
+      postgres-monitoring-init:
+        condition: service_completed_successfully
+    networks:
+      - ymall-network
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.84.0
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ymall-network
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    command:
+      - --kafka.server=kafka:9092
+      - --refresh.metadata=10s
+      - --group.filter=ymall-.*
+      - --topic.filter=ymall\..*
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - ymall-network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    privileged: true
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=5s
+      - --store_container_labels=false
+      - --whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - ymall-network
+
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=24h
+      - --storage.tsdb.retention.size=1GB
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9091}:9090"
+    depends_on:
+      backend:
+        condition: service_healthy
+      postgres-exporter:
+        condition: service_started
+      redis-exporter:
+        condition: service_started
+      kafka-exporter:
+        condition: service_started
+      cadvisor:
+        condition: service_started
+    networks:
+      - ymall-network
+
+  grafana:
+    image: grafana/grafana:13.1.0
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+    networks:
+      - ymall-network
+
+models:
+  review-summary-model:
+    model: ${AI_REVIEW_MODEL:-hf.co/Qwen/Qwen3-0.6B-GGUF:Q8_0}
+    runtime_flags:
+      - "--ctx-size"
+      - "${AI_REVIEW_CONTEXT_SIZE:-4096}"
+      - "--threads"
+      - "${AI_REVIEW_THREADS:-4}"
+      - "--parallel"
+      - "${AI_REVIEW_PARALLEL:-1}"
+      - "--n-gpu-layers"
+      - "${AI_REVIEW_GPU_LAYERS:-0}"
+
+volumes:
+  postgres-data:
+  redis-data:
+  kafka-data:
+  backend-uploads:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  ymall-network:
+    driver: bridge

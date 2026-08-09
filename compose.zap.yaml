@@ -1,0 +1,12 @@
+services:
+  redis:
+    ports: !reset []
+
+  backend:
+    models: !reset []
+    environment:
+      AI_REVIEW_ENABLED: "false"
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+
+  frontend:
+    ports: !reset []

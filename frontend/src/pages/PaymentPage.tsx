@@ -1,11 +1,16 @@
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { LoaderCircle } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../api/client'
-import { cancelOrder, getOrder, processMockPayment } from '../api/orders'
-import type { Order, PaymentResult } from '../types/order'
+import { cancelOrder, getOrder } from '../api/orders'
+import { getAccessToken, getTokenSubject } from '../auth/tokenStorage'
+import type { Order } from '../types/order'
 import { getOrderStatusLabel } from '../utils/order'
 import { formatPrice } from '../utils/product'
+import { getTossCustomerKey, getTossErrorMessage } from '../utils/tossPayments'
+
+const tossClientKey = (import.meta.env.VITE_TOSS_CLIENT_KEY ?? '').trim()
 
 export function PaymentPage() {
     const { orderId: orderIdParam } = useParams()
@@ -13,10 +18,8 @@ export function PaymentPage() {
     const isValidOrderId = Number.isInteger(orderId) && orderId > 0
     const [order, setOrder] = useState<Order | null>(null)
     const [isLoading, setIsLoading] = useState(isValidOrderId)
-    const [pendingAction, setPendingAction] = useState<PaymentResult | 'CANCEL' | null>(null)
+    const [pendingAction, setPendingAction] = useState<'PAYMENT' | 'CANCEL' | null>(null)
     const [errorMessage, setErrorMessage] = useState('')
-    const successKeyRef = useRef(crypto.randomUUID())
-    const failureKeyRef = useRef(crypto.randomUUID())
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -34,19 +37,45 @@ export function PaymentPage() {
         return () => controller.abort()
     }, [isValidOrderId, orderId])
 
-    async function pay(result: PaymentResult) {
+    async function openPaymentWindow() {
         if (!order || pendingAction) return
-        setPendingAction(result)
+        if (!tossClientKey) {
+            setErrorMessage('Toss Payments 클라이언트 키가 설정되지 않았습니다.')
+            return
+        }
+
+        setPendingAction('PAYMENT')
         setErrorMessage('')
         try {
-            const idempotencyKey = result === 'SUCCESS'
-                ? successKeyRef.current
-                : failureKeyRef.current
-            await processMockPayment(order.orderId, { idempotencyKey, result })
-            navigate(`/orders/${order.orderId}/result`)
+            const tossPayments = await loadTossPayments(tossClientKey)
+            const memberKey = getTokenSubject(getAccessToken())
+            if (!memberKey) {
+                throw new Error('로그인 정보를 확인할 수 없습니다. 다시 로그인해 주세요.')
+            }
+            const payment = tossPayments.payment({ customerKey: getTossCustomerKey(memberKey) })
+            const origin = window.location.origin
+            const itemCount = order.items.length
+            const firstItemName = order.items[0]?.productName ?? 'YMall 상품'
+            const orderName = (itemCount > 1 ? `${firstItemName} 외 ${itemCount - 1}건` : firstItemName)
+                .slice(0, 100)
+
+            await payment.requestPayment({
+                method: 'CARD',
+                amount: {
+                    currency: 'KRW',
+                    value: order.totalAmount,
+                },
+                orderId: order.paymentOrderId,
+                orderName,
+                customerName: order.deliveryAddress?.recipientName,
+                customerMobilePhone: order.deliveryAddress?.recipientPhone.replace(/\D/g, ''),
+                successUrl: `${origin}/orders/${order.orderId}/payment/success`,
+                failUrl: `${origin}/orders/${order.orderId}/payment/fail`,
+                windowTarget: 'self',
+            })
+            setPendingAction(null)
         } catch (error) {
-            setErrorMessage(error instanceof ApiError ? error.message : '결제를 처리하지 못했습니다.')
-        } finally {
+            setErrorMessage(getTossErrorMessage(error))
             setPendingAction(null)
         }
     }
@@ -60,7 +89,6 @@ export function PaymentPage() {
             navigate(`/orders/${order.orderId}/result`)
         } catch (error) {
             setErrorMessage(error instanceof ApiError ? error.message : '주문을 취소하지 못했습니다.')
-        } finally {
             setPendingAction(null)
         }
     }
@@ -81,7 +109,7 @@ export function PaymentPage() {
 
     return (
         <section className="mx-auto max-w-180 px-4 py-16 min-[601px]:py-24">
-            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-[#71801e]">MOCK PAYMENT</p>
+            <p className="mb-2 text-[11px] font-extrabold tracking-[.18em] text-accent">TOSS PAYMENTS</p>
             <h1 className="font-serif text-[clamp(42px,7vw,68px)] leading-none tracking-tighter">결제하기</h1>
             <div className="my-10 border-y border-ink py-6">
                 <div className="flex justify-between text-sm"><span>주문 번호</span><b>#{order.orderId}</b></div>
@@ -89,17 +117,20 @@ export function PaymentPage() {
                 <div className="mt-5 flex items-baseline justify-between border-t border-line pt-5"><span className="text-sm font-bold">결제 금액</span><strong className="text-2xl">{formatPrice(order.totalAmount)}</strong></div>
             </div>
 
-            {errorMessage && <p className="mb-5 text-sm text-[#b23b2f]" role="alert">{errorMessage}</p>}
+            {errorMessage && <p className="mb-5 text-sm text-danger" role="alert">{errorMessage}</p>}
 
             {canPay ? (
-                <div className="grid gap-3 min-[601px]:grid-cols-2">
-                    <button className="h-13 border-0 bg-ink font-bold text-white disabled:opacity-50" type="button" disabled={pendingAction !== null} onClick={() => pay('SUCCESS')}>
-                        {pendingAction === 'SUCCESS' ? <LoaderCircle className="mx-auto size-5 animate-spin" /> : '결제 성공 처리'}
+                <div className="grid gap-3">
+                    <button
+                        className="h-13 border-0 bg-ink font-bold text-white disabled:opacity-50"
+                        type="button"
+                        disabled={pendingAction !== null}
+                        onClick={openPaymentWindow}
+                    >
+                        {pendingAction === 'PAYMENT' ? <LoaderCircle className="mx-auto size-5 animate-spin" /> : `${formatPrice(order.totalAmount)} 결제하기`}
                     </button>
-                    <button className="h-13 border border-[#b23b2f] bg-white font-bold text-[#b23b2f] disabled:opacity-50" type="button" disabled={pendingAction !== null} onClick={() => pay('FAILURE')}>
-                        {pendingAction === 'FAILURE' ? <LoaderCircle className="mx-auto size-5 animate-spin" /> : '결제 실패 시뮬레이션'}
-                    </button>
-                    <button className="h-11 border-0 bg-transparent text-xs underline disabled:opacity-50 min-[601px]:col-span-2" type="button" disabled={pendingAction !== null} onClick={cancel}>
+                    <p className="text-center text-[11px] leading-5 text-muted">결제 버튼을 누르면 Toss Payments의 안전한 결제창으로 이동합니다.</p>
+                    <button className="h-11 border-0 bg-transparent text-xs underline disabled:opacity-50" type="button" disabled={pendingAction !== null} onClick={cancel}>
                         {pendingAction === 'CANCEL' ? '취소 처리 중...' : '주문 취소 및 재고 복구'}
                     </button>
                 </div>

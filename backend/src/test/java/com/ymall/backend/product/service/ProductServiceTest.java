@@ -3,12 +3,14 @@ package com.ymall.backend.product.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,21 +18,28 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 import com.ymall.backend.product.dto.CategoryResponse;
 import com.ymall.backend.product.dto.ProductCreateRequest;
+import com.ymall.backend.product.dto.ProductDetailImageCreateRequest;
 import com.ymall.backend.product.dto.ProductDetailResponse;
 import com.ymall.backend.product.dto.ProductImageCreateRequest;
 import com.ymall.backend.product.dto.ProductUpdateRequest;
 import com.ymall.backend.product.entity.Category;
 import com.ymall.backend.product.entity.Product;
+import com.ymall.backend.product.entity.ProductDetailImage;
 import com.ymall.backend.product.entity.ProductImage;
 import com.ymall.backend.product.entity.ProductStatus;
 import com.ymall.backend.product.mapper.ProductMapper;
 import com.ymall.backend.product.repository.CategoryRepository;
 import com.ymall.backend.product.repository.ProductRepository;
+import com.ymall.backend.product.repository.ProductSuggestionFinder;
+import com.ymall.backend.product.search.ProductSearchMatch;
+import com.ymall.backend.product.search.ProductSearchMatchType;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
@@ -39,10 +48,19 @@ class ProductServiceTest {
     private ProductRepository productRepository;
 
     @Mock
+    private ProductSuggestionFinder productSuggestionFinder;
+
+    @Mock
     private CategoryRepository categoryRepository;
 
     @Mock
+    private ProductCategoryPolicy productCategoryPolicy;
+
+    @Mock
     private ProductMapper productMapper;
+
+    @Mock
+    private ProductCacheInvalidator productCacheInvalidator;
 
     @InjectMocks
     private ProductService productService;
@@ -65,7 +83,7 @@ class ProductServiceTest {
         Product product = createProduct(category);
         ProductDetailResponse response = createDetailResponse();
 
-        given(categoryRepository.findById(1L)).willReturn(Optional.of(category));
+        given(productCategoryPolicy.getSelectableCategory(1L)).willReturn(category);
         given(productMapper.toEntity(request, category, ProductStatus.APPROVED)).willReturn(product);
         given(productRepository.save(product)).willReturn(product);
         given(productMapper.toProductDetailResponse(product)).willReturn(response);
@@ -90,7 +108,8 @@ class ProductServiceTest {
     void createProductWithMissingCategory() {
         ProductCreateRequest request = createRequest();
 
-        given(categoryRepository.findById(1L)).willReturn(Optional.empty());
+        given(productCategoryPolicy.getSelectableCategory(1L))
+            .willThrow(new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         assertThatThrownBy(() -> productService.createProduct(request))
             .isInstanceOf(BusinessException.class)
@@ -116,11 +135,17 @@ class ProductServiceTest {
         Product product = createProduct(oldCategory);
         ProductUpdateRequest request = updateRequest();
         ProductImage newImage = new ProductImage("original", "updated-image", 0);
+        ProductDetailImage newDetailImage = new ProductDetailImage(
+            "detail-original",
+            "updated-detail-image",
+            0
+        );
         ProductDetailResponse response = createUpdatedDetailResponse();
 
         given(productRepository.findWithCategoryAndImagesById(1L)).willReturn(Optional.of(product));
-        given(categoryRepository.findById(2L)).willReturn(Optional.of(newCategory));
+        given(productCategoryPolicy.getSelectableCategory(2L)).willReturn(newCategory);
         given(productMapper.toImageEntities(request)).willReturn(List.of(newImage));
+        given(productMapper.toDetailImageEntities(request)).willReturn(List.of(newDetailImage));
         given(productMapper.toProductDetailResponse(product)).willReturn(response);
 
         ProductDetailResponse result = productService.updateProduct(1L, request);
@@ -128,6 +153,7 @@ class ProductServiceTest {
         assertThat(result.name()).isEqualTo("Updated Product");
         assertThat(product.getName()).isEqualTo("Updated Product");
         assertThat(product.getImages()).hasSize(1);
+        assertThat(product.getDetailImages()).hasSize(1);
     }
 
     /**
@@ -172,6 +198,53 @@ class ProductServiceTest {
             .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
     }
 
+    @Test
+    @DisplayName("카테고리 추천 검색은 선택한 카테고리 범위로 제한한다")
+    void getProductSuggestionsWithinCategory() {
+        given(productCategoryPolicy.getPublicTreeIds(2L)).willReturn(Set.of(2L));
+        given(productSuggestionFinder.findMatches(eq("ㄴㅌㅂ"), eq(Set.of(2L)), eq(8)))
+            .willReturn(List.of(new ProductSearchMatch(
+                1L,
+                "노트북 파우치",
+                null,
+                ProductSearchMatchType.CHOSEONG,
+                1.0,
+                0
+            )));
+
+        var suggestions = productService.getProductSuggestions("ㄴㅌㅂ", 2L, 8);
+
+        assertThat(suggestions).hasSize(1);
+        then(productSuggestionFinder).should()
+            .findMatches("ㄴㅌㅂ", Set.of(2L), 8);
+    }
+
+    @Test
+    @DisplayName("퍼지 검색에서 매우 큰 페이지 번호를 안전하게 처리한다")
+    void fuzzySearchWithMaximumPageNumber() {
+        given(productRepository.searchPublicProducts(
+            eq("notebookx"),
+            eq(""),
+            eq(ProductStatus.APPROVED),
+            eq(false),
+            eq(Set.of(-1L)),
+            any(Pageable.class)
+        )).willReturn(Page.empty());
+        given(productSuggestionFinder.findMatches("notebookx", Set.of(), 100))
+            .willReturn(List.of());
+
+        var result = productService.searchProducts(
+            "notebookx",
+            null,
+            Integer.MAX_VALUE,
+            100
+        );
+
+        assertThat(result.content()).isEmpty();
+        assertThat(result.page()).isEqualTo(Integer.MAX_VALUE);
+        assertThat(result.totalElements()).isZero();
+    }
+
     private ProductCreateRequest createRequest() {
         return new ProductCreateRequest(
             1L,
@@ -182,7 +255,8 @@ class ProductServiceTest {
             BigDecimal.valueOf(10),
             20,
             "thumbnail",
-            List.of(new ProductImageCreateRequest("original", "image", 0))
+            List.of(new ProductImageCreateRequest("original", "image", 0)),
+            List.of()
         );
     }
 
@@ -196,7 +270,12 @@ class ProductServiceTest {
             BigDecimal.valueOf(5),
             10,
             "updated-thumbnail",
-            List.of(new ProductImageCreateRequest("original", "updated-image", 0))
+            List.of(new ProductImageCreateRequest("original", "updated-image", 0)),
+            List.of(new ProductDetailImageCreateRequest(
+                "detail-original",
+                "updated-detail-image",
+                0
+            ))
         );
     }
 
@@ -231,6 +310,7 @@ class ProductServiceTest {
             20,
             "thumbnail",
             ProductStatus.APPROVED,
+            List.of(),
             List.of()
         );
     }
@@ -248,6 +328,7 @@ class ProductServiceTest {
             10,
             "updated-thumbnail",
             ProductStatus.APPROVED,
+            List.of(),
             List.of()
         );
     }
