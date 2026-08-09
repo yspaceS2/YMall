@@ -96,6 +96,10 @@ docker compose down
 - [Toss Payments 테스트와 장애 대응](docs/toss-payments.md)
 - [결제 취소·환불 운영 가이드](docs/payment-refunds.md)
 - [Toss Payments 웹훅 운영 가이드](docs/payment-webhooks.md)
+- [보안 검사 운영 안내](docs/security-scanning.md)
+- [보안 자동 검사 정책](docs/security/security-automation.md)
+- [배포 전 보안 체크리스트](docs/security/pre-deployment-security-checklist.md)
+- [KISA 2026 기술적 취약점 자체 점검](docs/security/kisa-2026-assessment.md)
 
 ## 로컬 서비스 구성
 

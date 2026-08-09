@@ -2,6 +2,8 @@
 
 배포 전 인증·권한·소유권·결제 점검 결과는
 [`pre-deployment-security-checklist.md`](./pre-deployment-security-checklist.md)에 기록합니다.
+KISA 항목별 판정과 배포 후 점검 범위는
+[`kisa-2026-assessment.md`](./kisa-2026-assessment.md)를 기준으로 관리합니다.
 
 ## 목적
 
@@ -65,6 +67,10 @@ ZAP은 실행 중인 공용·운영 환경을 실수로 검사하지 않도록 �
 
 조치 전후의 상세 식별자와 재검증 결과는 YMALL-79 및 해당 Pull Request에 기록합니다.
 
+2026-08-09 기준 저장소와 Backend·Frontend 이미지에서 수정 가능한 `HIGH`·`CRITICAL`
+기준선은 0건이며 Semgrep 발견 사항도 0건입니다. 이 수치는 영구 보증이 아니므로 병합 후
+이미지 검사와 배포 전 재검사를 계속 수행합니다.
+
 ## ZAP 익명 기준선
 
 ZAP Baseline은 실제 공격 페이로드를 전송하지 않고 페이지 탐색과 응답 분석만 수행합니다. 첫 검사에서 보안 헤더 미설정을 확인해 Frontend Nginx에 다음 통제를 적용했습니다.
@@ -78,3 +84,13 @@ ZAP Baseline은 실제 공격 페이로드를 전송하지 않고 페이지 탐�
 - ZAP 90004: Google One Tap·OAuth 팝업 흐름을 위해 COOP `same-origin-allow-popups`를 유지하고 COEP는 강제하지 않습니다. CORP는 `same-origin`을 유지합니다.
 
 인증 후 화면과 데이터 변경을 유발할 수 있는 Active Scan은 이 워크플로에 포함하지 않습니다. 해당 검사는 전용 계정·폐기 가능한 데이터·명시적 승인이 준비된 후 별도로 실행합니다.
+
+## 현재 적용 상태
+
+| 검사 | PR | `develop`·`main` Push | 수동 실행 | 현재 기준선 |
+| --- | --- | --- | --- | --- |
+| Gitleaks | 실행 | 실행 | 실행 | 통과 |
+| Semgrep | 실행 | 실행 | 실행 | 0 findings |
+| Trivy repository | 실행 | 실행 | 실행 | HIGH·CRITICAL 0건 |
+| Trivy image | 생략 | 실행 | 실행 | Backend·Frontend 0건 |
+| ZAP Baseline | 생략 | 생략 | 실행 | FAIL 0, 신규 Medium 0 |
