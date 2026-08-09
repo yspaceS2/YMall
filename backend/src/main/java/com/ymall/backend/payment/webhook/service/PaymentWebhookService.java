@@ -45,10 +45,10 @@ public class PaymentWebhookService {
             );
         } catch (RuntimeException exception) {
             log.warn(
-                "Payment webhook processing failed. transmissionId={}, eventType={}",
+                "Payment webhook processing failed. transmissionId={}, eventType={}, errorType={}",
                 safeLogValue(transmissionId),
                 safeLogValue(request.eventType()),
-                exception
+                exception.getClass().getSimpleName()
             );
             throw exception;
         }
