@@ -158,8 +158,8 @@ public class LocalFileStorageService implements FileStorageService {
 
     private void validateWebpContainer(MultipartFile file) {
         try (InputStream inputStream = file.getInputStream()) {
-            byte[] header = inputStream.readNBytes(20);
-            boolean validChunkType = header.length == 20
+            byte[] header = inputStream.readNBytes(30);
+            boolean validChunkType = header.length == 30
                 && header[12] == 'V'
                 && header[13] == 'P'
                 && header[14] == '8'
@@ -173,9 +173,46 @@ public class LocalFileStorageService implements FileStorageService {
                 || paddedChunkSize > file.getSize() - 20L) {
                 throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
             }
+            int[] dimensions = readWebpDimensions(header, firstChunkSize);
+            if (exceedsImageLimits(dimensions[0], dimensions[1])) {
+                throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
+            }
         } catch (IOException exception) {
             throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE, exception);
         }
+    }
+
+    private int[] readWebpDimensions(byte[] header, long firstChunkSize) {
+        if (header[15] == 'X' && firstChunkSize >= 10) {
+            return new int[] {
+                readUnsigned24LittleEndian(header, 24) + 1,
+                readUnsigned24LittleEndian(header, 27) + 1
+            };
+        }
+        if (header[15] == 'L' && firstChunkSize >= 5 && header[20] == 0x2F) {
+            int width = 1 + ((header[21] & 0xFF) | ((header[22] & 0x3F) << 8));
+            int height = 1
+                + (((header[22] & 0xC0) >> 6)
+                    | ((header[23] & 0xFF) << 2)
+                    | ((header[24] & 0x0F) << 10));
+            return new int[] {width, height};
+        }
+        if (header[15] == ' '
+            && firstChunkSize >= 10
+            && (header[23] & 0xFF) == 0x9D
+            && (header[24] & 0xFF) == 0x01
+            && (header[25] & 0xFF) == 0x2A) {
+            int width = ((header[26] & 0xFF) | ((header[27] & 0xFF) << 8)) & 0x3FFF;
+            int height = ((header[28] & 0xFF) | ((header[29] & 0xFF) << 8)) & 0x3FFF;
+            return new int[] {width, height};
+        }
+        throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
+    }
+
+    private int readUnsigned24LittleEndian(byte[] bytes, int offset) {
+        return (bytes[offset] & 0xFF)
+            | ((bytes[offset + 1] & 0xFF) << 8)
+            | ((bytes[offset + 2] & 0xFF) << 16);
     }
 
     private long readUnsignedLittleEndian(byte[] bytes, int offset) {

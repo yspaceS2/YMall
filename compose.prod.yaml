@@ -27,9 +27,12 @@ services:
       TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:?TOSS_CLIENT_KEY is required}
       TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:?TOSS_SECRET_KEY is required}
       MAIL_HOST: ${MAIL_HOST:?MAIL_HOST is required}
+      MAIL_PORT: ${MAIL_PORT:?MAIL_PORT is required}
       MAIL_USERNAME: ${MAIL_USERNAME:?MAIL_USERNAME is required}
       MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD is required}
       MAIL_FROM: ${MAIL_FROM:?MAIL_FROM is required}
+      MAIL_SMTP_AUTH: "true"
+      MAIL_STARTTLS_ENABLED: "true"
 
   frontend:
     build:

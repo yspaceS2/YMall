@@ -153,6 +153,30 @@ class LocalFileStorageServiceTest {
     }
 
     @Test
+    @DisplayName("허용 해상도를 초과하는 WEBP 업로드는 거절한다")
+    void rejectOversizedWebpDimensions() {
+        LocalFileStorageService service = createService();
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "oversized.webp",
+            "image/webp",
+            new byte[] {
+                'R', 'I', 'F', 'F', 0x16, 0x00, 0x00, 0x00,
+                'W', 'E', 'B', 'P', 'V', 'P', '8', 'X',
+                0x0A, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+                0x20, 0x4E, 0x00,
+                0x00, 0x00, 0x00
+            }
+        );
+
+        assertThatThrownBy(() -> service.storeImage(file, FilePurpose.PRODUCT_IMAGE))
+            .isInstanceOf(BusinessException.class)
+            .extracting("errorCode")
+            .isEqualTo(ErrorCode.INVALID_IMAGE_TYPE);
+    }
+
+    @Test
     @DisplayName("경로가 포함된 원본 파일명은 파일명만 응답한다")
     void sanitizePathTraversalFromOriginalFileName() throws Exception {
         LocalFileStorageService service = createService();
