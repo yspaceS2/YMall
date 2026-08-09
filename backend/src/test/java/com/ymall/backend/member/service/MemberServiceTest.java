@@ -43,6 +43,9 @@ class MemberServiceTest {
     @Mock
     private SignupEmailVerificationService signupEmailVerificationService;
 
+    @Mock
+    private LoginAttemptLimiter loginAttemptLimiter;
+
     private MemberService memberService;
 
     @BeforeEach
@@ -51,7 +54,8 @@ class MemberServiceTest {
             memberRepository,
             passwordEncoder,
             refreshTokenService,
-            signupEmailVerificationService
+            signupEmailVerificationService,
+            loginAttemptLimiter
         );
     }
 
@@ -149,6 +153,8 @@ class MemberServiceTest {
         given(refreshTokenService.issueForLogin(member)).willReturn(tokens);
 
         assertThat(memberService.login(request)).isEqualTo(tokens);
+        verify(loginAttemptLimiter).consume("user@example.com");
+        verify(loginAttemptLimiter).reset("user@example.com");
     }
 
     @Test
@@ -167,5 +173,6 @@ class MemberServiceTest {
             .isInstanceOf(BusinessException.class)
             .extracting(exception -> ((BusinessException) exception).getErrorCode())
             .isEqualTo(ErrorCode.LOGIN_FAILED);
+        verify(loginAttemptLimiter).consume("user@example.com");
     }
 }

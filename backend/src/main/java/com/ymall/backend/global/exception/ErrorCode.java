@@ -40,6 +40,7 @@ public enum ErrorCode {
     MEMBER_OPERATION_FORBIDDEN(HttpStatus.FORBIDDEN, "해당 회원을 관리할 권한이 없습니다."),
     MEMBER_OPERATION_INVALID(HttpStatus.CONFLICT, "현재 회원 상태에서는 요청을 처리할 수 없습니다."),
     LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
+    LOGIN_ATTEMPT_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "잠시 후 다시 시도해 주세요."),
     CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "현재 비밀번호가 올바르지 않습니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 토큰입니다."),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "만료된 인증 토큰입니다."),

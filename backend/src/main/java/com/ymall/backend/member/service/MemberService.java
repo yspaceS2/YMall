@@ -32,6 +32,7 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
     private final SignupEmailVerificationService signupEmailVerificationService;
+    private final LoginAttemptLimiter loginAttemptLimiter;
 
     public EmailAvailabilityResponse checkEmailAvailability(String requestedEmail) {
         String email = EmailAddressNormalizer.normalize(requestedEmail);
@@ -93,12 +94,16 @@ public class MemberService {
 
     @Transactional
     public AuthenticationTokens login(MemberLoginRequest request) {
-        Member member = memberRepository.findByEmailIgnoreCase(request.email())
+        String email = EmailAddressNormalizer.normalize(request.email());
+        loginAttemptLimiter.consume(email);
+        Member member = memberRepository.findByEmailIgnoreCase(email)
             .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
         if (!member.hasPassword() || !passwordEncoder.matches(request.password(), member.getPassword())) {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
-        return refreshTokenService.issueForLogin(member);
+        AuthenticationTokens tokens = refreshTokenService.issueForLogin(member);
+        loginAttemptLimiter.reset(email);
+        return tokens;
     }
 
     private Member findMember(Long memberId) {
