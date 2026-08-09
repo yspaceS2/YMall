@@ -61,6 +61,17 @@ public class OrderService {
     private final OrderOutboxService orderOutboxService;
     private final ProductCacheInvalidator productCacheInvalidator;
 
+    /**
+     * 회원 범위의 멱등성 키마다 주문을 최대 한 번 생성한다.
+     *
+     * <p>기존 주문을 조회하기 전에 회원 행을 잠가 동일 회원의 동시 요청이 모두 조회를 통과하고
+     * 재고를 중복 예약하지 못하게 한다. 같은 키로 재시도하면 현재 장바구니를 다시 읽지 않고
+     * 최초 생성된 주문을 반환한다.</p>
+     *
+     * @param memberId 주문을 소유하는 인증 회원 ID
+     * @param request 클라이언트가 생성한 멱등성 키를 포함한 주문 요청
+     * @return 재시도라면 기존 주문, 최초 요청이라면 새로 생성한 주문
+     */
     @Transactional
     public OrderResponse createOrder(Long memberId, OrderCreateRequest request) {
         Member member = memberRepository.findByIdForUpdate(memberId)

@@ -41,6 +41,13 @@ public class PaymentWebhookTransactionService {
     private final PaymentInventoryService paymentInventoryService;
     private final OrderOutboxService orderOutboxService;
 
+    /**
+     * 주문 잠금을 유지한 상태에서 웹훅과 결제사의 현재 상태를 조정한다.
+     *
+     * <p>네트워크 I/O 중 DB 잠금을 유지하지 않도록 결제사 조회는 이 트랜잭션에 들어오기 전에 끝낸다.
+     * 잠금을 획득한 뒤 전송 ID를 다시 확인하고, 웹훅에 담긴 오래된 상태보다 결제사에서 검증한 현재
+     * 상태를 우선한다. 늦게 도착한 결제 이벤트가 배송 처리 중인 주문을 이전 상태로 되돌리지 않는다.</p>
+     */
     @Transactional
     public void process(
         String transmissionId,
