@@ -64,13 +64,22 @@ Refresh Token은 브라우저가 자동 전송하는 Cookie이므로 배포 후 
 | Webhook 역순 도착 시 Provider 현재 상태 확인 | 통과 | `PaymentWebhookIntegrationTest.usesCurrentProviderStatusForOutOfOrderWebhook` |
 | 판매자는 자기 상품 금액만 환불 | 통과 | `SellerManagementApiIntegrationTest.sellerRefundsOnlyOwnedItemsAndAdminRefundsRemainingOrder` |
 
-## 배포 전 남은 수동 점검
+## 배포 전 수동 점검
 
-- [ ] 업로드 파일의 실제 MIME, 크기, 경로 이동 및 실행 파일 차단을 공격 표본으로 확인
-- [ ] 로그에 비밀번호, Authorization Header, Cookie, 개인정보와 결제 식별자가 남지 않는지 확인
-- [ ] Docker Compose의 PostgreSQL·Redis·Kafka 포트가 외부 인터페이스에 노출되지 않는지 확인
-- [ ] 배포용 환경변수 누락 시 안전하지 않은 기본값 없이 기동이 실패하는지 확인
+- [x] 업로드 파일의 서명과 실제 디코딩, 손상된 PNG, 변조·초대형 WebP 및 경로 이동 파일명을 확인
+- [x] 애플리케이션 로그가 비밀번호, Authorization Header, Cookie, OAuth 오류 메시지와 결제 요청 본문을 기록하지 않는지 확인
+- [x] 운영 Compose에서 PostgreSQL·Redis·Kafka 포트가 호스트에 노출되지 않는지 확인
+- [x] 운영 Compose의 필수 환경변수 누락 시 안전하지 않은 기본값 없이 구성 단계에서 실패하는지 확인
 - [ ] KISA 적용 항목, N/A 사유와 배포 후 항목을 최종 평가 문서에 연결
+
+검증 근거:
+
+- `LocalFileStorageServiceTest`: 손상 이미지, WebP 컨테이너·해상도, 경로 이동 파일명 차단
+- Spring multipart 제한: 파일과 요청 크기 각각 기본 10MB
+- `OAuth2AuthenticationFailureHandler`: 예외 메시지 대신 예외 유형만 기록
+- `PaymentWebhookService`: 결제 요청 본문과 stack trace 없이 제한된 식별자와 예외 유형만 기록
+- `docker compose -f compose.yaml -f compose.prod.yaml config --quiet`: 필수 변수 누락 실패와 완전한 구성 성공 확인
+- `compose.prod.yaml`: Redis 호스트 포트 제거, PostgreSQL·Kafka 내부 네트워크 전용, Frontend loopback 기본 바인딩, SMTP 인증·STARTTLS 강제
 
 ## 배포 후 점검
 

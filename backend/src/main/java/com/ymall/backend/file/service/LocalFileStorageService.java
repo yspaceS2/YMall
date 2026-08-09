@@ -1,5 +1,6 @@
 package com.ymall.backend.file.service;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -8,8 +9,13 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,6 +39,8 @@ public class LocalFileStorageService implements FileStorageService {
     );
     private static final String THUMBNAIL_PREFIX = "thumb-";
     private static final String THUMBNAIL_EXTENSION = "jpg";
+    private static final int MAX_IMAGE_DIMENSION = 20_000;
+    private static final long MAX_IMAGE_PIXELS = 40_000_000L;
     private static final DateTimeFormatter DATE_DIRECTORY_FORMAT =
         DateTimeFormatter.ofPattern("uuuu/MM/dd");
 
@@ -104,11 +112,124 @@ public class LocalFileStorageService implements FileStorageService {
     }
 
     private String validateImage(MultipartFile file) {
-        return MultipartFileUtils.validateContentType(
+        String contentType = MultipartFileUtils.validateContentType(
             file,
             ALLOWED_CONTENT_TYPES,
             ErrorCode.INVALID_IMAGE_TYPE
         );
+        validateDecodableImage(file, contentType);
+        return contentType;
+    }
+
+    private void validateDecodableImage(MultipartFile file, String contentType) {
+        if ("image/webp".equals(contentType)) {
+            validateWebpContainer(file);
+            return;
+        }
+
+        try (
+            InputStream inputStream = file.getInputStream();
+            ImageInputStream imageInputStream = ImageIO.createImageInputStream(inputStream)
+        ) {
+            if (imageInputStream == null) {
+                throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
+            }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
+            if (!readers.hasNext()) {
+                throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(imageInputStream, true, true);
+                if (exceedsImageLimits(reader.getWidth(0), reader.getHeight(0))) {
+                    throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
+                }
+                BufferedImage image = reader.read(0);
+                if (image == null) {
+                    throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
+                }
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE, exception);
+        }
+    }
+
+    private void validateWebpContainer(MultipartFile file) {
+        try (InputStream inputStream = file.getInputStream()) {
+            byte[] header = inputStream.readNBytes(30);
+            boolean validChunkType = header.length == 30
+                && header[12] == 'V'
+                && header[13] == 'P'
+                && header[14] == '8'
+                && (header[15] == ' ' || header[15] == 'L' || header[15] == 'X');
+            long declaredSize = header.length < 8 ? -1 : readUnsignedLittleEndian(header, 4);
+            long firstChunkSize = header.length < 20 ? -1 : readUnsignedLittleEndian(header, 16);
+            long paddedChunkSize = firstChunkSize + (firstChunkSize % 2L);
+            if (!validChunkType
+                || declaredSize + 8L != file.getSize()
+                || firstChunkSize <= 0
+                || paddedChunkSize > file.getSize() - 20L) {
+                throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
+            }
+            int[] dimensions = readWebpDimensions(header, firstChunkSize);
+            if (exceedsImageLimits(dimensions[0], dimensions[1])) {
+                throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
+            }
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE, exception);
+        }
+    }
+
+    private int[] readWebpDimensions(byte[] header, long firstChunkSize) {
+        if (header[15] == 'X' && firstChunkSize >= 10) {
+            return new int[] {
+                readUnsigned24LittleEndian(header, 24) + 1,
+                readUnsigned24LittleEndian(header, 27) + 1
+            };
+        }
+        if (header[15] == 'L' && firstChunkSize >= 5 && header[20] == 0x2F) {
+            int width = 1 + ((header[21] & 0xFF) | ((header[22] & 0x3F) << 8));
+            int height = 1
+                + (((header[22] & 0xC0) >> 6)
+                    | ((header[23] & 0xFF) << 2)
+                    | ((header[24] & 0x0F) << 10));
+            return new int[] {width, height};
+        }
+        if (header[15] == ' '
+            && firstChunkSize >= 10
+            && (header[23] & 0xFF) == 0x9D
+            && (header[24] & 0xFF) == 0x01
+            && (header[25] & 0xFF) == 0x2A) {
+            int width = ((header[26] & 0xFF) | ((header[27] & 0xFF) << 8)) & 0x3FFF;
+            int height = ((header[28] & 0xFF) | ((header[29] & 0xFF) << 8)) & 0x3FFF;
+            return new int[] {width, height};
+        }
+        throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
+    }
+
+    private int readUnsigned24LittleEndian(byte[] bytes, int offset) {
+        return (bytes[offset] & 0xFF)
+            | ((bytes[offset + 1] & 0xFF) << 8)
+            | ((bytes[offset + 2] & 0xFF) << 16);
+    }
+
+    private long readUnsignedLittleEndian(byte[] bytes, int offset) {
+        return Integer.toUnsignedLong(
+            (bytes[offset] & 0xFF)
+                | ((bytes[offset + 1] & 0xFF) << 8)
+                | ((bytes[offset + 2] & 0xFF) << 16)
+                | ((bytes[offset + 3] & 0xFF) << 24)
+        );
+    }
+
+    private boolean exceedsImageLimits(int width, int height) {
+        return width <= 0
+            || height <= 0
+            || width > MAX_IMAGE_DIMENSION
+            || height > MAX_IMAGE_DIMENSION
+            || (long) width * height > MAX_IMAGE_PIXELS;
     }
 
     private Path createImageDirectory(FilePurpose purpose, LocalDate uploadDate) throws IOException {

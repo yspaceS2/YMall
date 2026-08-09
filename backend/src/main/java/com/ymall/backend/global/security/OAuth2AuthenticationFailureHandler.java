@@ -31,7 +31,10 @@ public class OAuth2AuthenticationFailureHandler implements AuthenticationFailure
         HttpServletResponse response,
         AuthenticationException exception
     ) throws IOException, ServletException {
-        log.warn("OAuth2 authentication failed: {}", exception.getMessage());
+        log.warn(
+            "OAuth2 authentication failed: errorType={}",
+            exception.getClass().getSimpleName()
+        );
         boolean emailChangeReauthentication =
             oAuthFlowContext.consumeEmailChangeReauthenticationFailure();
         String message = URLEncoder.encode(
