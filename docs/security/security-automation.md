@@ -1,5 +1,8 @@
 # 보안 자동 검사 정책
 
+배포 전 인증·권한·소유권·결제 점검 결과는
+[`pre-deployment-security-checklist.md`](./pre-deployment-security-checklist.md)에 기록합니다.
+
 ## 목적
 
 이 문서는 YMall 저장소의 정적 분석, 의존성·구성 검사와 컨테이너 이미지 검사 기준을 정의합니다. 이 검사는 프로젝트 자체 점검이며 외부 보안 인증이나 KISA 공식 심사를 의미하지 않습니다.
