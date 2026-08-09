@@ -183,7 +183,7 @@ export function SignupPage() {
     }> = [
         { key: 'name', label: '이름', type: 'text', autoComplete: 'name', placeholder: '이름을 입력하세요' },
         { key: 'phone', label: '휴대전화 번호', type: 'tel', autoComplete: 'tel', placeholder: '01012345678' },
-        { key: 'password', label: '비밀번호', type: 'password', autoComplete: 'new-password', placeholder: '8자 이상 입력하세요' },
+        { key: 'password', label: '비밀번호', type: 'password', autoComplete: 'new-password', placeholder: '문자 2종 10자 또는 3종 8자 이상' },
         { key: 'passwordConfirmation', label: '비밀번호 확인', type: 'password', autoComplete: 'new-password', placeholder: '비밀번호를 다시 입력하세요' },
     ]
 
