@@ -17,10 +17,8 @@ public class PasswordPolicy {
     private static final int LONG_PASSWORD_REQUIRED_TYPES = 2;
     private static final int SEQUENTIAL_RUN_LENGTH = 4;
     private static final int REPEATED_RUN_LENGTH = 4;
-    private static final Set<String> WEAK_PASSWORDS = Set.of(
-        "abcd",
-        "1234",
-        "1111",
+    private static final String ALLOWED_SPECIAL_CHARACTERS = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+    private static final Set<String> PREDICTABLE_TERMS = Set.of(
         "test",
         "password",
         "public",
@@ -38,7 +36,8 @@ public class PasswordPolicy {
     public void validate(String password, String email) {
         String normalizedPassword = password.toLowerCase(Locale.ROOT);
         if (!hasRequiredComplexity(password)
-            || WEAK_PASSWORDS.contains(normalizedPassword)
+            || containsUnsupportedCharacter(password)
+            || containsPredictableTerm(normalizedPassword)
             || containsSequentialRun(normalizedPassword)
             || containsRepeatedRun(normalizedPassword)
             || resemblesEmailIdentifier(normalizedPassword, email)) {
@@ -59,8 +58,23 @@ public class PasswordPolicy {
         boolean hasUppercase = password.codePoints().anyMatch(Character::isUpperCase);
         boolean hasLowercase = password.codePoints().anyMatch(Character::isLowerCase);
         boolean hasDigit = password.codePoints().anyMatch(Character::isDigit);
-        boolean hasSpecial = password.codePoints().anyMatch(codePoint -> !Character.isLetterOrDigit(codePoint));
+        boolean hasSpecial = password.codePoints().anyMatch(this::isAllowedSpecialCharacter);
         return count(hasUppercase) + count(hasLowercase) + count(hasDigit) + count(hasSpecial);
+    }
+
+    private boolean containsUnsupportedCharacter(String password) {
+        return password.codePoints().anyMatch(codePoint -> !Character.isLetterOrDigit(codePoint)
+            && !isAllowedSpecialCharacter(codePoint));
+    }
+
+    private boolean isAllowedSpecialCharacter(int codePoint) {
+        return codePoint <= Character.MAX_VALUE
+            && ALLOWED_SPECIAL_CHARACTERS.indexOf((char) codePoint) >= 0;
+    }
+
+    private boolean containsPredictableTerm(String password) {
+        return PREDICTABLE_TERMS.stream()
+            .anyMatch(term -> password.startsWith(term) || password.endsWith(term));
     }
 
     private int count(boolean present) {

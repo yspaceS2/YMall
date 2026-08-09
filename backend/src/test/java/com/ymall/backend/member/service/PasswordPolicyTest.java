@@ -27,7 +27,10 @@ class PasswordPolicyTest {
         "Abcd1234!",
         "Abc1111!",
         "memberSecure1!",
-        "password"
+        "password",
+        "password12",
+        "Secure1!admin",
+        "lowercase "
     })
     void rejectsWeakPredictableOrIdentifierSimilarPasswords(String password) {
         assertThatThrownBy(() -> passwordPolicy.validate(password, "member@example.com"))
