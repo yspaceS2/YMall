@@ -97,6 +97,9 @@ class JwtAuthorizationIntegrationTest {
 
     @Test
     void adminEndpointAllowsAdminOnly() throws Exception {
+        mockMvc.perform(get("/api/admin/security-test"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"));
         mockMvc.perform(get("/api/admin/security-test")
                 .header(HttpHeaders.AUTHORIZATION, bearer(sellerToken)))
             .andExpect(status().isForbidden());

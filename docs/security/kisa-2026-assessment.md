@@ -24,7 +24,7 @@ YMall 코드와 배포 구성에 매핑한 1차 점검 기록이다. 공식 인�
 | EP | 에러 페이지 적용 미흡 | 동적 점검 필요 | 공통 예외 응답은 존재한다. 처리되지 않은 500 응답에 스택·내부 정보가 노출되지 않는지 운영 프로필로 확인한다. |
 | IL | 정보 누출 | 동적 점검 필요 | 운영 SQL 바인딩 로그는 WARN이며 Actuator 상세 정보는 숨긴다. 응답 헤더·소스맵·로그를 실행 환경에서 추가 확인한다. |
 | XS | 크로스사이트 스크립트 | 양호 | React 기본 이스케이프를 사용하며 `dangerouslySetInnerHTML` 사용이 확인되지 않았다. CSP도 설정되어 있다. |
-| CF | 크로스사이트 요청 위조 | 동적 점검 필요 | JWT API는 무상태이며 Refresh Token은 SameSite 쿠키다. Refresh·Logout 요청의 Origin 정책과 교차 사이트 요청을 동적으로 확인한다. |
+| CF | 크로스사이트 요청 위조 | 양호 | JWT API는 무상태이며 Refresh Token은 SameSite 쿠키다. 허용되지 않은 Origin의 Refresh·Logout 요청이 Spring CORS에서 차단되는 것을 통합 테스트로 검증한다. |
 | SF | 서버사이드 요청 위조 | 양호 | Toss·AI 호출 대상은 서버 설정의 고정 base URL이며 사용자 입력 URL을 직접 요청하지 않는다. |
 | BF | 약한 비밀번호 정책 | 보완 필요 | 길이 8~64자는 검증하지만 문자 조합과 유출 비밀번호 방어 정책은 없다. 서비스 성격에 맞는 정책을 결정한다. |
 | IA | 불충분한 인증 절차 | 양호 | JWT 서명·만료, Refresh Token 회전·폐기, 역할 변경 시 기존 토큰 무효화를 검증한다. |
@@ -36,9 +36,9 @@ YMall 코드와 배포 구성에 매핑한 1차 점검 기록이다. 공식 인�
 | IS | 불충분한 세션 관리 | 양호 | 짧은 Access Token, 서버 저장 Refresh Token, 회전·로그아웃·권한 변경 무효화를 적용했다. |
 | SN | 데이터 평문 전송 | 배포 후 점검 | 운영 도메인에 HTTPS와 TLS 1.2 이상을 적용하고 HTTP를 HTTPS로 강제 전환해야 한다. |
 | CC | 쿠키 변조 | 배포 후 점검 | Refresh Token 쿠키는 HttpOnly·SameSite를 사용한다. 운영에서 Secure 적용 여부를 확인한다. |
-| AE | 관리자 페이지 노출 | 보완 필요 | `/admin`과 `/api/admin` 경로는 예측 가능하지만 백엔드 권한 검증은 적용되어 있다. 운영 환경에서 관리자 추가 인증 또는 접근망 제한을 결정한다. |
+| AE | 관리자 페이지 노출 | 배포 후 점검 | `/admin`과 `/api/admin` 경로는 예측 가능하지만 익명·비관리자 요청은 백엔드에서 차단한다. 경로 은닉은 보안 통제로 사용하지 않으며 운영 환경에서 추가 인증 또는 접근망 제한을 결정한다. |
 | AU | 자동화 공격 | 양호 | 이메일 인증·비밀번호 재설정과 일반 로그인 반복 시도 제한을 적용했다. 로그인 제한 키에는 이메일 원문 대신 SHA-256 해시를 사용한다. |
-| WM | 불필요한 Method 악용 | 동적 점검 필요 | CORS는 필요한 Method만 허용한다. PUT·PATCH·DELETE는 정상 API에 필요하며 TRACE·CONNECT 차단 여부를 실행 환경에서 확인한다. |
+| WM | 불필요한 Method 악용 | 양호 | GET·HEAD·POST·PUT·PATCH·DELETE·OPTIONS만 허용한다. 백엔드 통합 테스트와 Nginx 설정 검증으로 TRACE·CONNECT·WebDAV Method 차단을 확인한다. |
 
 ## PostgreSQL DBMS 점검
 
@@ -70,11 +70,11 @@ YMall 코드와 배포 구성에 매핑한 1차 점검 기록이다. 공식 인�
 - 존재하지 않는 계정과 비밀번호 오류가 동일하게 동작하도록 유지한다.
 - 단위 테스트와 PostgreSQL·Redis 통합 테스트를 추가한다.
 
-### 2. 관리자 접근과 HTTP 경계 강화
+### 2. 관리자 접근과 HTTP 경계 강화 (코드 경계 구현 완료)
 
 - 관리자 추가 인증 또는 운영 접근망 제한 방식을 결정한다.
-- TRACE·CONNECT 차단과 허용되지 않은 Method 응답을 통합 테스트로 검증한다.
-- Refresh·Logout의 교차 사이트 요청 방어를 동적으로 검증하고 필요하면 Origin 검사를 추가한다.
+- TRACE·CONNECT와 WebDAV Method 차단을 통합 테스트로 검증한다.
+- Refresh·Logout의 허용되지 않은 Origin 요청 차단을 통합 테스트로 검증한다.
 
 ### 3. 운영 DB·TLS 점검 자동화
 

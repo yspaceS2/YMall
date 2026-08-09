@@ -6,6 +6,8 @@ import static org.springframework.http.HttpMethod.PATCH;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpMethod.PUT;
 
+import java.util.Set;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -33,6 +35,16 @@ import com.ymall.backend.global.security.SecurityErrorResponseWriter;
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    private static final Set<String> ALLOWED_HTTP_METHODS = Set.of(
+        "GET",
+        "HEAD",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS"
+    );
 
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
@@ -77,6 +89,8 @@ public class SecurityConfig {
                 .accessDeniedHandler(accessDeniedHandler)
             )
             .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers(request -> !ALLOWED_HTTP_METHODS.contains(request.getMethod()))
+                    .denyAll()
                 .requestMatchers(
                     POST,
                     "/api/members/signup",
