@@ -42,7 +42,7 @@ public class SettlementLedgerProcessor {
             case REFUND_COMPLETED -> recordRefund(event);
             case ORDER_DELIVERED -> makeEntriesAvailable(event.orderId());
             default -> {
-                // This consumer shares the order event topic and intentionally ignores other events.
+                // 주문 이벤트 Topic을 공유하므로 정산 대상이 아닌 이벤트는 의도적으로 무시한다.
             }
         }
     }
@@ -147,7 +147,7 @@ public class SettlementLedgerProcessor {
             try {
                 return Long.valueOf(text);
             } catch (NumberFormatException ignored) {
-                // Handled as an invalid event below.
+                // 아래의 잘못된 이벤트 처리 흐름에서 동일하게 처리한다.
             }
         }
         throw new IllegalArgumentException("Order event payload is missing " + key + ".");

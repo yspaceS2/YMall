@@ -93,7 +93,7 @@ public class RefreshTokenService {
                     Long memberId = Long.valueOf(storedValue.split(VALUE_SEPARATOR, -1)[0]);
                     redisTemplate.opsForSet().remove(memberKey(memberId), tokenKey);
                 } catch (NumberFormatException ignored) {
-                    // Invalid Redis data is already revoked by deleting the token key.
+                    // 잘못된 Redis 값은 Token Key를 삭제한 시점에 이미 폐기된 것으로 처리한다.
                 }
             }
         }

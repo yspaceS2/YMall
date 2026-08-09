@@ -16,6 +16,13 @@ import org.springframework.stereotype.Component;
 import com.ymall.backend.global.exception.BusinessException;
 import com.ymall.backend.global.exception.ErrorCode;
 
+/**
+ * 판매자 정산 계좌를 인증 암호화하고 암호문 형식을 Version Prefix와 함께 저장한다.
+ *
+ * <p>매 암호화마다 새 96-bit IV를 사용하고 계좌 소유 Context를 AAD에 포함하여 암호문을 다른
+ * 판매자나 필드에 재사용하지 못하게 한다. 암호화 키는 Base64로 주입된 256-bit Key만 허용하며
+ * 저장소나 로그에 평문 또는 Key를 기록하지 않는다.</p>
+ */
 @Component
 public class AesGcmSettlementAccountCipher implements SettlementAccountCipher {
 

@@ -52,7 +52,10 @@ public class LocalFileStorageService implements FileStorageService {
 
     /**
      * 업로드 이미지를 용도와 UTC 날짜 기준 디렉터리에 저장한다.
-     * WebP는 기본 ImageIO 환경의 제약 때문에 원본을 썸네일 경로에도 복사한다.
+     *
+     * <p>허용 MIME Type뿐 아니라 실제 이미지 Decode 또는 WebP Container·크기를 검증하고,
+     * 서버가 생성한 무작위 이름만 파일 경로에 사용한다. WebP는 기본 ImageIO 환경의 제약 때문에
+     * 검증된 원본을 Thumbnail 경로에도 복사한다.</p>
      */
     @Override
     public FileUploadResponse storeImage(MultipartFile file, FilePurpose purpose) {

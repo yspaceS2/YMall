@@ -1,9 +1,9 @@
 package com.ymall.backend.global.common;
 
 import lombok.Getter;
-/*
-* API Response값 통일
-* */
+/**
+ * API 성공 응답의 공통 형식을 제공한다.
+ */
 @Getter
 public class ApiResponse<T> {
 

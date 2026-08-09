@@ -57,6 +57,12 @@ public class ReturnRequestService {
         return transactionService.getSellerRequest(memberId, returnRequestId);
     }
 
+    /**
+     * 반품 요청을 환불과 연결해 승인한다.
+     *
+     * <p>승인 상태를 먼저 확정하지 않고 환불 준비·결제사 취소·환불 완료가 끝난 뒤 반품을 승인한다.
+     * 반품 요청 ID로 환불 멱등성 키를 고정하여 승인 재시도가 중복 환불로 이어지지 않게 한다.</p>
+     */
     public ReturnRequestResponse approve(
         Long memberId,
         Long returnRequestId,

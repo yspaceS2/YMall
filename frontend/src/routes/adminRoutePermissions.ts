@@ -1,5 +1,6 @@
 import type { AdminPermission } from '../types/admin'
 
+/** 관리자 Route와 진입에 필요한 최소 권한의 단일 기준이다. Backend 권한 정책을 대체하지 않는다. */
 export const ADMIN_ROUTE_PERMISSIONS = {
     dashboard: ['DASHBOARD_READ'],
     members: ['MEMBER_READ'],

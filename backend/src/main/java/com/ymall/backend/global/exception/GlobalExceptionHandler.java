@@ -29,7 +29,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * @Valid 검증 실패 내용을 필드 단위 메시지로 병합한다.
+     * {@code @Valid} 검증 실패 내용을 필드 단위 메시지로 병합한다.
      * 프론트에서 어떤 입력값이 실패했는지 바로 표시할 수 있도록 field: message 형식을 사용한다.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
