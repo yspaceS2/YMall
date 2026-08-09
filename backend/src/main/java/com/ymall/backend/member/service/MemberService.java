@@ -33,6 +33,7 @@ public class MemberService {
     private final RefreshTokenService refreshTokenService;
     private final SignupEmailVerificationService signupEmailVerificationService;
     private final LoginAttemptLimiter loginAttemptLimiter;
+    private final PasswordPolicy passwordPolicy;
 
     public EmailAvailabilityResponse checkEmailAvailability(String requestedEmail) {
         String email = EmailAddressNormalizer.normalize(requestedEmail);
@@ -57,6 +58,10 @@ public class MemberService {
             || !passwordEncoder.matches(request.currentPassword(), member.getPassword())) {
             throw new BusinessException(ErrorCode.CURRENT_PASSWORD_MISMATCH);
         }
+        passwordPolicy.validate(request.newPassword(), member.getEmail());
+        if (passwordEncoder.matches(request.newPassword(), member.getPassword())) {
+            throw new BusinessException(ErrorCode.PASSWORD_REUSE_NOT_ALLOWED);
+        }
         member.changePassword(passwordEncoder.encode(request.newPassword()));
     }
 
@@ -66,6 +71,7 @@ public class MemberService {
         if (memberRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException(ErrorCode.MEMBER_EMAIL_DUPLICATED);
         }
+        passwordPolicy.validate(request.password(), email);
         signupEmailVerificationService.consume(request.emailVerificationToken(), email);
 
         Member member = new Member(

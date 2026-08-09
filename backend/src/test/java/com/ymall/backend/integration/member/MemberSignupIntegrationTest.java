@@ -82,7 +82,7 @@ class MemberSignupIntegrationTest {
         Member savedMember = memberRepository.findAll().get(0);
         assertThat(savedMember.getEmail()).isEqualTo("user@example.com");
         assertThat(savedMember.getEmailVerifiedAt()).isNotNull();
-        assertThat(passwordEncoder.matches("password123", savedMember.getPassword())).isTrue();
+        assertThat(passwordEncoder.matches("Nori7!Cloud", savedMember.getPassword())).isTrue();
         assertThat(savedMember.getPhone()).isEqualTo("01012345678");
     }
 
@@ -186,8 +186,8 @@ class MemberSignupIntegrationTest {
             {
                 "email": "%s",
                 "emailVerificationToken": "%s",
-                "password": "password123",
-                "passwordConfirmation": "password123",
+                "password": "Nori7!Cloud",
+                "passwordConfirmation": "Nori7!Cloud",
                 "name": "홍길동",
                 "phone": "010-1234-5678"
             }

@@ -179,7 +179,7 @@ export function PasswordResetPage() {
                         value={newPassword}
                         onChange={(event) => setNewPassword(event.target.value)}
                         autoComplete="new-password"
-                        placeholder="8자 이상 입력해 주세요"
+                        placeholder="문자 2종 10자 또는 3종 8자 이상"
                         minLength={8}
                         maxLength={64}
                         required

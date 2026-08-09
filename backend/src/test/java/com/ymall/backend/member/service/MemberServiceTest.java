@@ -46,6 +46,9 @@ class MemberServiceTest {
     @Mock
     private LoginAttemptLimiter loginAttemptLimiter;
 
+    @Mock
+    private PasswordPolicy passwordPolicy;
+
     private MemberService memberService;
 
     @BeforeEach
@@ -55,7 +58,8 @@ class MemberServiceTest {
             passwordEncoder,
             refreshTokenService,
             signupEmailVerificationService,
-            loginAttemptLimiter
+            loginAttemptLimiter,
+            passwordPolicy
         );
     }
 
@@ -87,6 +91,7 @@ class MemberServiceTest {
 
         verify(signupEmailVerificationService)
             .consume("verification-token", "user@example.com");
+        verify(passwordPolicy).validate("password123", "user@example.com");
         ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
         verify(memberRepository).saveAndFlush(memberCaptor.capture());
         Member savedMember = memberCaptor.getValue();

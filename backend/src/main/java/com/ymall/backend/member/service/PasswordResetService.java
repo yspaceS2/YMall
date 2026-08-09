@@ -70,6 +70,7 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
     private final PasswordResetProperties properties;
+    private final PasswordPolicy passwordPolicy;
 
     public PasswordResetRequestResponse request(String requestedEmail) {
         String email = EmailAddressNormalizer.normalize(requestedEmail);
@@ -120,9 +121,8 @@ public class PasswordResetService {
 
     @Transactional
     public void reset(PasswordResetConfirmRequest request) {
-        String memberId = redisTemplate.opsForValue().getAndDelete(
-            TOKEN_KEY_PREFIX + SecurityTokenUtils.sha256(request.resetToken())
-        );
+        String tokenKey = TOKEN_KEY_PREFIX + SecurityTokenUtils.sha256(request.resetToken());
+        String memberId = redisTemplate.opsForValue().get(tokenKey);
         if (memberId == null) {
             throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID);
         }
@@ -136,6 +136,14 @@ public class PasswordResetService {
             throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID);
         }
 
+        passwordPolicy.validate(request.newPassword(), member.getEmail());
+        if (passwordEncoder.matches(request.newPassword(), member.getPassword())) {
+            throw new BusinessException(ErrorCode.PASSWORD_REUSE_NOT_ALLOWED);
+        }
+        String consumedMemberId = redisTemplate.opsForValue().getAndDelete(tokenKey);
+        if (!memberId.equals(consumedMemberId)) {
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID);
+        }
         member.changePassword(passwordEncoder.encode(request.newPassword()));
         refreshTokenService.revokeAll(member.getId());
     }
