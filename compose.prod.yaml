@@ -9,6 +9,7 @@ services:
     ports: !reset []
 
   backend:
+    models: !reset []
     environment:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
@@ -33,10 +34,36 @@ services:
       MAIL_FROM: ${MAIL_FROM:?MAIL_FROM is required}
       MAIL_SMTP_AUTH: "true"
       MAIL_STARTTLS_ENABLED: "true"
+      MANAGEMENT_HEALTH_MAIL_ENABLED: ${MAIL_HEALTH_ENABLED:-true}
+      AI_REVIEW_ENABLED: "false"
+      SESSION_COOKIE_SECURE: "true"
+      JWT_REFRESH_TOKEN_COOKIE_SECURE: "true"
 
   frontend:
     build:
       args:
-        VITE_TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:?TOSS_CLIENT_KEY is required}
-    ports: !override
-      - "${FRONTEND_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-5173}:8080"
+        VITE_TOSS_PUBLIC_CLIENT_ID: ${TOSS_CLIENT_KEY:?TOSS_CLIENT_KEY is required}
+    ports: !reset []
+
+  caddy:
+    image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    environment:
+      YMALL_DOMAIN: ${YMALL_DOMAIN:-ymall.cloud}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/oci/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    networks:
+      - ymall-network
+
+volumes:
+  caddy-data:
+  caddy-config:
