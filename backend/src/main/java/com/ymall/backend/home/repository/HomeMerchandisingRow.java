@@ -18,6 +18,7 @@ public record HomeMerchandisingRow(
     LocalDate discountStartDate,
     LocalDate discountEndDate,
     BigDecimal rating,
+    long reviewCount,
     String thumbnailUrl,
     long salesQuantity
 ) {

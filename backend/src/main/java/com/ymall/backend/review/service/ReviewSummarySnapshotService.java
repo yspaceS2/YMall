@@ -43,6 +43,7 @@ public class ReviewSummarySnapshotService {
         boolean matchesStoredSummary = reviewSummaryRepository.findByProductId(productId)
             .filter(summary -> summary.getSourceReviewCount() == reviewCount)
             .filter(summary -> sameTime(summary.getSourceUpdatedAt(), sourceUpdatedAt))
+            .filter(summary -> properties.model().equals(summary.getModelVersion()))
             .isPresent();
         return new Snapshot(
             reviewCount,

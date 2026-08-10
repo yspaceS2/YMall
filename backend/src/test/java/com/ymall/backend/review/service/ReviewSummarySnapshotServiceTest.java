@@ -31,6 +31,7 @@ class ReviewSummarySnapshotServiceTest {
     private ReviewSummaryRepository summaryRepository;
     private ProductRepository productRepository;
     private ReviewSummaryCodec codec;
+    private ReviewSummaryProperties properties;
     private ReviewSummarySnapshotService service;
 
     @BeforeEach
@@ -39,7 +40,8 @@ class ReviewSummarySnapshotServiceTest {
         summaryRepository = mock(ReviewSummaryRepository.class);
         productRepository = mock(ProductRepository.class);
         codec = mock(ReviewSummaryCodec.class);
-        ReviewSummaryProperties properties = mock(ReviewSummaryProperties.class);
+        properties = mock(ReviewSummaryProperties.class);
+        given(properties.model()).willReturn("current-model");
         given(properties.maximumReviews()).willReturn(10);
         given(properties.maximumReviewLength()).willReturn(5);
         given(properties.maximumTotalLength()).willReturn(7);
@@ -101,5 +103,25 @@ class ReviewSummarySnapshotServiceTest {
 
         verify(summaryRepository, never()).save(any(ReviewSummary.class));
         verifyNoInteractions(codec, productRepository);
+    }
+
+    @Test
+    void refreshesStoredSummaryWhenConfiguredModelChanged() {
+        Long productId = 10L;
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 8, 5, 9, 0);
+        ReviewSummary summary = mock(ReviewSummary.class);
+        given(summary.getSourceReviewCount()).willReturn(10L);
+        given(summary.getSourceUpdatedAt()).willReturn(updatedAt);
+        given(summary.getModelVersion()).willReturn("previous-model");
+        given(reviewRepository.countByProductId(productId)).willReturn(10L);
+        given(reviewRepository.findLatestUpdatedAtByProductId(productId))
+            .willReturn(updatedAt);
+        given(reviewRepository.findSummaryInputsByProductId(any(), any()))
+            .willReturn(List.of());
+        given(summaryRepository.findByProductId(productId)).willReturn(Optional.of(summary));
+
+        ReviewSummarySnapshotService.Snapshot snapshot = service.load(productId);
+
+        assertThat(snapshot.matchesStoredSummary()).isFalse();
     }
 }

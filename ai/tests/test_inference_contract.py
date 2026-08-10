@@ -22,7 +22,7 @@ from ai.inference.contract import (
 
 
 class InferenceContractTest(unittest.TestCase):
-    def test_builds_deterministic_json_schema_request(self) -> None:
+    def test_builds_deterministic_json_object_request(self) -> None:
         reviews = [
             ReviewInput(rating=5, content="연결이 빠릅니다."),
             ReviewInput(rating=2, content="무게가 무겁습니다."),
@@ -33,11 +33,7 @@ class InferenceContractTest(unittest.TestCase):
         self.assertEqual("qwen-model", request["model"])
         self.assertEqual(0, request["temperature"])
         self.assertFalse(request["stream"])
-        self.assertEqual("json_schema", request["response_format"]["type"])
-        self.assertEqual(
-            ["pros", "cons", "commonOpinions"],
-            request["response_format"]["schema"]["required"],
-        )
+        self.assertEqual("json_object", request["response_format"]["type"])
 
     def test_rejects_empty_reviews(self) -> None:
         with self.assertRaisesRegex(ReviewSummaryContractError, "한 개 이상"):
@@ -83,7 +79,7 @@ class InferenceContractTest(unittest.TestCase):
         reviews = [ReviewInput(rating=5, content="좋습니다.")]
 
         with self.assertRaisesRegex(ReviewSummaryContractError, "최대 생성 토큰"):
-            build_chat_completion_request(reviews, "qwen-model", max_tokens=193)
+            build_chat_completion_request(reviews, "qwen-model", max_tokens=513)
 
     def test_prompt_marks_review_commands_as_untrusted(self) -> None:
         request = build_chat_completion_request(
@@ -169,7 +165,7 @@ class InferenceServiceCheckTest(unittest.TestCase):
         request_json_mock.return_value = {
             "data": [
                 {
-                    "id": "huggingface.co/qwen/qwen3-0.6b-gguf:Q8_0",
+                    "id": "huggingface.co/qwen/qwen3-4b-gguf:Q4_K_M",
                     "object": "model",
                 }
             ]
@@ -178,11 +174,11 @@ class InferenceServiceCheckTest(unittest.TestCase):
         model_ids = verify_model_ready(
             "http://model-runner/engines/v1",
             10,
-            "hf.co/Qwen/Qwen3-0.6B-GGUF:Q8_0",
+            "hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M",
         )
 
         self.assertEqual(
-            ["huggingface.co/qwen/qwen3-0.6b-gguf:Q8_0"],
+            ["huggingface.co/qwen/qwen3-4b-gguf:Q4_K_M"],
             model_ids,
         )
 

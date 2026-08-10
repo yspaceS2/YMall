@@ -116,6 +116,8 @@ class HomeMerchandisingQueryIntegrationTest extends PostgresIntegrationTestSuppo
             .doesNotContain(groceryFallback.getId());
         assertThat(groceryRows).extracting(HomeMerchandisingRow::salesQuantity)
             .containsExactly(4L, 2L);
+        assertThat(groceryRows).extracting(HomeMerchandisingRow::reviewCount)
+            .containsOnly(0L);
     }
 
     @Test

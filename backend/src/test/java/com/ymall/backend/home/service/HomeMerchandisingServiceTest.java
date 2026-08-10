@@ -117,6 +117,7 @@ class HomeMerchandisingServiceTest {
             discountStartDate,
             discountEndDate,
             BigDecimal.valueOf(4.5),
+            10,
             "/images/product.jpg",
             salesQuantity
         );

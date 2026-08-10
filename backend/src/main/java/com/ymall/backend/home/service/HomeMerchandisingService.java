@@ -99,6 +99,7 @@ public class HomeMerchandisingService {
             row.price(),
             effectiveDiscount(row, today),
             row.rating(),
+            row.reviewCount(),
             row.thumbnailUrl(),
             row.salesQuantity()
         );
