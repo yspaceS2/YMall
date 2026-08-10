@@ -2,7 +2,7 @@
 
 YMall은 회원·판매자·관리자의 상품 탐색, 주문·결제, 판매 운영과 관리자 업무를 하나의 서비스로 구현한 풀스택 커머스 포트폴리오입니다.
 
-> 현재 상태: 로컬 통합 실행과 자동 검증을 완료했으며, 외부 운영 배포는 준비 단계입니다.
+> 현재 상태: 로컬 통합 실행과 자동 검증을 완료했으며, OCI 운영 배포 구성을 검증하고 있습니다.
 
 ## 프로젝트 한눈에 보기
 
@@ -22,7 +22,9 @@ YMall은 회원·판매자·관리자의 상품 탐색, 주문·결제, 판매 �
 
 ```mermaid
 flowchart LR
-    U["Browser"] --> F["React / Nginx"]
+    U["Browser"] --> C["Caddy / HTTPS"]
+    C --> F["React / Nginx"]
+    C --> B
     F -->|REST·WebSocket| B["Spring Boot API"]
     B --> P[(PostgreSQL)]
     B --> R[(Redis)]
@@ -40,7 +42,7 @@ flowchart LR
 | Frontend | React 19, TypeScript 6, Vite 8, Tailwind CSS 4, Vitest, Playwright |
 | Backend | Java 17, Spring Boot 4.1, Spring Security, JPA, Flyway, MapStruct |
 | Data·Messaging | PostgreSQL, Redis, Kafka, Transactional Outbox |
-| Infra·관측 | Docker Compose, Nginx, GitHub Actions, Prometheus, Grafana, k6 |
+| Infra·관측 | OCI, Docker Compose, Caddy, Nginx, GitHub Actions, Prometheus, Grafana, k6 |
 
 ## 주요 설계 판단
 
@@ -63,7 +65,7 @@ flowchart LR
 | 구분 | 문서 |
 | --- | --- |
 | 프로젝트 이해 | [아키텍처](docs/architecture.md) · [데이터 모델](docs/database.md) · [API 개요](docs/api-overview.md) · [기술적 회고](docs/retrospective.md) |
-| 실행과 운영 | [Docker Compose](docs/docker-compose.md) · [문제 해결](docs/troubleshooting.md) · [모니터링](monitoring/README.md) · [부하 테스트](load-test/README.md) |
+| 실행과 운영 | [Docker Compose](docs/docker-compose.md) · [OCI 배포](docs/deployment/oci.md) · [문제 해결](docs/troubleshooting.md) · [모니터링](monitoring/README.md) · [부하 테스트](load-test/README.md) |
 | 이벤트·결제 | [Transactional Outbox](docs/transactional-outbox.md) · [Kafka 재시도·DLT](docs/kafka-retry-dlt.md) · [결제](docs/toss-payments.md) · [웹훅](docs/payment-webhooks.md) |
 | 보안·검증 | [PostgreSQL 통합 테스트](docs/postgresql-integration-tests.md) · [보안 자동화](docs/security/security-automation.md) · [KISA 자체 점검](docs/security/kisa-2026-assessment.md) |
 
@@ -88,4 +90,7 @@ docker compose down
 
 ## 배포 상태
 
-현재는 로컬 Docker Compose와 CI 검증을 기준으로 완성도를 관리합니다. 외부 URL, 운영 도메인, HTTPS, 운영 Secret과 백업 정책은 실제 배포 환경이 확정된 뒤 추가하며, 구현 완료 항목과 배포 후 확인 항목을 구분해 기록합니다.
+OCI Japan East(Tokyo)의 ARM64 인스턴스와 `ymall.cloud`를 기준으로 운영 Compose, HTTPS 리버스
+프록시, 수동 CD와 롤백 절차를 준비했습니다. 실제 인스턴스 생성, DNS 연결, 운영 Secret 등록과 외부
+헬스체크는 OCI 계정 업그레이드 및 인스턴스 프로비저닝이 완료된 뒤 검증합니다. 구체적인 준비 항목과
+실행 순서는 [OCI 배포 가이드](docs/deployment/oci.md)에 정리했습니다.

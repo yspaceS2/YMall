@@ -1,0 +1,26 @@
+{
+    email {$ACME_EMAIL}
+}
+
+www.{$YMALL_DOMAIN:ymall.cloud} {
+    redir https://{$YMALL_DOMAIN:ymall.cloud}{uri} permanent
+}
+
+{$YMALL_DOMAIN:ymall.cloud} {
+    encode zstd gzip
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+
+    @backend path /api/* /images/* /oauth2/* /login/oauth2/* /ws*
+
+    handle @backend {
+        reverse_proxy backend:8080
+    }
+
+    handle {
+        reverse_proxy frontend:8080
+    }
+}
