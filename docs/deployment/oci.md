@@ -45,6 +45,10 @@ docker compose -f compose.yaml -f compose.prod.yaml ps
 curl --fail https://ymall.cloud/health
 ```
 
+SMTP를 연결하지 않은 초기 스모크 배포에서는 `.env`의
+`MAIL_HEALTH_ENABLED=false`로 메일 health indicator만 비활성화할 수 있다.
+실제 SMTP 자격 증명을 등록한 운영 환경에서는 기본값인 `true`를 사용한다.
+
 애플리케이션 기동에 실패하면 비밀값을 출력하지 말고 서비스별 로그를 확인한다.
 
 ```bash

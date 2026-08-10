@@ -34,6 +34,7 @@ services:
       MAIL_FROM: ${MAIL_FROM:?MAIL_FROM is required}
       MAIL_SMTP_AUTH: "true"
       MAIL_STARTTLS_ENABLED: "true"
+      MANAGEMENT_HEALTH_MAIL_ENABLED: ${MAIL_HEALTH_ENABLED:-true}
       AI_REVIEW_ENABLED: "false"
       SESSION_COOKIE_SECURE: "true"
       JWT_REFRESH_TOKEN_COOKIE_SECURE: "true"
