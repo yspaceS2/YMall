@@ -14,7 +14,7 @@ www.{$YMALL_DOMAIN:ymall.cloud} {
         -Server
     }
 
-    @backend path /api/* /images/* /oauth2/* /login/oauth2/* /ws*
+    @backend path /api/* /images/* /oauth2/* /login/oauth2/* /ws* /actuator/health /actuator/health/*
 
     handle @backend {
         reverse_proxy backend:8080

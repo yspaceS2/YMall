@@ -90,7 +90,8 @@ docker compose down
 
 ## 배포 상태
 
-OCI Japan East(Tokyo)의 ARM64 인스턴스와 `ymall.cloud`를 기준으로 운영 Compose, HTTPS 리버스
-프록시, 수동 CD와 롤백 절차를 준비했습니다. 실제 인스턴스 생성, DNS 연결, 운영 Secret 등록과 외부
-헬스체크는 OCI 계정 업그레이드 및 인스턴스 프로비저닝이 완료된 뒤 검증합니다. 구체적인 준비 항목과
-실행 순서는 [OCI 배포 가이드](docs/deployment/oci.md)에 정리했습니다.
+OCI Japan East(Tokyo)의 ARM64 인스턴스와 `ymall.cloud`를 기준으로 운영 Compose와 HTTPS 리버스
+프록시를 배포했으며, 실제 DNS 연결과 외부 HTTPS 응답을 확인했습니다. 현재는 데모 데이터와 외부
+연동 설정을 준비하기 위해 인스턴스를 중지한 상태입니다. GitHub Actions 수동 CD, 롤백, 운영 Secret,
+백업·복구 검증은 후속 작업으로 진행하며 구체적인 절차는 [OCI 배포 가이드](docs/deployment/oci.md)에
+정리했습니다.
