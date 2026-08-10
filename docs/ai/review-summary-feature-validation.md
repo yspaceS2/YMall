@@ -80,9 +80,29 @@ Qwen3-0.6B-GGUF Q8_0의 평가 출력:
 운영 품질을 주장하려면 상품군별 승인 데이터 확대, 독립 사람 평가, 근거 일치율과
 공통 의견 정밀도 측정, 입력 길이별 지연·메모리 부하 검증이 추가로 필요하다.
 
+## 2026-08-10 실데이터 운영 후보 재검증
+
+메인 홈 큐레이션의 최초 노출 상품과 추가 시연 상품을 합친 13개 상품에 합성 리뷰를
+10개씩 구성해 실제 Kafka 비동기 생성 경로를 검증했다.
+
+| 항목 | 결과 |
+| --- | --- |
+| 기존 0.6B 모델 | 긴 한국어 입력에서 빈 응답·비정상 JSON 반복 |
+| 최종 모델 | `Qwen3-4B-GGUF` Q4_K_M |
+| 모델 파일 | 2.32 GiB |
+| 컨텍스트 | 4,096 토큰 |
+| 최대 출력 | 512 토큰 |
+| 대표 상품 1건 생성 시간 | 약 28초 |
+| 처리 방식 | Kafka 비동기, 동시성 1 |
+| 최종 결과 | 13개 상품 모두 리뷰 10개·요약 READY |
+
+Docker Model Runner가 지원하는 `response_format: {"type":"json_object"}`를 사용했다.
+지원하지 않는 `json_schema` 요청은 제약이 무시될 수 있어 제거했다. 저장된 모델 버전과
+현재 설정 모델이 다르면 리뷰 변경이 없어도 요약을 다시 생성하도록 검증했다.
+
 ## 라이선스와 실행 구성
 
-- 기준 모델: `Qwen/Qwen3-0.6B-GGUF` Q8_0
+- 현재 서비스 모델: `Qwen/Qwen3-4B-GGUF` Q4_K_M
 - 모델 라이선스: Apache-2.0
 - 실행 엔진: Docker Model Runner의 llama.cpp CPU 엔진
 - 데이터: 저장소에서 직접 작성한 합성 데이터. 외부 원문은 출처와 이용 조건을
@@ -94,7 +114,9 @@ Qwen3-0.6B-GGUF Q8_0의 평가 출력:
 
 ```powershell
 docker desktop enable model-runner --tcp=12434
-docker model pull hf.co/Qwen/Qwen3-0.6B-GGUF:Q8_0
+docker model pull hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M
+docker model package --from hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M `
+  --context-size 4096 ymall/qwen3-4b-review:Q4_K_M
 ```
 
 추론 계약 검증:

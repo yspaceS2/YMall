@@ -79,6 +79,12 @@ public class HomeMerchandisingQueryRepository {
             JOIN paid_orders paid_order ON paid_order.order_id = item.order_id
             GROUP BY item.product_id
         ),
+        review_counts AS (
+            SELECT review.product_id,
+                   COUNT(*) AS review_count
+            FROM reviews review
+            GROUP BY review.product_id
+        ),
         eligible AS (
             SELECT product.id AS product_id,
                    product.category_id,
@@ -90,6 +96,7 @@ public class HomeMerchandisingQueryRepository {
                    product.discount_start_date,
                    product.discount_end_date,
                    product.rating,
+                   COALESCE(review_count.review_count, 0) AS review_count,
                    product.thumbnail_url,
                    COALESCE(product.approved_at, product.updated_at) AS approved_at,
                    COALESCE(sales.sales_quantity, 0) AS sales_quantity,
@@ -106,6 +113,7 @@ public class HomeMerchandisingQueryRepository {
             JOIN categories category ON category.id = product.category_id
             JOIN category_tree tree ON tree.category_id = product.category_id
             LEFT JOIN product_sales sales ON sales.product_id = product.id
+            LEFT JOIN review_counts review_count ON review_count.product_id = product.id
             WHERE product.status = 'APPROVED'
               AND product.stock > 0
         ),
@@ -208,6 +216,7 @@ public class HomeMerchandisingQueryRepository {
                discount_start_date,
                discount_end_date,
                rating,
+               review_count,
                thumbnail_url,
                sales_quantity
         FROM selected
@@ -242,6 +251,7 @@ public class HomeMerchandisingQueryRepository {
                 toLocalDate(resultSet.getDate("discount_start_date")),
                 toLocalDate(resultSet.getDate("discount_end_date")),
                 resultSet.getBigDecimal("rating"),
+                resultSet.getLong("review_count"),
                 resultSet.getString("thumbnail_url"),
                 resultSet.getLong("sales_quantity")
             )

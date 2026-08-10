@@ -6,8 +6,19 @@ YMall 운영 환경은 OCI Japan East(Tokyo)의 Ampere A1 인스턴스 한 대�
 Caddy만 80, 443 포트를 외부에 공개하고 Frontend, Backend, PostgreSQL, Redis, Kafka는 Compose 내부
 네트워크에서 통신한다. Caddy는 `ymall.cloud` 인증서를 자동 발급하고 HTTPS를 종료한다.
 
-운영 서버에서는 Docker Desktop 전용 Docker Model Runner를 사용하지 않는다. AI 리뷰 요약 기능은
-`compose.prod.yaml`에서 비활성화하며, 별도 추론 서버를 준비한 뒤에만 다시 활성화한다.
+운영 기본값은 `compose.prod.yaml`에서 AI 리뷰 요약을 비활성화한다. 현재 2 OCPU·12GB Ampere A1
+인스턴스에서는 `Qwen3-4B-GGUF Q4_K_M` 4,096 컨텍스트를 CPU로 순차 실행하는 구성을 후보로
+검증한다. 모델 파일은 2.32GiB이며 로컬 대표 입력은 약 28초가 걸렸다. 비동기 처리이므로 리뷰 작성
+응답과 분리되지만, 실제 OCI 메모리·CPU 부하 검증을 통과하기 전에는 운영에서 활성화하지 않는다.
+
+선택적으로 활성화할 때는 Docker Model Runner를 설치하고 다음 조건을 모두 적용한다.
+
+- `AI_REVIEW_PARALLEL=1`
+- `AI_REVIEW_CONTEXT_SIZE=4096`
+- `AI_REVIEW_MAX_TOKENS=512`
+- 모델: `Qwen3-4B-GGUF Q4_K_M`
+- PostgreSQL, Redis, Kafka를 외부에 공개하지 않음
+- 부하 중 메모리 부족이나 장시간 CPU 포화가 발생하면 AI를 다시 비활성화하고 저장된 요약만 제공
 
 ## OCI 네트워크 준비
 

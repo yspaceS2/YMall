@@ -9,7 +9,7 @@ from typing import Any
 MAX_REVIEW_COUNT = 100
 MAX_REVIEW_CONTENT_LENGTH = 1_000
 MAX_TOTAL_CONTENT_LENGTH = 6_000
-DEFAULT_MAX_TOKENS = 192
+DEFAULT_MAX_TOKENS = 512
 SUMMARY_FIELDS = ("pros", "cons", "commonOpinions")
 FORBIDDEN_PLACEHOLDERS = {"장점", "단점", "공통 의견"}
 RUNTIME_SYSTEM_PROMPT = (
@@ -105,22 +105,7 @@ def build_chat_completion_request(
         "temperature": 0,
         "max_tokens": max_tokens,
         "stream": False,
-        "response_format": {
-            "type": "json_schema",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    field: {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "maxItems": 3,
-                    }
-                    for field in SUMMARY_FIELDS
-                },
-                "required": list(SUMMARY_FIELDS),
-                "additionalProperties": False,
-            },
-        },
+        "response_format": {"type": "json_object"},
     }
 
 

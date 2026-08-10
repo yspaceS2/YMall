@@ -1,6 +1,7 @@
 package com.ymall.backend.review.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.ExpectedCount.once;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -172,6 +173,34 @@ class OpenAiReviewSummaryClientTest {
     }
 
     @Test
+    void acceptsSnakeCaseCommonOpinionsFromLocalModel() {
+        server.expect(once(), requestTo(
+                "http://review-model.test/engines/v1/chat/completions"
+            ))
+            .andRespond(withSuccess(
+                """
+                    {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": "{\\"pros\\":[\\"포장이 깔끔합니다.\\"],\\"cons\\":[],\\"common_opinions\\":[\\"가격이 합리적입니다.\\"]}"
+                                }
+                            }
+                        ]
+                    }
+                    """,
+                MediaType.APPLICATION_JSON
+            ));
+
+        ReviewSummaryGenerator.Result result = client.generate(List.of(
+            new ReviewSummaryGenerator.Input(5, "만족합니다.", LocalDateTime.now())
+        ));
+
+        assertThat(result.commonOpinions()).containsExactly("가격이 합리적입니다.");
+        server.verify();
+    }
+
+    @Test
     void combinesSummarySectionsReturnedAsSeparateJsonObjects() {
         server.expect(once(), requestTo(
                 "http://review-model.test/engines/v1/chat/completions"
@@ -203,6 +232,35 @@ class OpenAiReviewSummaryClientTest {
         assertThat(result.cons()).isEmpty();
         assertThat(result.commonOpinions())
             .containsExactly("가격이 합리적이라는 의견이 많습니다.");
+        server.verify();
+    }
+
+    @Test
+    void rejectsNonStringSummarySectionItem() {
+        server.expect(once(), requestTo(
+                "http://review-model.test/engines/v1/chat/completions"
+            ))
+            .andRespond(withSuccess(
+                """
+                    {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": "{\\\"pros\\\":[\\\"사용하기 편합니다.\\\",1],\\\"cons\\\":[],\\\"commonOpinions\\\":[]}"
+                                }
+                            }
+                        ]
+                    }
+                    """,
+                MediaType.APPLICATION_JSON
+            ));
+
+        assertThatThrownBy(() -> client.generate(List.of(
+            new ReviewSummaryGenerator.Input(5, "사용하기 편합니다.", LocalDateTime.now())
+        )))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("AI review summary response is not valid JSON.")
+            .hasRootCauseMessage("AI review summary section items must be strings.");
         server.verify();
     }
 
