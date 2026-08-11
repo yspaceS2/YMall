@@ -87,6 +87,56 @@ docker compose -f compose.yaml -f compose.prod.yaml logs --tail=200 postgres red
 배포를 시작할 때와 종료됐을 때 `#ymall-deploy` 채널로 실행자, 커밋, 결과 및 Actions 로그 링크를 알린다.
 Slack 또는 네트워크 장애가 실제 배포 결과에 영향을 주지 않도록 알림 단계에는 `continue-on-error`를 적용한다.
 
+## 자동 백업과 복원 검증
+
+운영 백업은 PostgreSQL custom format과 `ymall_backend-uploads` 볼륨 압축 파일을 하나의 백업 세트로
+생성한다. 완성 전 파일은 `.partial` 디렉터리에 기록하고 두 파일과 SHA-256 체크섬 생성이 모두 성공한
+뒤에만 최종 디렉터리로 전환한다. 기본 경로는 `/opt/ymall-backups`이며 최근 7일을 보관한다.
+
+시스템 타이머를 설치한다.
+
+```bash
+cd /opt/ymall
+chmod +x deploy/oci/*.sh
+./deploy/oci/install-backup-timer.sh
+systemctl list-timers ymall-backup.timer --no-pager
+```
+
+타이머는 매일 00:00 KST에 실행되고 서버가 꺼져 실행 시점을 놓친 경우 다음 기동 시 한 번 실행한다.
+백업은 `flock`으로 중복 실행을 차단하며 실행 로그와 실패 상태는 systemd journal에 남는다.
+
+```bash
+sudo systemctl start ymall-backup.service
+sudo systemctl status ymall-backup.service --no-pager
+sudo journalctl -u ymall-backup.service --since today --no-pager
+```
+
+백업 직후 또는 정기 운영 점검에서 체크섬, 업로드 압축 파일과 PostgreSQL 복원을 검증한다. 검증 스크립트는
+운영 DB를 덮어쓰지 않고 임시 데이터베이스에 복원한 후 자동 삭제한다. 인자를 생략하면 최신 백업을 사용한다.
+
+```bash
+sudo /opt/ymall/deploy/oci/verify-backup.sh
+sudo /opt/ymall/deploy/oci/verify-backup.sh /opt/ymall-backups/20260812000000
+```
+
+실제 장애 복구에서는 먼저 현재 데이터를 별도 백업하고 Backend의 DB 접근을 중지한 뒤
+`pg_restore --clean --if-exists`로 대상 DB를 교체한다. 업로드 볼륨도 같은 시각의 `uploads.tar.gz`로 함께 복원해야
+DB의 이미지 경로와 파일이 일치한다. 운영 복원은 파괴적 작업이므로 자동화하지 않고, 복원할 백업 시각과
+현재 데이터 보존 여부를 이중 확인한 뒤 수행한다.
+
+현재 백업은 OCI 인스턴스의 같은 부트 볼륨에 저장되므로 운영자 실수와 논리적 데이터 손상에는 대응하지만,
+인스턴스 또는 부트 볼륨 자체의 유실에는 대응하지 못한다. 장기 운영으로 전환할 때는 OCI Object Storage 등
+별도 장애 도메인으로 암호화 복제하고 복제본의 보존·삭제 정책도 함께 관리한다.
+
+기본값은 환경변수로 조정할 수 있다.
+
+| 환경변수 | 기본값 | 설명 |
+| --- | --- | --- |
+| `YMALL_PROJECT_DIR` | `/opt/ymall` | 운영 저장소 경로 |
+| `YMALL_BACKUP_ROOT` | `/opt/ymall-backups` | 백업 보관 경로 |
+| `YMALL_BACKUP_RETENTION_DAYS` | `7` | 백업 보관 일수 |
+| `YMALL_UPLOAD_VOLUME` | `ymall_backend-uploads` | 업로드 Docker 볼륨 |
+
 ## 중지와 비용 확인
 
 컨테이너만 중지해도 Compute 인스턴스와 부트 볼륨은 유지된다. OCI 비용을 완전히 피해야 할 때는

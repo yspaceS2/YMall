@@ -50,6 +50,19 @@ function renderLayout(role: MemberRole | null) {
 }
 
 describe('Layout 역할별 메뉴', () => {
+    it('포트폴리오 저작권과 프로젝트 용도를 표시한다', () => {
+        getUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
+        getCart.mockResolvedValue({ items: [] })
+        getCategories.mockResolvedValue([])
+        getProductSuggestions.mockResolvedValue([])
+
+        renderLayout(null)
+
+        const footer = screen.getByRole('contentinfo')
+        expect(footer).toHaveTextContent('© 2026 Yspace. All rights reserved.')
+        expect(footer).toHaveTextContent('YMall is a portfolio project.')
+    })
+
     it('일반 사용자에게 판매자·관리자 메뉴를 숨기고 미읽음 배지를 표시한다', async () => {
         getUnreadNotificationCount.mockResolvedValue({ unreadCount: 3 })
         getCart.mockResolvedValue({ items: [] })
