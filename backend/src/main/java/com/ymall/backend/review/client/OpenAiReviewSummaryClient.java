@@ -55,27 +55,7 @@ public class OpenAiReviewSummaryClient implements ReviewSummaryGenerator {
             "temperature", 0,
             "max_tokens", properties.maximumTokens(),
             "stream", false,
-            "response_format", Map.of(
-                "type", "json_schema",
-                "schema", Map.of(
-                    "type", "object",
-                    "properties", Map.of(
-                        "pros", stringArraySchema(),
-                        "cons", stringArraySchema(),
-                        "commonOpinions", stringArraySchema()
-                    ),
-                    "required", List.of("pros", "cons", "commonOpinions"),
-                    "additionalProperties", false
-                )
-            )
-        );
-    }
-
-    private Map<String, Object> stringArraySchema() {
-        return Map.of(
-            "type", "array",
-            "items", Map.of("type", "string"),
-            "maxItems", 3
+            "response_format", Map.of("type", "json_object")
         );
     }
 
@@ -110,20 +90,19 @@ public class OpenAiReviewSummaryClient implements ReviewSummaryGenerator {
                 if (!summaryNode.isObject()) {
                     continue;
                 }
-                SummaryContent summary = objectMapper.treeToValue(
-                    summaryNode,
-                    SummaryContent.class
-                );
                 if (summaryNode.has("pros")) {
-                    pros = normalized(summary.pros());
+                    pros = normalized(summaryNode.get("pros"));
                     hasPros = true;
                 }
                 if (summaryNode.has("cons")) {
-                    cons = normalized(summary.cons());
+                    cons = normalized(summaryNode.get("cons"));
                     hasCons = true;
                 }
                 if (summaryNode.has("commonOpinions")) {
-                    commonOpinions = normalized(summary.commonOpinions());
+                    commonOpinions = normalized(summaryNode.get("commonOpinions"));
+                    hasCommonOpinions = true;
+                } else if (summaryNode.has("common_opinions")) {
+                    commonOpinions = normalized(summaryNode.get("common_opinions"));
                     hasCommonOpinions = true;
                 }
                 if (hasPros && hasCons && hasCommonOpinions) {
@@ -197,6 +176,25 @@ public class OpenAiReviewSummaryClient implements ReviewSummaryGenerator {
             .toList();
     }
 
+    private List<String> normalized(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return List.of();
+        }
+        if (!node.isArray()) {
+            throw new IllegalArgumentException("AI review summary section must be an array.");
+        }
+        List<String> values = new ArrayList<>();
+        node.forEach(item -> {
+            if (!item.isTextual()) {
+                throw new IllegalArgumentException(
+                    "AI review summary section items must be strings."
+                );
+            }
+            values.add(item.asText());
+        });
+        return normalized(values);
+    }
+
     private record ChatCompletionResponse(List<Choice> choices) {
     }
 
@@ -206,10 +204,4 @@ public class OpenAiReviewSummaryClient implements ReviewSummaryGenerator {
     private record Message(String content) {
     }
 
-    private record SummaryContent(
-        List<String> pros,
-        List<String> cons,
-        List<String> commonOpinions
-    ) {
-    }
 }

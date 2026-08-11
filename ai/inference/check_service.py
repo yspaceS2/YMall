@@ -132,7 +132,7 @@ def main() -> int:
     base_url = os.getenv("AI_REVIEW_MODEL_URL", DEFAULT_MODEL_URL)
     model = os.getenv(
         "AI_REVIEW_MODEL_NAME",
-        "huggingface.co/qwen/qwen3-0.6b-gguf:Q8_0",
+        "huggingface.co/qwen/qwen3-4b-gguf:Q4_K_M",
     )
     max_tokens = int(os.getenv("AI_REVIEW_MAX_TOKENS", str(DEFAULT_MAX_TOKENS)))
     timeout_seconds = int(

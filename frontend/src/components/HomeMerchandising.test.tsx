@@ -35,6 +35,7 @@ function groceryProduct(
         price: 15_000,
         discountPercentage: 10,
         rating: 4.9,
+        reviewCount: 18,
         thumbnailUrl: null,
         salesQuantity: 18,
     }
@@ -55,6 +56,7 @@ const merchandising: HomeMerchandising = {
                 price: 120_000,
                 discountPercentage: 20,
                 rating: 4.8,
+                reviewCount: 30,
                 thumbnailUrl: '/uploads/jacket.jpg',
                 salesQuantity: 30,
             }],
@@ -72,6 +74,7 @@ const merchandising: HomeMerchandising = {
                 price: 35_000,
                 discountPercentage: 0,
                 rating: 4.6,
+                reviewCount: 25,
                 thumbnailUrl: null,
                 salesQuantity: 25,
             }],
@@ -108,6 +111,7 @@ const merchandising: HomeMerchandising = {
                 price: 159_000,
                 discountPercentage: 15,
                 rating: 4.7,
+                reviewCount: 14,
                 thumbnailUrl: null,
                 salesQuantity: 14,
             },
@@ -120,6 +124,7 @@ const merchandising: HomeMerchandising = {
                 price: 59_000,
                 discountPercentage: 0,
                 rating: 4.5,
+                reviewCount: 12,
                 thumbnailUrl: null,
                 salesQuantity: 12,
             },
@@ -134,6 +139,7 @@ const merchandising: HomeMerchandising = {
         price: 89_000,
         discountPercentage: 5,
         rating: null,
+        reviewCount: 3,
         thumbnailUrl: null,
         salesQuantity: 0,
     }],
@@ -175,6 +181,9 @@ describe('메인 상품 큐레이션', () => {
         expect(screen.getByRole('heading', { name: '새로 들어온 상품' })).toBeInTheDocument()
         expect(screen.getByRole('link', { name: /카테고리 베스트 재킷/ })).toHaveAttribute('href', '/products/11')
         expect(screen.getByRole('link', { name: /신상품 무선 스피커/ })).toHaveAttribute('href', '/products/41')
+        expect(screen.getByLabelText('평점 4.8점, 리뷰 30개')).toBeInTheDocument()
+        expect(screen.getByLabelText('등록된 리뷰 없음')).toBeInTheDocument()
+        expect(screen.queryByLabelText(/undefined/)).not.toBeInTheDocument()
     })
 
     it('카테고리 베스트 상품을 한 슬라이드에 두 개씩 표시한다', async () => {

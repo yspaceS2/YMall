@@ -30,7 +30,7 @@ GET /api/products/{productId}/review-summary
         "pros": ["연결이 빠릅니다."],
         "cons": ["무게가 무겁습니다."],
         "commonOpinions": ["키감이 부드럽다는 의견이 반복됩니다."],
-        "modelVersion": "huggingface.co/qwen/qwen3-0.6b-gguf:Q8_0",
+        "modelVersion": "ymall/qwen3-4b-review:Q4_K_M",
         "generatedAt": "2026-07-25T13:00:00"
     }
 }
@@ -46,7 +46,8 @@ GET /api/products/{productId}/review-summary
 - 리뷰 한 건의 최대 입력 길이: 1,000자
 - 전체 입력 최대 길이: 6,000자
 - 모델 출력 배열: 장점·단점·공통 의견 각각 최대 3개
-- 동일한 리뷰 수와 최종 변경 시각으로 생성된 요약은 다시 만들지 않는다.
+- 동일한 리뷰 수·최종 변경 시각·모델 버전으로 생성된 요약은 다시 만들지 않는다.
+- 설정 모델이 변경되면 리뷰가 그대로여도 새 모델로 요약을 다시 생성한다.
 
 ## 장애 처리
 
@@ -66,7 +67,7 @@ GET /api/products/{productId}/review-summary
 | `AI_REVIEW_MAXIMUM_REVIEWS` | `100` | 모델에 전달할 최대 리뷰 수 |
 | `AI_REVIEW_MAXIMUM_REVIEW_LENGTH` | `1000` | 리뷰 한 건의 최대 입력 길이 |
 | `AI_REVIEW_MAXIMUM_TOTAL_LENGTH` | `6000` | 전체 리뷰 입력 최대 길이 |
-| `AI_REVIEW_MAX_TOKENS` | `192` | 최대 생성 토큰 |
+| `AI_REVIEW_MAX_TOKENS` | `512` | 최대 생성 토큰 |
 | `AI_REVIEW_CONNECT_TIMEOUT` | `3s` | 모델 연결 제한 시간 |
 | `AI_REVIEW_READ_TIMEOUT` | `180s` | 모델 응답 제한 시간 |
 | `AI_REVIEW_LOCK_TTL` | `5m` | Redis 생성 잠금 만료 시간 |

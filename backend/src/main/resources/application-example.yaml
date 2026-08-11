@@ -157,12 +157,12 @@ ymall:
     review-summary:
       enabled: ${AI_REVIEW_ENABLED:false}
       base-url: ${AI_REVIEW_BASE_URL:http://localhost:12434/engines/v1}
-      model: ${AI_REVIEW_MODEL:huggingface.co/qwen/qwen3-0.6b-gguf:Q8_0}
+      model: ${AI_REVIEW_MODEL:huggingface.co/qwen/qwen3-4b-gguf:Q4_K_M}
       minimum-reviews: ${AI_REVIEW_MINIMUM_REVIEWS:10}
       maximum-reviews: ${AI_REVIEW_MAXIMUM_REVIEWS:100}
       maximum-review-length: ${AI_REVIEW_MAXIMUM_REVIEW_LENGTH:1000}
       maximum-total-length: ${AI_REVIEW_MAXIMUM_TOTAL_LENGTH:6000}
-      maximum-tokens: ${AI_REVIEW_MAX_TOKENS:192}
+      maximum-tokens: ${AI_REVIEW_MAX_TOKENS:512}
       connect-timeout: ${AI_REVIEW_CONNECT_TIMEOUT:3s}
       read-timeout: ${AI_REVIEW_READ_TIMEOUT:180s}
       lock-ttl: ${AI_REVIEW_LOCK_TTL:5m}

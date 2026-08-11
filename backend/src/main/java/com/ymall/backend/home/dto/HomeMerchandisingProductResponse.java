@@ -11,6 +11,7 @@ public record HomeMerchandisingProductResponse(
     BigDecimal price,
     BigDecimal discountPercentage,
     BigDecimal rating,
+    long reviewCount,
     String thumbnailUrl,
     long salesQuantity
 ) {

@@ -144,7 +144,7 @@ services:
       args:
         VITE_API_BASE_URL: /api
         VITE_OAUTH2_BASE_URL: ""
-        VITE_TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:-}
+        VITE_TOSS_PUBLIC_CLIENT_ID: ${TOSS_CLIENT_KEY:-}
     restart: unless-stopped
     environment:
       BACKEND_HOST: backend
@@ -358,7 +358,7 @@ services:
 
 models:
   review-summary-model:
-    model: ${AI_REVIEW_MODEL:-hf.co/Qwen/Qwen3-0.6B-GGUF:Q8_0}
+    model: ${AI_REVIEW_MODEL:-hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M}
     runtime_flags:
       - "--ctx-size"
       - "${AI_REVIEW_CONTEXT_SIZE:-4096}"

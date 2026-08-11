@@ -62,6 +62,7 @@ function MerchandisingProductCard({
     isActive: boolean
 }) {
     const discountedPrice = getDiscountedPrice(product.price, product.discountPercentage)
+    const reviewRating = product.reviewCount > 0 ? product.rating : null
 
     return (
         <Link
@@ -80,6 +81,17 @@ function MerchandisingProductCard({
                     {product.name}
                 </h3>
                 <span className="mt-3 text-xs text-muted">{product.categoryName}</span>
+                <div className="mt-3 flex items-center gap-1.5 text-xs" aria-label={reviewRating !== null ? `평점 ${reviewRating.toFixed(1)}점, 리뷰 ${product.reviewCount}개` : '등록된 리뷰 없음'}>
+                    {reviewRating !== null ? (
+                        <>
+                            <span className="text-accent" aria-hidden="true">★</span>
+                            <strong>{reviewRating.toFixed(1)}</strong>
+                            <span className="text-muted">({product.reviewCount})</span>
+                        </>
+                    ) : (
+                        <span className="text-muted">리뷰 없음</span>
+                    )}
+                </div>
                 <div className="mt-5 flex flex-wrap items-baseline gap-2">
                     {product.discountPercentage > 0 && (
                         <strong className="text-lg text-accent">{product.discountPercentage}%</strong>

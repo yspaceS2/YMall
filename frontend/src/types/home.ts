@@ -7,6 +7,7 @@ export interface HomeMerchandisingProduct {
     price: number
     discountPercentage: number
     rating: number | null
+    reviewCount: number
     thumbnailUrl: string | null
     salesQuantity: number
 }
