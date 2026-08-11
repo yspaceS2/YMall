@@ -78,10 +78,14 @@ docker compose -f compose.yaml -f compose.prod.yaml logs --tail=200 postgres red
 | `OCI_DEPLOY_PATH` | 서버 저장소 경로(예: `/opt/ymall`) |
 | `OCI_SSH_PRIVATE_KEY` | 배포 전용 SSH 개인키 |
 | `OCI_SSH_KNOWN_HOSTS` | 사전에 확인한 서버 host key 한 줄 |
+| `SLACK_WEBHOOK_URL` | `#ymall-deploy` 채널의 Incoming Webhook URL |
 
 워크플로는 최신 `main`을 가져와 컨테이너를 다시 빌드하고, 서비스 상태와 HTTPS 헬스체크를 검증한다.
 배포 또는 헬스체크가 실패하면 직전 서버 커밋으로 돌아가 컨테이너를 다시 기동한다. 자동 push 배포가
 아니므로 불필요한 Actions 사용 시간을 소비하지 않는다.
+
+배포를 시작할 때와 종료됐을 때 `#ymall-deploy` 채널로 실행자, 커밋, 결과 및 Actions 로그 링크를 알린다.
+Slack 또는 네트워크 장애가 실제 배포 결과에 영향을 주지 않도록 알림 단계에는 `continue-on-error`를 적용한다.
 
 ## 중지와 비용 확인
 
