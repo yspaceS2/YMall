@@ -30,8 +30,11 @@ jobs:
         run: |
           short_sha="${GITHUB_SHA:0:7}"
           payload=$(jq -n \
-            --arg text ":rocket: *YMall 운영 배포 시작*\n브랜치: ${GITHUB_REF_NAME} · 커밋: ${short_sha} · 실행자: ${GITHUB_ACTOR}\n<${RUN_URL}|GitHub Actions에서 보기>" \
-            '{text: $text}')
+            --arg branch "$GITHUB_REF_NAME" \
+            --arg commit "$short_sha" \
+            --arg actor "$GITHUB_ACTOR" \
+            --arg runUrl "$RUN_URL" \
+            '{text: (":rocket: *YMall 운영 배포 시작*\n브랜치: " + $branch + " · 커밋: " + $commit + " · 실행자: " + $actor + "\n<" + $runUrl + "|GitHub Actions에서 보기>")}')
           curl --fail --silent --show-error --retry 3 \
             --header 'Content-Type: application/json' \
             --data "$payload" \
@@ -72,8 +75,12 @@ jobs:
             title=":x: *YMall 운영 배포 실패*"
           fi
           payload=$(jq -n \
-            --arg text "${title}\n브랜치: ${GITHUB_REF_NAME} · 커밋: ${short_sha} · 상태: ${DEPLOYMENT_STATUS}\n<${RUN_URL}|배포 로그 확인>" \
-            '{text: $text}')
+            --arg title "$title" \
+            --arg branch "$GITHUB_REF_NAME" \
+            --arg commit "$short_sha" \
+            --arg status "$DEPLOYMENT_STATUS" \
+            --arg runUrl "$RUN_URL" \
+            '{text: ($title + "\n브랜치: " + $branch + " · 커밋: " + $commit + " · 상태: " + $status + "\n<" + $runUrl + "|배포 로그 확인>")}')
           curl --fail --silent --show-error --retry 3 \
             --header 'Content-Type: application/json' \
             --data "$payload" \
