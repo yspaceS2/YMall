@@ -55,6 +55,24 @@ TOSS_SECRET_KEY=test_sk_your_secret_key
 실제 테스트 카드 정보와 인증 방식은 Toss Payments 개발자 문서를 따른다. 테스트 과정에서 생성된
 `paymentKey`, 주문번호, 사용자 정보는 문서·Jira·PR·스크린샷에 복사하지 않는다.
 
+## 운영 Sandbox 검증 결과
+
+2026년 8월 11일 `https://ymall.cloud`에서 다음 흐름을 실제 Toss Payments 테스트 환경으로 검증했다.
+
+1. 운영 Frontend에서 Toss 테스트 결제창을 호출했다.
+2. Backend가 서버에서 계산한 주문 금액으로 결제를 승인했다.
+3. 주문 내역과 상세 화면에 결제 결과가 반영되는 것을 확인했다.
+4. 구매자가 전체 환불을 신청했다.
+5. Toss 취소 API 성공 후 주문과 상품이 `환불 완료`로 전환되는 것을 확인했다.
+6. 환불 가능 수량이 0이 되고 중복 환불 신청이 차단되는 것을 확인했다.
+7. 같은 시각의 운영 Backend 로그에 결제·환불 관련 오류가 없음을 확인했다.
+
+운영 CSP는 Toss SDK가 테스트 결제창을 여는 데 필요한 공식 로그·이벤트·Sandbox API 도메인만
+`connect-src`에 허용한다. 키 값, `paymentKey`, 결제사 거래 식별자와 회원 정보는 검증 근거에 남기지 않는다.
+
+관련 변경과 배포는 [PR #162](https://github.com/yspaceS2/YMall/pull/162)와
+[PR #163](https://github.com/yspaceS2/YMall/pull/163)에서 확인할 수 있다.
+
 ## 자동화 테스트
 
 외부 결제사 상태와 무관하게 CI에서 재현되도록 계층별 테스트를 분리한다.
