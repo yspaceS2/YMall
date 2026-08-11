@@ -2,6 +2,7 @@
 logs/
 backups/
 tmp/
+build/zap-production/
 *.log
 .env
 npm-debug.log*

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run YMall backup every day at midnight KST
+
+[Timer]
+OnCalendar=*-*-* 00:00:00 Asia/Seoul
+Persistent=true
+AccuracySec=1min
+Unit=ymall-backup.service
+
+[Install]
+WantedBy=timers.target

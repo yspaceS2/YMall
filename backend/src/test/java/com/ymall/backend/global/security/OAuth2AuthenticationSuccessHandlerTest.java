@@ -24,7 +24,7 @@ import com.ymall.backend.member.service.MemberEmailChangeService;
 class OAuth2AuthenticationSuccessHandlerTest {
 
     @Test
-    void redirectsOidcPrincipalWithYmallAccessToken() throws Exception {
+    void redirectsOidcPrincipalWithoutExposingAccessToken() throws Exception {
         RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
         RefreshTokenCookieManager cookieManager = mock(RefreshTokenCookieManager.class);
         OAuthFlowContext oAuthFlowContext = mock(OAuthFlowContext.class);
@@ -64,7 +64,7 @@ class OAuth2AuthenticationSuccessHandlerTest {
         );
 
         assertThat(response.getRedirectedUrl())
-            .isEqualTo("http://localhost:5173/oauth2/callback#accessToken=ymall-token");
+            .isEqualTo("http://localhost:5173/oauth2/callback#loginCompleted=true");
     }
 
     @Test

@@ -92,7 +92,11 @@ export function Layout({ children }: { children: ReactNode }) {
                     </div>
                     <p className="mt-2.5">일상에 취향을 더하는 셀렉트 스토어</p>
                 </div>
-                <p>© 2026 YMall. Portfolio project.</p>
+                <p>
+                    © 2026 Yspace. All rights reserved.
+                    <br />
+                    YMall is a portfolio project.
+                </p>
             </footer>
         </div>
     )

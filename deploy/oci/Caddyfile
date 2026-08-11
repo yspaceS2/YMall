@@ -14,9 +14,10 @@ www.{$YMALL_DOMAIN:ymall.cloud} {
         -Server
     }
 
-    @backend path /api/* /images/* /oauth2/* /login/oauth2/* /ws* /actuator/health /actuator/health/*
+    @backend path /api/* /images/* /oauth2/authorization/* /login/oauth2/* /ws* /actuator/health /actuator/health/*
 
     handle @backend {
+        header Cross-Origin-Resource-Policy "same-origin"
         reverse_proxy backend:8080
     }
 
