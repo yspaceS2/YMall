@@ -35,7 +35,7 @@ server {
         include /etc/nginx/proxy_params;
     }
 
-    location ^~ /oauth2/ {
+    location ^~ /oauth2/authorization/ {
         proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
         include /etc/nginx/proxy_params;
     }
