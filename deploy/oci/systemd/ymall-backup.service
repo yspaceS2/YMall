@@ -1,0 +1,16 @@
+[Unit]
+Description=YMall PostgreSQL and upload backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/ymall
+ExecStart=/opt/ymall/deploy/oci/backup.sh
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+[Install]
+WantedBy=multi-user.target
