@@ -71,6 +71,11 @@ docker compose -f compose.yaml -f compose.prod.yaml logs --tail=200 postgres red
 `Deploy to OCI` 워크플로는 `main`에서 수동 실행할 때만 동작한다. GitHub의 `production` Environment에
 다음 Secrets를 등록한다.
 
+이 프로젝트는 운영 배포를 **수동 승인형 CD**로 유지한다. `develop → main` PR의 CI와 보안 검사를
+통과한 뒤 운영자가 배포 시작 시점을 선택하고, 실행 이후의 서버 갱신, Compose 재빌드, 헬스체크,
+실패 시 직전 커밋 롤백과 Slack 결과 알림은 자동으로 처리한다. 단일 포트폴리오 인스턴스에서 불필요한
+재배포와 Actions 사용을 줄이고, 운영 변경 시점을 명시적으로 통제하기 위한 선택이다.
+
 | Secret | 설명 |
 | --- | --- |
 | `OCI_HOST` | 인스턴스 공인 IP 또는 SSH 호스트명 |
@@ -86,6 +91,21 @@ docker compose -f compose.yaml -f compose.prod.yaml logs --tail=200 postgres red
 
 배포를 시작할 때와 종료됐을 때 `#ymall-deploy` 채널로 실행자, 커밋, 결과 및 Actions 로그 링크를 알린다.
 Slack 또는 네트워크 장애가 실제 배포 결과에 영향을 주지 않도록 알림 단계에는 `continue-on-error`를 적용한다.
+
+### 운영 배포 검증 결과
+
+2026년 8월 11일 다음 항목을 운영 환경에서 재검증했다.
+
+- `develop → main` 릴리스 PR 병합 후 `main` CI 전체 통과
+- `Deploy to OCI` 수동 실행으로 최신 `main` 배포 성공
+- Backend·Frontend·인프라 서비스 기동과 `https://ymall.cloud/health` HTTP 200 확인
+- 배포 시작·성공 결과와 Actions 실행 링크의 Slack 전달 확인
+- Toss Payments 테스트 결제창 진입, 결제 승인과 전체 환불 완료 확인
+- 결제용 CSP 공식 도메인이 운영 응답 Header에 반영된 것을 확인
+
+검증에 사용한 실제 시크릿, 결제 키, 거래 식별자와 회원 정보는 문서와 배포 로그에 기록하지 않는다.
+최신 결제 CSP 변경은 [PR #162](https://github.com/yspaceS2/YMall/pull/162), 운영 릴리스는
+[PR #163](https://github.com/yspaceS2/YMall/pull/163)에서 확인할 수 있다.
 
 ## 자동 백업과 복원 검증
 
