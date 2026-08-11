@@ -1,8 +1,6 @@
 package com.ymall.backend.global.security;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -14,7 +12,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
-import com.ymall.backend.member.dto.TokenResponse;
 import com.ymall.backend.member.service.MemberEmailChangeService;
 
 @Component
@@ -55,8 +52,6 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         refreshTokenService.revoke(refreshTokenCookieManager.read(request));
         AuthenticationTokens tokens = refreshTokenService.issueForLogin(principal.member());
         refreshTokenCookieManager.write(response, tokens.refreshToken());
-        TokenResponse token = tokens.accessToken();
-        String encodedToken = URLEncoder.encode(token.accessToken(), StandardCharsets.UTF_8);
-        response.sendRedirect(frontendRedirectUri + "#accessToken=" + encodedToken);
+        response.sendRedirect(frontendRedirectUri + "#loginCompleted=true");
     }
 }
