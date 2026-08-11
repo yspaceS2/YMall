@@ -8,9 +8,8 @@ readonly BACKEND_HEALTH_URL="https://ymall.cloud/actuator/health"
 readonly PREVIOUS_COMMIT="$(git rev-parse HEAD)"
 readonly -a COMPOSE=(docker compose -f compose.yaml -f compose.prod.yaml)
 
-reload_caddy() {
-    "${COMPOSE[@]}" exec -T caddy \
-        caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+recreate_caddy() {
+    "${COMPOSE[@]}" up -d --force-recreate --no-deps caddy
 }
 
 rollback() {
@@ -20,7 +19,7 @@ rollback() {
     echo "Deployment failed. Rolling back to ${PREVIOUS_COMMIT}." >&2
     git reset --hard "${PREVIOUS_COMMIT}"
     "${COMPOSE[@]}" up -d --build --remove-orphans
-    reload_caddy
+    recreate_caddy
     exit "${exit_code}"
 }
 
@@ -32,7 +31,7 @@ git reset --hard "origin/${DEPLOY_BRANCH}"
 
 "${COMPOSE[@]}" config --quiet
 "${COMPOSE[@]}" up -d --build --remove-orphans
-reload_caddy
+recreate_caddy
 "${COMPOSE[@]}" ps
 
 for health_url in "${FRONTEND_HEALTH_URL}" "${BACKEND_HEALTH_URL}"; do

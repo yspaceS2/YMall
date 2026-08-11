@@ -88,7 +88,7 @@ Refresh Token은 브라우저가 자동 전송하는 Cookie이므로 배포 후 
 ## 배포 후 점검
 
 - [x] 운영 HTTPS/TLS와 인증서 구성
-- [ ] 운영 응답의 CSP, COOP, CORP, Permissions Policy
+- [x] 운영 응답의 CSP, COOP, CORP, Permissions Policy
 - [ ] Refresh Token Cookie의 `Secure`, `HttpOnly`, `SameSite`
 - [ ] 운영 CORS 허용 출처
 - [ ] PostgreSQL, Redis, Kafka, Actuator와 모니터링 포트의 외부 노출 여부
@@ -103,8 +103,11 @@ Informational 5종이었습니다.
 Low 항목 중 COEP 미적용과 COOP `same-origin-allow-popups`는 Google One Tap, OAuth 팝업과
 Toss 결제의 교차 출처 연동을 유지하기 위한 의도된 예외입니다. Backend API와 공개 이미지의
 CORP 누락은 Caddy Backend 경로에서 `Cross-Origin-Resource-Policy: same-origin`을 추가해
-보완하며, 배포 후 동일 검사를 재실행합니다. 따라서 응답 헤더 항목은 재배포 검증 전까지
-완료 처리하지 않습니다.
+보완했습니다.
+
+2026-08-11 재배포 후 API와 이미지 응답의 CORP 헤더를 직접 확인하고 Passive Scan을
+재실행했습니다. 최종 결과는 High 0건, Medium 0건, Low 2종, Informational 5종이며 CORP
+경고는 제거됐습니다. 남은 Low 2종은 위에서 기록한 COEP·COOP 호환성 예외입니다.
 
 전체 KISA 판정과 N/A 사유는
 [`kisa-2026-assessment.md`](./kisa-2026-assessment.md)를 기준으로 관리합니다.
