@@ -121,18 +121,36 @@ YMall 코드와 배포 구성에 매핑한 1차 점검 기록이다. 공식 인�
 - [PR #139 KISA 비밀번호 정책 적용](https://github.com/yspaceS2/YMall/pull/139)
 - [Jira YMALL-79](https://yspace-labs.atlassian.net/browse/YMALL-79)
 
+## 운영 배포 후 점검 결과
+
+2026-08-11 `https://ymall.cloud`를 대상으로 공개 응답과 비파괴적인 ZAP Passive Baseline을
+점검했습니다. 이 검사는 공격 페이로드를 사용하는 Active Scan이 아니며 운영 데이터를
+변경하지 않습니다.
+
+| 점검 항목 | 결과 | 근거와 후속 조치 |
+| --- | --- | --- |
+| HTTPS와 강제 전환 | 양호 | HTTP 요청은 HTTPS로 `308 Permanent Redirect`되며 HSTS `max-age=31536000; includeSubDomains`가 적용된다. |
+| 보안 응답 헤더 | 보완 진행 | CSP, COOP, CORP, Permissions Policy, Referrer Policy와 `X-Content-Type-Options`를 확인했다. Backend API와 이미지의 CORP 누락은 Caddy 설정으로 보완한다. |
+| ZAP Passive Baseline | 보완 후 재검증 | High 0건, Medium 0건, Low 3종, Informational 5종이다. COEP·COOP 2종은 외부 로그인·결제 호환성을 위한 예외이며 CORP 1종은 보완 대상이다. |
+
+COEP `require-corp`는 Google One Tap, OAuth와 Toss 결제에 필요한 교차 출처 자원의 로딩을
+차단할 수 있어 강제하지 않습니다. COOP는 팝업 로그인 완료 흐름을 위해
+`same-origin-allow-popups`를 유지합니다. 두 항목은 제거가 아니라 호환성과 위험을 검토한
+예외이며, ZAP 90004 경고의 정기 재검토 대상으로 관리합니다. CORP는 동일 출처에서만 API와
+이미지를 소비하는 운영 구조에 맞춰 Backend 응답에도 `same-origin`을 적용합니다.
+
 ## 배포 전 결론
 
 저장소와 로컬 격리 환경에서 판정 가능한 배포 전 항목은 검증됐다. 현재 확인된 코드 수준의
 HIGH·CRITICAL 취약점이나 미조치 보안 결함은 없다. 다만 PostgreSQL 감사 로그는 운영 구성
 작업으로 남아 있으며 아래 항목은 실제 배포 환경에서 증적을 남긴 뒤 최종 판정한다.
 
-- 운영 HTTPS/TLS와 인증서, HTTP 강제 전환
+- ~~운영 HTTPS/TLS와 인증서, HTTP 강제 전환~~ (2026-08-11 확인 완료)
 - Refresh Token Cookie의 실제 `Secure`·`HttpOnly`·`SameSite` 값
 - 운영 CORS와 CSP·COOP·CORP·Permissions Policy 응답
 - PostgreSQL·Redis·Kafka·Actuator·모니터링 포트의 외부 노출 여부
 - 운영 PostgreSQL 최소 권한 역할과 감사 로그
 - 호스트 OS 계정, SSH, 방화벽, 파일 권한과 시간 동기화
-- 실제 배포 URL에 대한 ZAP Baseline 또는 Passive Scan
+- ~~실제 배포 URL에 대한 ZAP Baseline 또는 Passive Scan~~ (2026-08-11 1차 점검 완료, CORP 보완 후 재검증)
 
 위 항목을 배포 후 갱신한 뒤 YMALL-79를 완료한다.
