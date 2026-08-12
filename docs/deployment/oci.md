@@ -6,19 +6,19 @@ YMall 운영 환경은 OCI Japan East(Tokyo)의 Ampere A1 인스턴스 한 대�
 Caddy만 80, 443 포트를 외부에 공개하고 Frontend, Backend, PostgreSQL, Redis, Kafka는 Compose 내부
 네트워크에서 통신한다. Caddy는 `ymall.cloud` 인증서를 자동 발급하고 HTTPS를 종료한다.
 
-운영 기본값은 `compose.prod.yaml`에서 AI 리뷰 요약을 비활성화한다. 현재 2 OCPU·12GB Ampere A1
-인스턴스에서는 `Qwen3-4B-GGUF Q4_K_M` 4,096 컨텍스트를 CPU로 순차 실행하는 구성을 후보로
-검증한다. 모델 파일은 2.32GiB이며 로컬 대표 입력은 약 28초가 걸렸다. 비동기 처리이므로 리뷰 작성
-응답과 분리되지만, 실제 OCI 메모리·CPU 부하 검증을 통과하기 전에는 운영에서 활성화하지 않는다.
+운영 환경은 `Qwen3-4B-GGUF Q4_K_M` 4,096 컨텍스트를 CPU로 순차 실행한다. 모델 파일은
+2.32GiB이며 리뷰 변경 이벤트를 Kafka로 전달해 요약 생성을 사용자 응답과 분리한다. 2 OCPU·12GB
+Ampere A1 인스턴스에서 실제 모델 계약 검사와 운영 DB 요약 갱신을 완료했으며, 추론 중에도 기존
+요약을 제공한다.
 
-선택적으로 활성화할 때는 Docker Model Runner를 설치하고 다음 조건을 모두 적용한다.
+Docker Model Runner와 모델은 다음 조건으로 실행한다.
 
 - `AI_REVIEW_PARALLEL=1`
 - `AI_REVIEW_CONTEXT_SIZE=4096`
-- `AI_REVIEW_MAX_TOKENS=512`
+- `AI_REVIEW_MAX_TOKENS=192`
 - 모델: `Qwen3-4B-GGUF Q4_K_M`
 - PostgreSQL, Redis, Kafka를 외부에 공개하지 않음
-- 부하 중 메모리 부족이나 장시간 CPU 포화가 발생하면 AI를 다시 비활성화하고 저장된 요약만 제공
+- 부하 중 메모리 부족이나 장시간 CPU 포화가 발생하면 `AI_REVIEW_ENABLED=false`로 전환하고 저장된 요약만 제공
 
 ## OCI 네트워크 준비
 
@@ -30,16 +30,30 @@ Caddy만 80, 443 포트를 외부에 공개하고 Frontend, Backend, PostgreSQL,
 
 ## 서버 최초 준비
 
-Ubuntu ARM64 서버에 Git과 Docker Engine, Docker Compose 플러그인을 설치한 뒤 저장소를 배치한다.
+Ubuntu ARM64 서버에 Git과 Docker Engine, Docker Compose 플러그인, Docker Model Runner를 설치한 뒤 저장소를 배치한다.
 서버의 배포 디렉터리에는 Git에 포함되지 않는 `.env`를 직접 만든다.
 
 ```bash
+sudo apt-get update
+sudo apt-get install -y docker-model-plugin
+docker model status
+docker model pull hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M
+
 sudo install -d -o "$USER" -g "$USER" /opt/ymall
 git clone https://github.com/yspaceS2/YMall.git /opt/ymall
 cd /opt/ymall
 cp deploy/oci/.env.example .env
 chmod 600 .env
 ```
+
+`deploy/oci/bootstrap.sh`는 Docker Engine과 함께 `docker-model-plugin`을 설치한다. 이미
+Docker Engine을 설치한 서버라면 위 명령으로 Model Runner만 추가할 수 있다.
+
+배포 스크립트는 애플리케이션 컨테이너를 재생성하기 전에 Model Runner 실행 상태와
+`AI_REVIEW_MODEL`에 지정된 모델의 로컬 등록 여부를 검사한다. AI가 활성화된 상태에서
+둘 중 하나라도 준비되지 않았다면 배포를 시작하지 않고 실패 원인을 출력하므로, Backend
+헬스체크만 통과한 채 AI 기능을 사용할 수 없는 상태로 배포되는 것을 방지한다. 전체 추론
+계약 검사는 약 1분이 걸리므로 매 배포에 포함하지 않고 운영 변경 후 수동 검증으로 유지한다.
 
 `.env`의 모든 `replace_me` 및 `replace_with_...` 값을 실제 운영값으로 교체한다. 환경변수 값은 Jira,
 PR, 저장소, 배포 로그에 기록하지 않는다.
@@ -94,7 +108,7 @@ Slack 또는 네트워크 장애가 실제 배포 결과에 영향을 주지 않
 
 ### 운영 배포 검증 결과
 
-2026년 8월 11일 다음 항목을 운영 환경에서 재검증했다.
+2026년 8월 11~12일 다음 항목을 운영 환경에서 재검증했다.
 
 - `develop → main` 릴리스 PR 병합 후 `main` CI 전체 통과
 - `Deploy to OCI` 수동 실행으로 최신 `main` 배포 성공
@@ -102,6 +116,8 @@ Slack 또는 네트워크 장애가 실제 배포 결과에 영향을 주지 않
 - 배포 시작·성공 결과와 Actions 실행 링크의 Slack 전달 확인
 - Toss Payments 테스트 결제창 진입, 결제 승인과 전체 환불 완료 확인
 - 결제용 CSP 공식 도메인이 운영 응답 Header에 반영된 것을 확인
+- Qwen3 4B 모델 계약 검사와 Kafka 기반 운영 리뷰 요약 갱신 확인
+- 추론 중 전체 서비스 healthy, HTTPS 200 및 사용 가능 메모리 약 6.2GiB 확인
 
 검증에 사용한 실제 시크릿, 결제 키, 거래 식별자와 회원 정보는 문서와 배포 로그에 기록하지 않는다.
 최신 결제 CSP 변경은 [PR #162](https://github.com/yspaceS2/YMall/pull/162), 운영 릴리스는

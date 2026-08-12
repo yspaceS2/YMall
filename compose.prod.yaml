@@ -9,7 +9,6 @@ services:
     ports: !reset []
 
   backend:
-    models: !reset []
     environment:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
@@ -35,7 +34,7 @@ services:
       MAIL_SMTP_AUTH: "true"
       MAIL_STARTTLS_ENABLED: "true"
       MANAGEMENT_HEALTH_MAIL_ENABLED: ${MAIL_HEALTH_ENABLED:-true}
-      AI_REVIEW_ENABLED: "false"
+      AI_REVIEW_ENABLED: ${AI_REVIEW_ENABLED:-true}
       SESSION_COOKIE_SECURE: "true"
       JWT_REFRESH_TOKEN_COOKIE_SECURE: "true"
 
