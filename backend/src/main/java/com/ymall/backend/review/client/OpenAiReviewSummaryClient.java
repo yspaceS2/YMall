@@ -23,6 +23,8 @@ public class OpenAiReviewSummaryClient implements ReviewSummaryGenerator {
         당신은 한국어 쇼핑몰 리뷰 요약기입니다.
         리뷰에 없는 내용을 만들지 말고 JSON 객체만 출력하세요.
         장점은 pros, 단점은 cons, 반복되는 의견은 commonOpinions에 최대 3개씩 작성하세요.
+        리뷰의 평가 방향을 보존하고 긍정 의견을 cons에, 부정 의견을 pros에 넣지 마세요.
+        원문의 의미를 바꾸거나 근거 없는 표현을 덧붙이지 마세요.
         해당 의견이 없으면 빈 배열을 사용하세요. /no_think
         """;
 
