@@ -93,7 +93,8 @@ Refresh Token은 브라우저가 자동 전송하는 Cookie이므로 배포 후 
 - [ ] 운영 CORS 허용 출처
 - [ ] PostgreSQL, Redis, Kafka, Actuator와 모니터링 포트의 외부 노출 여부
 - [x] 실제 배포 URL에 대한 ZAP Baseline 또는 Passive Scan
-- [ ] 운영 PostgreSQL 애플리케이션 계정의 최소 GRANT와 접속·DDL·권한 변경 감사 로그
+- [x] 운영 PostgreSQL 역할 분리, 최소 GRANT와 접속·DDL 감사 로그 구성
+- [ ] 운영 배포 후 실제 역할 속성·권한 거부와 감사 로그 표본 재검증
 
 2026-08-11 운영 점검에서 HTTP 요청의 HTTPS `308 Permanent Redirect`, 유효한 인증서와
 `Strict-Transport-Security: max-age=31536000; includeSubDomains`를 확인했습니다. 운영 URL에

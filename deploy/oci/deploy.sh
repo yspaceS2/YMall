@@ -71,7 +71,10 @@ git reset --hard "origin/${DEPLOY_BRANCH}"
 check_ai_runtime
 "${COMPOSE[@]}" config --quiet
 deployment_started=true
+"${COMPOSE[@]}" up -d --wait postgres
+YMALL_PROJECT_DIR="$(pwd)" bash deploy/oci/configure-db-roles.sh
 "${COMPOSE[@]}" up -d --build --remove-orphans
+YMALL_PROJECT_DIR="$(pwd)" bash deploy/oci/verify-db-roles.sh
 recreate_caddy
 "${COMPOSE[@]}" ps
 

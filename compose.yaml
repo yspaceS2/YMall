@@ -19,6 +19,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ymall_local_password}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./deploy/oci/configure-db-roles.sql:/opt/ymall/configure-db-roles.sql:ro
+      - ./deploy/oci/verify-db-roles.sql:/opt/ymall/verify-db-roles.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -83,6 +85,9 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ymall}
       DB_USERNAME: ${POSTGRES_USER:-ymall_user}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-ymall_local_password}
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ymall}
+      FLYWAY_USERNAME: ${POSTGRES_USER:-ymall_user}
+      FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:-ymall_local_password}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LOGIN_MAX_ATTEMPTS: ${LOGIN_MAX_ATTEMPTS:-5}
