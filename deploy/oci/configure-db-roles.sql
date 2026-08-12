@@ -50,6 +50,19 @@ JOIN pg_roles owner_role ON owner_role.oid = c.relowner
 WHERE n.nspname = 'public'
   AND c.relkind IN ('r', 'p', 'S', 'v', 'm')
   AND owner_role.rolname = :'bootstrap_user'
+  -- ALTER TABLE transfers owned serial/identity sequences automatically.
+  -- Reassign only standalone sequences to avoid changing the linked sequence twice.
+  AND (
+      c.relkind <> 'S'
+      OR NOT EXISTS (
+          SELECT 1
+          FROM pg_depend dependency
+          WHERE dependency.classid = 'pg_class'::regclass
+            AND dependency.objid = c.oid
+            AND dependency.refclassid = 'pg_class'::regclass
+            AND dependency.deptype IN ('a', 'i')
+      )
+  )
 \gexec
 
 SELECT format('ALTER ROUTINE %I.%I(%s) OWNER TO %I',
