@@ -68,8 +68,8 @@ main() {
     mkdir -m 0700 "${PARTIAL_DIR}"
 
     echo "Creating PostgreSQL backup ${TIMESTAMP}."
-    "${COMPOSE[@]}" exec -T postgres sh -c \
-        'exec pg_dump --format=custom --compress=6 --no-owner --no-acl --username="$POSTGRES_USER" "$POSTGRES_DB"' \
+    "${COMPOSE[@]}" exec -T postgres sh -eu -c \
+        'export PGPASSWORD="$DB_BACKUP_PASSWORD"; exec pg_dump --format=custom --compress=6 --no-owner --no-acl --username="$DB_BACKUP_USERNAME" "$POSTGRES_DB"' \
         > "${PARTIAL_DIR}/database.dump"
 
     echo "Creating upload volume backup ${TIMESTAMP}."

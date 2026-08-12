@@ -58,6 +58,20 @@ Docker Engine을 설치한 서버라면 위 명령으로 Model Runner만 추가�
 `.env`의 모든 `replace_me` 및 `replace_with_...` 값을 실제 운영값으로 교체한다. 환경변수 값은 Jira,
 PR, 저장소, 배포 로그에 기록하지 않는다.
 
+PostgreSQL 자격 증명은 용도별로 서로 다른 값을 사용한다.
+
+| 역할 | 환경변수 | 사용 범위 |
+| --- | --- | --- |
+| 초기 관리자 | `POSTGRES_USER`, `POSTGRES_PASSWORD` | 역할 구성과 복구 검증처럼 관리자 권한이 필요한 운영 절차 |
+| 스키마 마이그레이션 | `DB_MIGRATION_USERNAME`, `DB_MIGRATION_PASSWORD` | Flyway와 `public` 스키마 객체 소유 |
+| 애플리케이션 | `DB_APP_USERNAME`, `DB_APP_PASSWORD` | 테이블 CRUD와 시퀀스 사용만 허용 |
+| 백업 | `DB_BACKUP_USERNAME`, `DB_BACKUP_PASSWORD` | 테이블·시퀀스 조회와 `pg_dump`만 허용 |
+
+배포 스크립트는 Backend를 시작하기 전에 `configure-db-roles.sh`를 반복 실행해 역할, 객체 소유권,
+현재 객체와 향후 Flyway 객체의 기본 권한을 정렬한다. 애플리케이션과 백업 계정에는 DDL 권한을
+부여하지 않는다. 운영 PostgreSQL은 접속·종료와 DDL을 기록하되 역할 비밀번호를 설정하는 세션은
+구문 기록을 잠시 중단해 자격 증명이 로그에 남지 않도록 한다.
+
 ## 수동 최초 배포
 
 DNS 전파가 완료되고 80, 443 포트가 열려 있는지 확인한 후 실행한다.
@@ -127,7 +141,9 @@ Slack 또는 네트워크 장애가 실제 배포 결과에 영향을 주지 않
 
 운영 백업은 PostgreSQL custom format과 `ymall_backend-uploads` 볼륨 압축 파일을 하나의 백업 세트로
 생성한다. 완성 전 파일은 `.partial` 디렉터리에 기록하고 두 파일과 SHA-256 체크섬 생성이 모두 성공한
-뒤에만 최종 디렉터리로 전환한다. 기본 경로는 `/opt/ymall-backups`이며 최근 7일을 보관한다.
+뒤에만 최종 디렉터리로 전환한다. `pg_dump`는 읽기 전용 백업 계정으로 실행한다. 기본 경로는
+`/opt/ymall-backups`이며 최근 7일을 보관한다. 임시 DB 생성·복원이 필요한 복구 검증만 초기 관리자
+계정을 사용한다.
 
 시스템 타이머를 설치한다.
 

@@ -8,6 +8,11 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+  flyway:
+    url: ${FLYWAY_URL:${DB_URL}}
+    user: ${FLYWAY_USERNAME}
+    password: ${FLYWAY_PASSWORD}
+
   jpa:
     hibernate:
       ddl-auto: validate
