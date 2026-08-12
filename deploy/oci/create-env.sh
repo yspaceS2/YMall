@@ -8,6 +8,9 @@ readonly ENV_FILE="${DEPLOY_DIR}/.env"
 umask 077
 
 postgres_password="$(openssl rand -base64 36 | tr -d '\n')"
+db_migration_password="$(openssl rand -base64 36 | tr -d '\n')"
+db_app_password="$(openssl rand -base64 36 | tr -d '\n')"
+db_backup_password="$(openssl rand -base64 36 | tr -d '\n')"
 jwt_secret="$(openssl rand -base64 48 | tr -d '\n')"
 settlement_key="$(openssl rand -base64 32 | tr -d '\n')"
 
@@ -20,6 +23,12 @@ OAUTH2_FRONTEND_REDIRECT_URI=https://ymall.cloud/oauth2/callback
 POSTGRES_DB=ymall
 POSTGRES_USER=ymall_user
 POSTGRES_PASSWORD=${postgres_password}
+DB_MIGRATION_USERNAME=ymall_migration
+DB_MIGRATION_PASSWORD=${db_migration_password}
+DB_APP_USERNAME=ymall_app
+DB_APP_PASSWORD=${db_app_password}
+DB_BACKUP_USERNAME=ymall_backup
+DB_BACKUP_PASSWORD=${db_backup_password}
 
 JWT_SECRET=${jwt_secret}
 SELLER_SETTLEMENT_ACCOUNT_ENCRYPTION_KEY=${settlement_key}
