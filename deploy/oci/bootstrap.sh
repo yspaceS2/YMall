@@ -29,7 +29,8 @@ sudo apt-get install -y \
     docker-ce-cli \
     containerd.io \
     docker-buildx-plugin \
-    docker-compose-plugin
+    docker-compose-plugin \
+    docker-model-plugin
 
 sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
@@ -37,5 +38,6 @@ sudo usermod -aG docker "$USER"
 git --version
 sudo docker version --format 'Docker Engine {{.Server.Version}}'
 sudo docker compose version
+sudo docker model version
 
 echo "Docker group membership takes effect after reconnecting the SSH session."
