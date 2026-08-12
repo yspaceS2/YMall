@@ -4,6 +4,8 @@ set -Eeuo pipefail
 
 readonly DEPLOY_DIR="${1:-/home/ubuntu/ymall}"
 readonly ENV_FILE="${DEPLOY_DIR}/.env"
+readonly OCI_BACKUP_NAMESPACE="${YMALL_OCI_BACKUP_NAMESPACE:?Set YMALL_OCI_BACKUP_NAMESPACE before creating the deployment environment.}"
+readonly OCI_BACKUP_BUCKET="${YMALL_OCI_BACKUP_BUCKET:-ymall-backups}"
 
 umask 077
 
@@ -29,6 +31,8 @@ DB_APP_USERNAME=ymall_app
 DB_APP_PASSWORD=${db_app_password}
 DB_BACKUP_USERNAME=ymall_backup
 DB_BACKUP_PASSWORD=${db_backup_password}
+YMALL_OCI_BACKUP_NAMESPACE=${OCI_BACKUP_NAMESPACE}
+YMALL_OCI_BACKUP_BUCKET=${OCI_BACKUP_BUCKET}
 
 JWT_SECRET=${jwt_secret}
 SELLER_SETTLEMENT_ACCOUNT_ENCRYPTION_KEY=${settlement_key}
@@ -54,7 +58,7 @@ EOF
 chmod 600 "${ENV_FILE}"
 
 variable_count="$(grep -c '^[A-Z0-9_]*=' "${ENV_FILE}")"
-if [[ "$(stat -c '%a' "${ENV_FILE}")" != "600" || "${variable_count}" != "23" ]]; then
+if [[ "$(stat -c '%a' "${ENV_FILE}")" != "600" || "${variable_count}" != "31" ]]; then
     echo "Failed to create a protected deployment environment file." >&2
     exit 1
 fi

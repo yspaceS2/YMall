@@ -176,9 +176,34 @@ sudo /opt/ymall/deploy/oci/verify-backup.sh /opt/ymall-backups/20260812000000
 DB의 이미지 경로와 파일이 일치한다. 운영 복원은 파괴적 작업이므로 자동화하지 않고, 복원할 백업 시각과
 현재 데이터 보존 여부를 이중 확인한 뒤 수행한다.
 
-현재 백업은 OCI 인스턴스의 같은 부트 볼륨에 저장되므로 운영자 실수와 논리적 데이터 손상에는 대응하지만,
-인스턴스 또는 부트 볼륨 자체의 유실에는 대응하지 못한다. 장기 운영으로 전환할 때는 OCI Object Storage 등
-별도 장애 도메인으로 암호화 복제하고 복제본의 보존·삭제 정책도 함께 관리한다.
+완성된 백업 세트는 인스턴스 로컬 보관 후 비공개 OCI Object Storage 버킷에도 복제한다. OCI CLI는
+Instance Principal로 인증하므로 API 키를 서버나 저장소에 보관하지 않는다. Dynamic Group에는 현재 운영
+인스턴스만 포함하고 IAM 정책은 `ymall-backups` 버킷의 객체 관리로 제한한다. 업로드 후 각 객체에 HEAD 요청을
+보내 원격 저장 여부를 검증하며, 하나라도 실패하면 systemd 서비스도 실패 처리한다. 버킷 수명 주기 정책은
+7일이 지난 백업 객체를 자동 삭제한다.
+
+초기 환경 파일을 생성하기 전 Object Storage 네임스페이스를 전달한다. 버킷 이름은 생략하면
+`ymall-backups`를 사용한다.
+
+```bash
+export YMALL_OCI_BACKUP_NAMESPACE="replace_with_namespace"
+export YMALL_OCI_BACKUP_BUCKET="ymall-backups"
+sudo --preserve-env=YMALL_OCI_BACKUP_NAMESPACE,YMALL_OCI_BACKUP_BUCKET \
+  /opt/ymall/deploy/oci/create-env.sh /opt/ymall
+```
+
+외부 백업을 확인하거나 장애 복구용 파일을 내려받을 때는 Instance Principal을 사용한다.
+
+```bash
+oci os object list --auth instance_principal \
+  --namespace-name "$YMALL_OCI_BACKUP_NAMESPACE" \
+  --bucket-name "$YMALL_OCI_BACKUP_BUCKET"
+
+oci os object bulk-download --auth instance_principal \
+  --namespace-name "$YMALL_OCI_BACKUP_NAMESPACE" \
+  --bucket-name "$YMALL_OCI_BACKUP_BUCKET" \
+  --download-dir /opt/ymall-restore
+```
 
 기본값은 환경변수로 조정할 수 있다.
 
@@ -188,6 +213,8 @@ DB의 이미지 경로와 파일이 일치한다. 운영 복원은 파괴적 작
 | `YMALL_BACKUP_ROOT` | `/opt/ymall-backups` | 백업 보관 경로 |
 | `YMALL_BACKUP_RETENTION_DAYS` | `7` | 백업 보관 일수 |
 | `YMALL_UPLOAD_VOLUME` | `ymall_backend-uploads` | 업로드 Docker 볼륨 |
+| `YMALL_OCI_BACKUP_NAMESPACE` | 필수 | OCI Object Storage 네임스페이스 |
+| `YMALL_OCI_BACKUP_BUCKET` | 필수 | 외부 백업 버킷 이름 |
 
 ## 중지와 비용 확인
 
