@@ -3,10 +3,20 @@
 set -Eeuo pipefail
 
 readonly PROJECT_DIR="${YMALL_PROJECT_DIR:-/opt/ymall}"
+
+read_project_env() {
+    local key="$1"
+
+    [[ -f "${PROJECT_DIR}/.env" ]] || return 0
+    awk -F= -v key="${key}" '$1 == key { sub(/^[^=]*=/, ""); print; exit }' "${PROJECT_DIR}/.env"
+}
+
 readonly BACKUP_ROOT="${YMALL_BACKUP_ROOT:-/opt/ymall-backups}"
 readonly RETENTION_DAYS="${YMALL_BACKUP_RETENTION_DAYS:-7}"
 readonly UPLOAD_VOLUME="${YMALL_UPLOAD_VOLUME:-ymall_backend-uploads}"
 readonly LOCK_FILE="${YMALL_BACKUP_LOCK_FILE:-/run/lock/ymall-backup.lock}"
+readonly OCI_NAMESPACE="${YMALL_OCI_BACKUP_NAMESPACE:-$(read_project_env YMALL_OCI_BACKUP_NAMESPACE)}"
+readonly OCI_BUCKET="${YMALL_OCI_BACKUP_BUCKET:-$(read_project_env YMALL_OCI_BACKUP_BUCKET)}"
 readonly TIMESTAMP="$(TZ=Asia/Seoul date +%Y%m%d%H%M%S)"
 readonly FINAL_DIR="${BACKUP_ROOT}/${TIMESTAMP}"
 readonly PARTIAL_DIR="${FINAL_DIR}.partial"
@@ -36,6 +46,14 @@ validate_configuration() {
         echo "Missing production environment file: ${PROJECT_DIR}/.env" >&2
         exit 1
     }
+    command -v oci > /dev/null 2>&1 || {
+        echo "OCI CLI is required for external backup replication." >&2
+        exit 1
+    }
+    [[ -n "${OCI_NAMESPACE}" && -n "${OCI_BUCKET}" ]] || {
+        echo "YMALL_OCI_BACKUP_NAMESPACE and YMALL_OCI_BACKUP_BUCKET are required." >&2
+        exit 1
+    }
 }
 
 cleanup_partial() {
@@ -52,6 +70,28 @@ prune_expired_backups() {
         -name '20????????????' \
         -mtime "+$((RETENTION_DAYS - 1))" \
         -exec rm -rf -- {} +
+}
+
+upload_to_object_storage() {
+    local file_name
+
+    echo "Replicating backup ${TIMESTAMP} to OCI Object Storage."
+    for file_name in database.dump uploads.tar.gz SHA256SUMS; do
+        oci os object put \
+            --auth instance_principal \
+            --namespace-name "${OCI_NAMESPACE}" \
+            --bucket-name "${OCI_BUCKET}" \
+            --name "${TIMESTAMP}/${file_name}" \
+            --file "${FINAL_DIR}/${file_name}" \
+            --force \
+            --no-multipart > /dev/null
+        oci os object head \
+            --auth instance_principal \
+            --namespace-name "${OCI_NAMESPACE}" \
+            --bucket-name "${OCI_BUCKET}" \
+            --name "${TIMESTAMP}/${file_name}" > /dev/null
+    done
+    echo "OCI Object Storage replication verified: ${TIMESTAMP}/"
 }
 
 main() {
@@ -87,6 +127,7 @@ main() {
 
     mv "${PARTIAL_DIR}" "${FINAL_DIR}"
     trap - EXIT
+    upload_to_object_storage
     prune_expired_backups
 
     du -sh "${FINAL_DIR}"

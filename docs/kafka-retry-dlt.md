@@ -8,6 +8,15 @@
 - 재시도 소진 또는 비재시도 오류 이벤트는 `ymall.order.events.v1.DLT`에 저장한다.
 - DLT 보존 기간은 기본 30일이며 `KAFKA_DLT_RETENTION`으로 변경할 수 있다.
 
+## Topic 구분
+
+| 구분 | 기본 Topic | Consumer Group | 실패 처리 |
+| --- | --- | --- | --- |
+| 주문 후속 처리 | `ymall.order.events.v1` | `ymall-notification`, `ymall-settlement` | 재시도 후 주문 DLT |
+| 리뷰 AI 요약 | `ymall.review-summary.refresh.v1` | `ymall-review-summary` | 재시도 후 리뷰 요약 DLT |
+
+주문 이벤트는 알림과 정산 같은 부수 효과의 중복을 이벤트 처리 이력으로 방지한다. 리뷰 요약 이벤트는 상품별 최신 리뷰를 다시 조회해 요약 Snapshot을 교체하며, Redis 잠금으로 동일 상품의 동시 추론을 제한한다. DLT에 전달된 이벤트를 재처리하기 전에는 현재 DB 상태와 이미 완료된 부수 효과를 먼저 확인한다.
+
 ## DLT 조회
 
 토픽 상태를 확인한다.

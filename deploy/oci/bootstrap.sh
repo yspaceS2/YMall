@@ -2,8 +2,10 @@
 
 set -Eeuo pipefail
 
+readonly OCI_CLI_VERSION="3.90.2"
+
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl git
+sudo apt-get install -y ca-certificates curl git python3-venv
 
 sudo install -m 0755 -d /etc/apt/keyrings
 sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
@@ -39,5 +41,13 @@ git --version
 sudo docker version --format 'Docker Engine {{.Server.Version}}'
 sudo docker compose version
 sudo docker model version
+
+if ! command -v oci > /dev/null 2>&1; then
+    sudo python3 -m venv /opt/oci-cli
+    sudo /opt/oci-cli/bin/pip install --disable-pip-version-check --no-cache-dir "oci-cli==${OCI_CLI_VERSION}"
+    sudo ln -s /opt/oci-cli/bin/oci /usr/local/bin/oci
+fi
+
+oci --version
 
 echo "Docker group membership takes effect after reconnecting the SSH session."

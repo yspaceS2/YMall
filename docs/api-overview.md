@@ -10,13 +10,18 @@
 | 영역 | 대표 경로 | 주요 기능 |
 | --- | --- | --- |
 | 회원·인증 | `/api/members` | 가입, 로그인, Token 갱신, 이메일·비밀번호 변경 |
+| OAuth 계정 | `/oauth2`, `/api/members/oauth2`, `/api/members/me/oauth-accounts` | Google One Tap, Google·Naver·Kakao 로그인과 계정 연결 |
 | 상품 | `/api/products`, `/api/categories` | 검색·상세, 3단계 카테고리 |
+| 홈 | `/api/home` | 판매량·최근 판매·승인 시각 기반 상품 큐레이션 |
 | 장바구니·관심상품 | `/api/cart`, `/api/wishlist` | 항목 추가·변경·삭제 |
 | 주문·결제 | `/api/orders`, `/api/payments` | 주문, 반품, Toss 승인·취소·환불·웹훅 |
 | 리뷰·문의 | `/api/reviews`, `/api/product-questions` | 구매 리뷰, 상품 질문·답변 |
+| 파일 | `/api/files` | 목적·소유권·파일 형식을 검증한 업로드와 조회 |
 | 알림·지원 | `/api/notifications`, `/api/support` | 알림, 문의, 실시간 상담 |
 | 판매자 | `/api/seller` | 상품·주문·반품·정산·대시보드 |
 | 관리자 | `/api/admin` | 회원·판매자·상품·주문·정산·권한 운영 |
+
+리뷰 조회 응답에는 상품별 평점과 리뷰 수를 제공하며, `/api/products/{productId}/review-summary`에서 저장된 AI 요약을 조회합니다. 요약 생성은 리뷰 변경 요청과 분리된 비동기 흐름이므로 API는 생성 완료를 기다리지 않습니다.
 
 ## 권한 모델
 

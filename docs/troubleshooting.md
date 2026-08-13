@@ -52,3 +52,28 @@ Get-NetTCPConnection -State Listen | Where-Object LocalPort -In 5173,5432
 ```
 
 기존 프로세스를 확인해 종료하거나 로컬 포트를 바꿉니다. PostgreSQL·Redis·Kafka는 전체 Compose 실행에서 외부 공개가 필요하지 않습니다. 추가 실행·백업 절차는 [Docker Compose 가이드](docker-compose.md)를 참고합니다.
+
+## 운영 OAuth 로그인 후 다시 로그인 화면으로 돌아옴
+
+Google·Naver·Kakao 개발자 콘솔의 Redirect URI와 Backend가 생성하는 Callback 주소가 정확히 일치하는지 확인합니다. 운영 환경은 `https://ymall.cloud/login/oauth2/code/{provider}`를 사용하며 `http`, `https`, `www` 유무와 경로가 하나라도 다르면 공급자가 요청을 거부합니다.
+
+공급자 인증은 성공했지만 Frontend Callback에서 로그인 상태가 유지되지 않으면 다음 순서로 확인합니다.
+
+1. Backend OAuth 성공 로그에서 Token 값이 아닌 성공 여부와 Provider만 확인합니다.
+2. Frontend Callback 주소와 운영 Origin 설정을 확인합니다.
+3. Refresh Cookie의 Domain, Secure, SameSite 정책과 `/api/members/tokens/refresh` 응답을 확인합니다.
+4. 브라우저 확장 기능의 영향을 배제하려면 별도 브라우저나 시크릿 창에서 다시 확인합니다.
+
+Access Token, Refresh Token과 OAuth client secret은 브라우저 화면, 로그나 Jira에 복사하지 않습니다.
+
+## Toss 결제창이 CSP 오류로 열리지 않음
+
+브라우저 Console에서 `connect-src` 또는 `frame-src` 차단 도메인을 확인합니다. Toss Payments SDK가 사용하는 API Gateway와 로그·이벤트 도메인은 운영 Caddy CSP의 허용 목록에 있어야 합니다. 오류를 해결하기 위해 `*`나 전체 `https:`를 허용하지 않고 실제 SDK가 요청한 Toss 도메인만 추가합니다.
+
+키 오류 메시지가 함께 표시되면 결제위젯 연동 키가 아니라 현재 연동 방식에 맞는 API 개별 연동 Client Key인지 확인합니다. Secret Key는 Backend에만 두고 `VITE_` 환경변수로 노출하지 않습니다.
+
+## DB 복원 후 상품 이미지만 보이지 않음
+
+PostgreSQL에는 이미지 경로와 메타데이터가 저장되고 파일 본문은 `backend-uploads` Docker 볼륨에 저장됩니다. DB dump만 복원하면 상품 데이터는 조회되지만 경로가 가리키는 파일이 없어 이미지가 표시되지 않습니다.
+
+같은 시각에 생성한 DB dump와 `uploads.tar.gz`를 함께 복원하고 체크섬을 검증합니다. 운영 복원은 기존 데이터를 교체하는 작업이므로 자동 실행하지 않으며 [OCI 배포와 복구 가이드](deployment/oci.md)의 순서와 대상 백업 시각을 확인한 뒤 수행합니다.

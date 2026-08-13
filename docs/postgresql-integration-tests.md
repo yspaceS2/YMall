@@ -64,10 +64,23 @@ Redis cache 장애·fallback 테스트와 Kafka DLT 전달 테스트는 데이�
 
 ## CI
 
-GitHub Actions의 Backend Test job은 로컬과 동일하게 `test postgresTest`를 실행한다.
+GitHub Actions의 Backend Test job은 로컬과 동일하게 `test postgresTest jacocoTestReport`를 실행한다.
 PostgreSQL service container와 별도 접속 환경변수는 사용하지 않는다. 실패 시 Gradle HTML
 report와 XML test result를 artifact로 7일간 보존하며, 컨테이너 로그에 시크릿이나 실제
 개인정보를 기록하지 않는다.
+
+## 커버리지 확인
+
+Backend 커버리지는 H2 단위 테스트와 PostgreSQL Testcontainers 통합 테스트의 실행 데이터를 합쳐 JaCoCo로 생성한다.
+
+```powershell
+cd backend
+.\gradlew.bat test postgresTest jacocoTestReport
+```
+
+로컬 HTML 보고서는 `backend/build/reports/jacoco/test/html/index.html`에서 확인한다. GitHub Actions에서는 `backend-coverage-report` artifact를 내려받아 같은 HTML 보고서와 XML 원본을 확인할 수 있으며 14일간 보관한다. 커버리지는 테스트 존재 여부를 확인하는 보조 지표이며, 결제 금액·권한·멱등성·동시성처럼 위험이 큰 정책의 실패 시나리오를 우선한다.
+
+Frontend는 CI에서 `npm run test:coverage`를 실행하고 `frontend-coverage-report` artifact를 14일간 보관한다. 로컬 결과는 `frontend/coverage/index.html`에서 확인한다.
 
 ## 실행 시간 기준
 

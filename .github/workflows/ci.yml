@@ -53,7 +53,18 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run backend tests
-        run: ./gradlew test postgresTest --no-daemon
+        run: ./gradlew test postgresTest jacocoTestReport --no-daemon
+
+      - name: Upload backend coverage report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-coverage-report
+          path: |
+            backend/build/reports/jacoco/test/html
+            backend/build/reports/jacoco/test/jacocoTestReport.xml
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload backend failure reports
         if: failure()
@@ -87,8 +98,17 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Run frontend unit tests
-        run: npm run test
+      - name: Run frontend unit tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-coverage-report
+          path: frontend/coverage
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Run frontend lint
         run: npm run lint
