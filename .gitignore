@@ -20,6 +20,7 @@ frontend/.env.local
 frontend/.env.*.local
 frontend/playwright-report/
 frontend/test-results/
+frontend/coverage/
 
 # Backend
 backend/HELP.md
