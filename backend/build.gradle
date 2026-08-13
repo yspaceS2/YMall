@@ -1,5 +1,6 @@
 plugins {
 	id 'java'
+	id 'jacoco'
 	id 'org.springframework.boot' version '4.1.0'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
@@ -91,4 +92,14 @@ tasks.register('postgresTest', Test) {
 
 tasks.named('check') {
 	dependsOn tasks.named('postgresTest')
+}
+
+jacocoTestReport {
+	dependsOn tasks.named('test'), tasks.named('postgresTest')
+	executionData tasks.withType(Test)
+	reports {
+		xml.required = true
+		html.required = true
+		csv.required = false
+	}
 }
